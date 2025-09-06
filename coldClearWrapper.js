@@ -1,17 +1,18 @@
 // coldClearWrapper.js
 
-// 引入從 wasm-pack 產生的 JS 檔案
+// Import the generated JS file from wasm-pack.
+// This assumes your web page is serving the `pkg` directory.
 import init, { WasmBot } from './pkg/cold_clear_2.js';
 
-// 我們將在這個物件中公開所有 API
+// We will expose all APIs on this object
 const ColdClear = {
     _bot: null,
     _initialized: false,
 
     /**
-     * 初始化 Wasm 模組並建立 Bot 實例。
-     * 必須在使用任何其他 API 之前呼叫此函式。
-     * @param {object} config - Bot 的設定物件。傳入空物件 {} 可使用預設值。
+     * Initializes the Wasm module and creates a Bot instance.
+     * This function must be called before any other API.
+     * @param {object} config - The configuration object for the bot. Pass an empty object {} to use defaults.
      * @returns {Promise<void>}
      */
     async initialize(config = {}) {
@@ -21,23 +22,23 @@ const ColdClear = {
         }
 
         try {
-            // 初始化 Wasm 模組
-            // 假設 wasm 檔案相對於根目錄的 pkg/ 資料夾
-            await init('./pkg/cold_clear_2_bg.wasm');
+            // Initialize the Wasm module.
+            // wasm-pack's generated JS module will handle loading the .wasm file.
+            await init();
 
-            // 建立 WasmBot 實例
+            // Create a WasmBot instance
             this._bot = new WasmBot(config);
             this._initialized = true;
             console.log("Cold Clear Wasm bot initialized successfully.");
 
         } catch (error) {
             console.error("Failed to initialize Cold Clear Wasm bot:", error);
-            throw error; // 拋出錯誤以便應用程式可以處理
+            throw error; // Re-throw the error so the application can handle it
         }
     },
 
     /**
-     * 檢查 Bot 是否已初始化。
+     * Checks if the bot is initialized.
      * @private
      */
     _checkInitialized() {
@@ -47,8 +48,8 @@ const ColdClear = {
     },
 
     /**
-     * 啟動一個新的遊戲回合。
-     * @param {object} startInfo - 遊戲的初始狀態。
+     * Starts a new game round.
+     * @param {object} startInfo - The initial state of the game.
      */
     start(startInfo) {
         this._checkInitialized();
@@ -60,8 +61,8 @@ const ColdClear = {
     },
 
     /**
-     * 通知 Bot 一個新的方塊。
-     * @param {string} piece - 方塊的名稱 (e.g., "T", "L", "I").
+     * Notifies the bot of a new piece.
+     * @param {string} piece - The name of the piece (e.g., "T", "L", "I").
      */
     newPiece(piece) {
         this._checkInitialized();
@@ -73,8 +74,8 @@ const ColdClear = {
     },
 
     /**
-     * 通知 Bot 一個移動已經被執行。
-     * @param {object} move - 已放置方塊的詳細資訊 (Placement object).
+     * Notifies the bot that a move has been played.
+     * @param {object} move - Details of the placed piece (Placement object).
      */
     play(move) {
         this._checkInitialized();
@@ -86,8 +87,8 @@ const ColdClear = {
     },
 
     /**
-     * 向 Bot 請求移動建議。
-     * @returns {object | null} - 包含建議移動的物件，或 null。
+     * Requests a move suggestion from the bot.
+     * @returns {object | null} - An object containing the suggested move, or null.
      */
     suggest() {
         this._checkInitialized();
@@ -100,7 +101,7 @@ const ColdClear = {
     },
 
     /**
-     * 停止 Bot。
+     * Stops the bot.
      */
     stop() {
         this._checkInitialized();
@@ -108,6 +109,6 @@ const ColdClear = {
     }
 };
 
-// 您可以將 ColdClear 匯出，或將其設為全域變數
+// You can export ColdClear or set it as a global variable
 // export default ColdClear;
 window.ColdClear = ColdClear;
