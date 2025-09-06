@@ -2,7 +2,7 @@
 
 // Import the generated JS file from wasm-pack.
 // This path assumes the web page is at the root and a `pkg` directory exists at the root.
-import init, { WasmBot } from './pkg/cold_clear_2.js';
+import init, { WasmBot } from './cold_clear_2.js';
 
 // We will expose all APIs on this object
 const ColdClear = {
