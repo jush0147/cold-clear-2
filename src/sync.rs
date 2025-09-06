@@ -21,6 +21,8 @@ impl BotSyncronizer {
                 node_limit: u64::MAX,
                 start: Instant::now(),
                 nodes_since_start: 0,
+                #[cfg(target_arch = "wasm32")]
+                search_depth: 20000,
             }),
             blocker: Condvar::new(),
             bot: RwLock::new(None),
@@ -60,15 +62,20 @@ impl BotSyncronizer {
     }
 
     #[cfg(target_arch = "wasm32")]
+    pub fn set_search_depth(&self, depth: u64) {
+        let mut state = self.state.lock();
+        state.search_depth = depth;
+    }
+
+    #[cfg(target_arch = "wasm32")]
     pub fn suggest(&self) -> Option<(Vec<Placement>, MoveInfo)> {
         use crate::bot::Statistics;
         let bot_guard = self.bot.read();
         if let Some(bot) = bot_guard.as_ref() {
             // Perform a fixed amount of work synchronously
             let mut stats = Statistics::default();
-            // A non-trivial amount of work to get a decent result.
-            // This number may need tuning.
-            for _ in 0..20000 {
+            let depth = self.state.lock().search_depth;
+            for _ in 0..depth {
                 let new_stats = bot.do_work();
                 stats.accumulate(new_stats);
             }
@@ -156,4 +163,6 @@ struct State {
     node_limit: u64,
     start: Instant,
     nodes_since_start: u64,
+    #[cfg(target_arch = "wasm32")]
+    search_depth: u64,
 }

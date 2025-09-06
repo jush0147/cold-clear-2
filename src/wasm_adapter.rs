@@ -1,6 +1,6 @@
 use crate::{
     bot::{Bot, BotConfig, BotOptions},
-    data::{GameState, Piece, Placement},
+    data::GameState,
     sync::BotSyncronizer,
     tbp::{self, Randomizer},
 };
@@ -12,9 +12,6 @@ use wasm_bindgen::prelude::*;
 extern "C" {
     #[wasm_bindgen(js_namespace = console, js_name = log)]
     fn log_str(s: &str);
-
-    #[wasm_bindgen(js_namespace = console, js_name = log)]
-    fn log_js(s: &JsValue);
 }
 
 macro_rules! log {
@@ -60,15 +57,19 @@ impl WasmBot {
         self.bot.stop();
     }
 
+    pub fn set_search_depth(&self, depth: u64) {
+        self.bot.set_search_depth(depth);
+    }
+
     pub fn new_piece(&self, piece: JsValue) -> Result<(), JsValue> {
-        let piece: Piece = serde_wasm_bindgen::from_value(piece)
+        let piece: crate::data::Piece = serde_wasm_bindgen::from_value(piece)
             .map_err(|e| e.to_string())?;
         self.bot.new_piece(piece);
         Ok(())
     }
 
     pub fn play(&self, mv: JsValue) -> Result<(), JsValue> {
-        let mv: Placement = serde_wasm_bindgen::from_value(mv)
+        let mv: crate::data::Placement = serde_wasm_bindgen::from_value(mv)
             .map_err(|e| e.to_string())?;
         self.bot.advance(mv);
         Ok(())
