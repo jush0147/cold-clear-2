@@ -69,7 +69,7 @@ impl Default for Randomizer {
     }
 }
 
-#[derive(Serialize)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]
 pub struct MoveInfo {
     pub nodes: u64,
     pub nps: f64,
