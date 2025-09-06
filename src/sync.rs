@@ -40,6 +40,7 @@ impl BotSyncronizer {
         *self.bot.write() = None;
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn suggest(&self) -> Option<(Vec<Placement>, MoveInfo)> {
         let bot = self.bot.read();
         bot.as_ref().map(|bot| {
@@ -56,6 +57,43 @@ impl BotSyncronizer {
             };
             (suggestion, info)
         })
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub fn suggest(&self) -> Option<(Vec<Placement>, MoveInfo)> {
+        use crate::bot::Statistics;
+        let bot_guard = self.bot.read();
+        if let Some(bot) = bot_guard.as_ref() {
+            // Perform a fixed amount of work synchronously
+            let mut stats = Statistics::default();
+            // A non-trivial amount of work to get a decent result.
+            // This number may need tuning.
+            for _ in 0..20000 {
+                let new_stats = bot.do_work();
+                stats.accumulate(new_stats);
+            }
+
+            let suggestion = bot.suggest();
+            let elapsed_secs = self.state.lock().last_advance.elapsed().as_secs_f64();
+            let nps = if elapsed_secs > 0.001 {
+                stats.nodes as f64 / elapsed_secs
+            } else {
+                0.0
+            };
+            let selections = if stats.selections == 0 { 1 } else { stats.selections };
+
+            let info = MoveInfo {
+                nodes: stats.nodes,
+                nps,
+                extra: format!(
+                    "{:.1}% of selections expanded",
+                    stats.expansions as f64 / selections as f64 * 100.0,
+                ),
+            };
+            Some((suggestion, info))
+        } else {
+            None
+        }
     }
 
     pub fn advance(&self, mv: Placement) {
@@ -77,6 +115,7 @@ impl BotSyncronizer {
         self.blocker.notify_all();
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn work_loop(&self) {
         let mut state = self.state.lock();
         loop {
@@ -102,6 +141,11 @@ impl BotSyncronizer {
             state.stats.accumulate(new_stats);
             state.nodes_since_start += new_stats.nodes;
         }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub fn work_loop(&self) {
+        // This is a no-op on wasm, as work is done synchronously in `suggest`.
     }
 }
 
