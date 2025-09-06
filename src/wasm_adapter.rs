@@ -28,7 +28,6 @@ pub struct WasmBot {
 impl WasmBot {
     #[wasm_bindgen(constructor)]
     pub fn new(config: JsValue) -> Result<WasmBot, JsValue> {
-        // Sets up a panic hook to log panics to the browser console
         #[cfg(feature = "console_error_panic_hook")]
         console_error_panic_hook::set_once();
 
@@ -48,7 +47,6 @@ impl WasmBot {
     pub fn start(&self, start_info: JsValue) -> Result<(), JsValue> {
         let start: tbp::Start = serde_wasm_bindgen::from_value(start_info)
             .map_err(|e| e.to_string())?;
-
         self.bot.start(create_bot(start, self.config.clone()));
         Ok(())
     }
@@ -57,10 +55,12 @@ impl WasmBot {
         self.bot.stop();
     }
 
+    #[wasm_bindgen(js_name = setSearchDepth)]
     pub fn set_search_depth(&self, depth: u64) {
         self.bot.set_search_depth(depth);
     }
 
+    #[wasm_bindgen(js_name = newPiece)]
     pub fn new_piece(&self, piece: JsValue) -> Result<(), JsValue> {
         let piece: crate::data::Piece = serde_wasm_bindgen::from_value(piece)
             .map_err(|e| e.to_string())?;
@@ -86,11 +86,8 @@ impl WasmBot {
     }
 }
 
-// This is a helper function adapted from `lib.rs` to create a new bot instance.
-// It's not exposed to Wasm.
 fn create_bot(mut start: tbp::Start, config: Arc<BotConfig>) -> Bot {
     let reserve = start.hold.unwrap_or_else(|| start.queue.remove(0));
-
     let speculate = matches!(start.randomizer, Randomizer::SevenBag { .. });
     let bag = match start.randomizer {
         Randomizer::Unknown => EnumSet::all(),
@@ -104,7 +101,6 @@ fn create_bot(mut start: tbp::Start, config: Arc<BotConfig>) -> Bot {
             bag_state
         }
     };
-
     let state = GameState {
         reserve,
         back_to_back: start.back_to_back,
@@ -112,6 +108,5 @@ fn create_bot(mut start: tbp::Start, config: Arc<BotConfig>) -> Bot {
         bag,
         board: start.board.into(),
     };
-
     Bot::new(BotOptions { speculate, config }, state, &start.queue)
 }
