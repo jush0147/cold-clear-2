@@ -1,0 +1,21 @@
+{
+  "name": "cold-clear-2",
+  "type": "module",
+  "collaborators": [
+    "MinusKelvin <mark.carlson@minuskelvin.net>"
+  ],
+  "version": "0.1.0",
+  "license": "MIT OR Apache-2.0",
+  "files": [
+    "cold_clear_2_bg.wasm",
+    "cold_clear_2.js",
+    "cold_clear_2_bg.js",
+    "cold_clear_2.d.ts"
+  ],
+  "main": "cold_clear_2.js",
+  "types": "cold_clear_2.d.ts",
+  "sideEffects": [
+    "./cold_clear_2.js",
+    "./snippets/*"
+  ]
+}
