@@ -1,0 +1,14 @@
+{
+  "name": "cold-clear-2-wasm",
+  "version": "0.1.0",
+  "description": "WebAssembly frontend for cold-clear-2",
+  "main": "index.js",
+  "scripts": {
+    "serve": "./node_modules/.bin/http-server ."
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "http-server": "^14.1.1"
+  }
+}

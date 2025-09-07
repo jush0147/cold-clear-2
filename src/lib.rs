@@ -117,9 +117,74 @@ fn create_bot(mut start: tbp::Start, config: Arc<BotConfig>) -> Bot {
     Bot::new(BotOptions { speculate, config }, state, &start.queue)
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn spawn_workers(bot: &Arc<BotSyncronizer>) {
     for _ in 0..1 {
         let bot = bot.clone();
         std::thread::spawn(move || bot.work_loop());
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+fn spawn_workers(_bot: &Arc<BotSyncronizer>) {
+    // no-op on wasm
+}
+
+#[cfg(target_arch = "wasm32")]
+mod wasm {
+    use super::*;
+    use console_error_panic_hook;
+    use futures::channel::mpsc;
+    use js_sys::Function;
+    use wasm_bindgen::prelude::*;
+    use wasm_bindgen::JsValue;
+    use wasm_bindgen_futures::spawn_local;
+    use futures::SinkExt;
+
+    #[wasm_bindgen]
+    pub struct ColdClearBot {
+        incoming_tx: mpsc::Sender<FrontendMessage>,
+    }
+
+    #[wasm_bindgen]
+    impl ColdClearBot {
+        #[wasm_bindgen(constructor)]
+        pub fn new(on_message: Function, config_json: &str) -> ColdClearBot {
+            console_error_panic_hook::set_once();
+
+            let config = if config_json.is_empty() {
+                Arc::new(BotConfig::default())
+            } else {
+                Arc::new(serde_json::from_str(config_json).unwrap())
+            };
+
+            let (incoming_tx, incoming_rx) = mpsc::channel::<FrontendMessage>(8);
+            let (outgoing_tx, mut outgoing_rx) = mpsc::channel::<BotMessage>(8);
+
+            // Spawn the main bot loop
+            let outgoing_sink = futures::sink::unfold(outgoing_tx, |mut tx, msg: BotMessage| async move {
+                tx.send(msg).await.expect("Bot runner panicked");
+                Ok::<_, Infallible>(tx)
+            });
+            let pinned_sink = Box::pin(outgoing_sink);
+            spawn_local(run(incoming_rx, pinned_sink, config));
+
+            // Spawn a task to listen for outgoing messages and forward them to JS
+            spawn_local(async move {
+                while let Some(msg) = outgoing_rx.next().await {
+                    let s = serde_json::to_string(&msg).unwrap();
+                    let this = JsValue::null();
+                    let s = JsValue::from_str(&s);
+                    on_message.call1(&this, &s).unwrap();
+                }
+            });
+
+            ColdClearBot { incoming_tx }
+        }
+
+        pub fn send_message(&mut self, message: &str) {
+            let msg: FrontendMessage = serde_json::from_str(message).unwrap();
+            self.incoming_tx.try_send(msg).unwrap();
+        }
     }
 }
