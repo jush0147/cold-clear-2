@@ -1,0 +1,46 @@
+name: H1 fixed-candidate KO confirmation
+on:
+  push:
+    branches: [s2-strategy-clean]
+    paths: ['.github/workflows/strategy-ko-confirm.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+defaults:
+  run:
+    shell: bash
+jobs:
+  confirmation:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        offset: [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95]
+    steps:
+      - name: Download the already-tested frozen executable
+        uses: actions/download-artifact@v4
+        with:
+          name: strategy-ko-native
+          path: engine
+          github-token: ${{ github.token }}
+          run-id: 35128774488
+      - name: Check frozen binary and source identity
+        run: |
+          echo '68a99cba3bd244728360dacb6f5adc26e4f84ee4d55e7afb865dc632fc90dd1d  engine/strategy_ko' | sha256sum -c -
+          test "$(cat engine/commit.txt)" = '4dc7ce776cda4b2a8195698318ce717ba3a18b1e'
+          chmod +x engine/strategy_ko
+      - name: Run five seeds and both sides, KO only
+        env:
+          OFFSET: ${{ matrix.offset }}
+        run: |
+          mkdir -p results
+          cp engine/commit.txt engine/sha256.txt results/
+          engine/strategy_ko --candidate 1 --start "$((2000 + OFFSET))" --seeds 5 --nodes 10000 | tee results/ko.jsonl
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: h1-confirm-${{ matrix.offset }}
+          path: results/
+          if-no-files-found: error
