@@ -19,7 +19,7 @@ const nodes = bot.think(10);
 const suggestion = JSON.parse(bot.suggest_json());
 const stats = JSON.parse(bot.stats_json());
 
-if (!Number.isFinite(nodes) || nodes <= 0) {
+if (typeof nodes !== "bigint" || nodes <= 0n) {
   throw new Error(`expected search to visit nodes, got ${nodes}`);
 }
 if (!Array.isArray(suggestion) || suggestion.length === 0) {
@@ -29,4 +29,8 @@ if (stats.nodes <= 0 || stats.expansions <= 0) {
   throw new Error(`unexpected stats: ${JSON.stringify(stats)}`);
 }
 
-console.log(JSON.stringify({ nodes, suggestion: suggestion[0], stats }, null, 2));
+console.log(JSON.stringify({
+  nodes: nodes.toString(),
+  suggestion: suggestion[0],
+  stats
+}, null, 2));
