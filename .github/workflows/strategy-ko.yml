@@ -1,0 +1,56 @@
+name: Strategy KO experiment
+on:
+  push:
+    branches: [s2-strategy-clean]
+    paths: ['src/**', 'scripts/wire-ko.py', '.github/workflows/strategy-ko.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  native:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: strategy-ko-native
+      - name: Apply one-time experiment wiring
+        run: |
+          if [ -f scripts/wire-ko.py ]; then python3 scripts/wire-ko.py; fi
+      - name: Regression tests
+        run: cargo test --release --lib --bins --tests 2>&1 | tee regression.log
+      - name: Commit tested source changes on clean branch
+        if: github.ref == 'refs/heads/s2-strategy-clean'
+        run: |
+          if [ -f scripts/wire-ko.py ]; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git rm scripts/wire-ko.py
+            git add src/lib.rs src/bot.rs src/bot/freestyle.rs src/dag.rs src/dag/known.rs src/dag/speculated.rs src/movegen.rs src/forecast.rs
+            git commit -m 'Wire shared pending-aware KO search and isolated safety hypothesis'
+            git push origin HEAD:s2-strategy-clean
+          fi
+      - name: Build native executable
+        run: cargo build --release --bin strategy_ko
+      - name: Package exact tested source and executable
+        run: |
+          mkdir -p ko-artifact
+          cp target/release/strategy_ko regression.log ko-artifact/
+          git rev-parse HEAD > ko-artifact/commit.txt
+          git archive --format=tar.gz -o ko-artifact/source.tar.gz HEAD
+          sha256sum ko-artifact/strategy_ko > ko-artifact/sha256.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: strategy-ko-native
+          path: ko-artifact/
+      - name: A/A KO control
+        run: target/release/strategy_ko --candidate 0 --seeds 2 --start 0 --nodes 10000 | tee control.jsonl
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: strategy-ko-control
+          path: |
+            control.jsonl
+            regression.log
