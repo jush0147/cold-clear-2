@@ -9,6 +9,7 @@ use super::{BotOptions, Mode, ModeSwitch, Statistics};
 use crate::dag::{ChildData, Dag, Evaluation};
 use crate::data::*;
 use crate::movegen::find_moves;
+use crate::tetrio;
 
 pub struct Freestyle {
     dag: Dag<Eval>,
@@ -119,6 +120,17 @@ pub struct Weights {
     pub combo_attack: f32,
     pub perfect_clear: f32,
     pub perfect_clear_override: bool,
+
+    #[serde(default)]
+    pub tetrio_s2: bool,
+    #[serde(default = "one")]
+    pub attack_reward: f32,
+    #[serde(default = "one")]
+    pub surge_value: f32,
+}
+
+fn one() -> f32 {
+    1.0
 }
 
 fn evaluate(
@@ -130,20 +142,29 @@ fn evaluate(
     let mut eval = 0.0;
     let mut reward = 0.0;
 
-    // line clear rewards
-    if info.perfect_clear {
-        reward += weights.perfect_clear;
-    }
-    if !info.perfect_clear || !weights.perfect_clear_override {
-        if info.back_to_back {
-            reward += weights.back_to_back_clear;
+    if weights.tetrio_s2 {
+        // Use actual TL S2 garbage rather than hand-tuned clear-type scores.
+        // Stored Surge is also valued as future attack so breaking B2B does not
+        // create artificial value merely by moving charge into immediate reward.
+        let attack = tetrio::attack(info);
+        reward += weights.attack_reward * attack.total as f32;
+        eval += weights.surge_value * tetrio::surge_size(state.b2b_count as u32) as f32;
+    } else {
+        // Legacy Cold Clear 2 line-clear rewards.
+        if info.perfect_clear {
+            reward += weights.perfect_clear;
         }
-        match info.placement.spin {
-            Spin::None => reward += weights.normal_clears[info.lines_cleared as usize],
-            Spin::Mini => reward += weights.mini_spin_clears[info.lines_cleared as usize],
-            Spin::Full => reward += weights.spin_clears[info.lines_cleared as usize],
+        if !info.perfect_clear || !weights.perfect_clear_override {
+            if info.back_to_back {
+                reward += weights.back_to_back_clear;
+            }
+            match info.placement.spin {
+                Spin::None => reward += weights.normal_clears[info.lines_cleared as usize],
+                Spin::Mini => reward += weights.mini_spin_clears[info.lines_cleared as usize],
+                Spin::Full => reward += weights.spin_clears[info.lines_cleared as usize],
+            }
+            reward += weights.combo_attack * (info.combo.saturating_sub(1) / 2) as f32;
         }
-        reward += weights.combo_attack * (info.combo.saturating_sub(1) / 2) as f32;
     }
 
     // checklist
