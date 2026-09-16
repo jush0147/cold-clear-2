@@ -21,7 +21,7 @@ jobs:
           python3 - <<'PY'
           import pathlib,lzma,hashlib,subprocess
           patch=lzma.decompress(pathlib.Path('scripts/review-quality.patch.xz').read_bytes())
-          assert hashlib.sha256(patch).hexdigest()=='0a822219111690cc33417e2d334cdd664190a0b4d3771e57fbbda51bf8ab282a'
+          assert hashlib.sha256(patch).hexdigest()=='ec5b3740b972cd7ab265a877f32b04aebc0888b2e0ecc9837774e8ec4e00faa9'
           pathlib.Path('/tmp/review.patch').write_bytes(patch)
           subprocess.run(['git','apply','--check','/tmp/review.patch'],check=True)
           subprocess.run(['git','apply','/tmp/review.patch'],check=True)
@@ -61,7 +61,7 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add src scripts/review-session-smoke.cjs web
           git rm scripts/review-quality.patch.xz
-          git commit -m 'Add fair finite-horizon review with actual-move comparison and information-set policies'
+          git commit -m 'Factor revealed garbage continuations and enforce root hold availability'
           git push origin HEAD:review-quality
           git rev-parse HEAD > verified-commit.txt
       - name: Preserve tested source and results
