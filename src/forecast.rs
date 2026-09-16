@@ -49,6 +49,9 @@ impl Forecast {
         }
         Ok(f)
     }
+    pub(crate) fn can_rise_in_snapshot(&self) -> bool {
+        self.packets[..self.len].iter().any(|p|p.lines>0 && p.ready_at<=self.elapsed_frames)
+    }
     pub fn remaining(&self)->u32 {self.packets[..self.len].iter().map(|p|p.lines).sum()}
     fn consume(&mut self,mut lines:u32)->u32 {
         let mut consumed=0;

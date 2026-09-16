@@ -11,6 +11,7 @@ use crate::{bot::{BotConfig, review_score}, data::{Board, GameState, Piece, Plac
 const LOSS: f32 = -1_000_000.0;
 fn default_depth() -> usize { 4 }
 fn default_width() -> usize { 8 }
+fn yes() -> bool { true }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
@@ -29,6 +30,8 @@ pub struct Request {
     pub garbage_sent: u32,
     /// Optional actual player action. Always evaluated, never just shortlisted.
     #[serde(default)] pub actual: Option<Action>,
+    /// False at a post-hold spawn boundary; future pieces can hold again.
+    #[serde(default = "yes")] pub hold_available: bool,
     /// At most five locks: an empty-hold branch may consume two known pieces.
     #[serde(default = "default_depth")] pub depth: usize,
     #[serde(default = "default_width")] pub beam_width: usize,
@@ -198,12 +201,41 @@ fn search(root: &Policy, action: Action, depth: usize, width: usize,
         cache.transitions += 1;
     }
     let mut beam = vec![policy];
-    for _ in 1..depth {
-        let mut expanded = Vec::new();
-        for p in &beam { expanded.extend(extend(p,width,queue,config,cache)); }
-        beam = retain_best(expanded,width);
+    complete_beam(beam, depth - 1, width, queue, config, cache)
+}
+
+fn complete_beam(mut beam: Vec<Policy>, remaining: usize, width: usize,
+    queue: &[Piece], config: &BotConfig, cache: &mut MoveCache) -> Policy {
+    for ply in 0..remaining {
+        // Once no unknown hole can affect a future transition, revealed boards
+        // are independent problems. Avoid a Cartesian product of their beams.
+        if beam.iter().all(|p| p.paths.len()>1 && p.paths.iter().all(|s|
+            s.dead || !s.pos.state.forecast.can_rise_in_snapshot())) {
+            let finished=beam.iter().map(|p| independent_tail(p,remaining-ply,width,queue,config,cache)).collect();
+            return retain_best(finished,1).remove(0);
+        }
+        let mut expanded=Vec::new();
+        for p in &beam {expanded.extend(extend(p,width,queue,config,cache));}
+        beam=retain_best(expanded,width);
     }
     beam.remove(0)
+}
+fn independent_tail(policy: &Policy, remaining: usize, width: usize,
+    queue: &[Piece], config: &BotConfig, cache: &mut MoveCache) -> Policy {
+    let mut result=policy.clone();
+    for group in groups(policy) {
+        let mut start=policy.paths[group[0]].clone();
+        // Prefix reward is a constant. Exclude it from suffix tie-breaking.
+        start.reward=0.0; start.actions.clear();
+        let suffix=complete_beam(vec![Policy{paths:vec![start]}],remaining,width,queue,config,cache);
+        let chosen=&suffix.paths[0];
+        for &i in &group {
+            let mut path=policy.paths[i].clone();
+            for &a in &chosen.actions {path=advance(&path,a,queue,config).path;cache.transitions+=1;}
+            path.dead=chosen.dead; result.paths[i]=path;
+        }
+    }
+    result
 }
 struct Completed { id: usize, action: Action, coarse: Policy, full: Policy, nodes: u64 }
 #[derive(Serialize)]
@@ -256,7 +288,8 @@ impl Session {
         }
         let root = Policy{paths};
         let mut cache = MoveCache::default();
-        let actions = cache.actions(&root.paths[0].pos,&request.start.queue);
+        let mut actions = cache.actions(&root.paths[0].pos,&request.start.queue);
+        if !request.hold_available {actions.retain(|a|!a.use_hold);}
         if actions.len()>1024 {return Err("root action count exceeds bounded review capacity".into());}
         if request.actual.map(|a|!actions.contains(&a)).unwrap_or(false) {
             return Err("actual placement/hold decision is not legal under this move generator".into());
@@ -442,5 +475,20 @@ mod tests {
             assert_eq!(first.garbage.risen,8);assert_eq!(first.garbage.cancelled,0);
             assert_eq!(first.attack.total,0);assert_eq!(first.incoming_remaining,0);
         }
+    }
+}
+
+#[cfg(test)]
+mod root_hold_tests {
+    use super::*;
+    #[test]
+    fn already_used_hold_is_not_offered_a_second_time() {
+        let make=|actual: Option<Action>| Request{start:serde_json::from_value(serde_json::json!({
+            "board":[],"queue":["I","O","T","L","J","S"],"hold":"Z","combo":0,"back_to_back":false})).unwrap(),
+            incoming:vec![],pieces_placed:30,garbage_sent:0,actual,hold_available:false,depth:3,beam_width:2};
+        let s=Session::new(make(None)).unwrap();assert!(s.actions.iter().all(|a|!a.use_hold));
+        let wrong=Action{use_hold:true,..s.actions[0]};assert!(Session::new(make(Some(wrong))).is_err());
+        let next=advance(&s.root.paths[0],s.actions[0],&s.request.start.queue,&s.config).path;
+        assert!(MoveCache::default().actions(&next.pos,&s.request.start.queue).iter().any(|a|a.use_hold));
     }
 }
