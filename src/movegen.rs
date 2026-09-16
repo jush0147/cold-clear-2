@@ -1,8 +1,6 @@
 use std::cmp::Ordering;
 use std::collections::BinaryHeap;
-
 use ahash::AHashMap;
-
 use crate::data::*;
 
 pub fn find_moves(board: &Board, piece: Piece) -> Vec<(Placement, u32)> {
@@ -12,205 +10,82 @@ pub fn find_moves(board: &Board, piece: Piece) -> Vec<(Placement, u32)> {
     let mut underground_locks = AHashMap::new();
     let mut locks = Vec::with_capacity(64);
     let collision_map = CollisionMaps::new(board, piece);
-
     let fast_mode = board.cols.iter().all(|&c| c.leading_zeros() > 64 - 16);
     if fast_mode {
-        for &rotation in &[
-            Rotation::North,
-            Rotation::East,
-            Rotation::South,
-            Rotation::West,
-        ] {
+        for &rotation in &[Rotation::North, Rotation::East, Rotation::South, Rotation::West] {
             for x in 0..10 {
-                let mut location = PieceLocation {
-                    piece,
-                    rotation,
-                    x,
-                    y: 19,
-                };
-                if collision_map.obstructed(location) {
-                    continue;
-                }
+                let mut location = PieceLocation { piece, rotation, x, y: 19 };
+                if collision_map.obstructed(location) { continue; }
                 let distance = location.drop_distance(board);
                 location.y -= distance;
-                let mv = Placement {
-                    location,
-                    spin: Spin::None,
-                };
-
-                let mut update_position =
-                    update_position(&mut queue, &mut values, fast_mode, board);
-
-                if let Some(mv) = shift(location, &collision_map, -1) {
-                    update_position(mv, distance as u32);
-                }
-                if let Some(mv) = shift(location, &collision_map, 1) {
-                    update_position(mv, distance as u32);
-                }
-                if let Some(mv) = rotate_cw(location, &collision_map, board) {
-                    update_position(mv, distance as u32);
-                }
-                if let Some(mv) = rotate_ccw(location, &collision_map, board) {
-                    update_position(mv, distance as u32);
-                }
-
-                if location.canonical_form() == location {
-                    locks.push((mv, 0));
-                }
+                let mv = Placement { location, spin: Spin::None };
+                let mut update = update_position(&mut queue, &mut values, fast_mode, board);
+                if let Some(mv) = shift(location, &collision_map, -1) { update(mv, distance as u32); }
+                if let Some(mv) = shift(location, &collision_map, 1) { update(mv, distance as u32); }
+                if let Some(mv) = rotate_cw(location, &collision_map, board) { update(mv, distance as u32); }
+                if let Some(mv) = rotate_ccw(location, &collision_map, board) { update(mv, distance as u32); }
+                if location.canonical_form() == location { locks.push((mv, 0)); }
             }
         }
     } else {
-        let mut spawned = PieceLocation {
-            piece,
-            rotation: Rotation::North,
-            x: 4,
-            y: 19,
-        };
+        let mut spawned = PieceLocation { piece, rotation: Rotation::North, x: 4, y: 19 };
         if collision_map.obstructed(spawned) {
             spawned.y += 1;
-            if collision_map.obstructed(spawned) {
-                return vec![];
-            }
+            if collision_map.obstructed(spawned) { return vec![]; }
         }
-        let spawned = Placement {
-            location: spawned,
-            spin: Spin::None,
-        };
-        queue.push(Intermediate {
-            soft_drops: 0,
-            mv: spawned,
-        });
+        let spawned = Placement { location: spawned, spin: Spin::None };
+        queue.push(Intermediate { soft_drops: 0, mv: spawned });
         values.insert(spawned, 0);
     }
-
     while let Some(expand) = queue.pop() {
-        if expand.soft_drops != values.get(&expand.mv).copied().unwrap_or(40) {
-            continue;
-        }
-
+        if expand.soft_drops != values.get(&expand.mv).copied().unwrap_or(40) { continue; }
         let drop_dist = expand.mv.location.drop_distance(board);
         let dropped = Placement {
-            location: PieceLocation {
-                y: expand.mv.location.y - drop_dist,
-                ..expand.mv.location
-            },
-            spin: if drop_dist == 0 {
-                expand.mv.spin
-            } else {
-                Spin::None
-            },
+            location: PieceLocation { y: expand.mv.location.y - drop_dist, ..expand.mv.location },
+            spin: if drop_dist == 0 { expand.mv.spin } else { Spin::None },
         };
-
-        let sds = underground_locks
-            .entry(Placement {
-                location: dropped.location.canonical_form(),
-                ..dropped
-            })
-            .or_insert(expand.soft_drops);
+        let sds = underground_locks.entry(Placement { location: dropped.location.canonical_form(), ..dropped }).or_insert(expand.soft_drops);
         *sds = expand.soft_drops.min(*sds);
-
-        let mut update_position = update_position(&mut queue, &mut values, fast_mode, board);
-
-        update_position(dropped, expand.soft_drops + drop_dist as u32);
-
-        if let Some(mv) = shift(expand.mv.location, &collision_map, -1) {
-            update_position(mv, expand.soft_drops);
-        }
-        if let Some(mv) = shift(expand.mv.location, &collision_map, 1) {
-            update_position(mv, expand.soft_drops);
-        }
-        if let Some(mv) = rotate_cw(expand.mv.location, &collision_map, board) {
-            update_position(mv, expand.soft_drops);
-        }
-        if let Some(mv) = rotate_ccw(expand.mv.location, &collision_map, board) {
-            update_position(mv, expand.soft_drops);
-        }
+        let mut update = update_position(&mut queue, &mut values, fast_mode, board);
+        update(dropped, expand.soft_drops + drop_dist as u32);
+        if let Some(mv) = shift(expand.mv.location, &collision_map, -1) { update(mv, expand.soft_drops); }
+        if let Some(mv) = shift(expand.mv.location, &collision_map, 1) { update(mv, expand.soft_drops); }
+        if let Some(mv) = rotate_cw(expand.mv.location, &collision_map, board) { update(mv, expand.soft_drops); }
+        if let Some(mv) = rotate_ccw(expand.mv.location, &collision_map, board) { update(mv, expand.soft_drops); }
     }
-
     locks.extend(underground_locks.into_iter());
     locks
 }
 
-fn update_position<'a>(
-    queue: &'a mut BinaryHeap<Intermediate>,
-    values: &'a mut AHashMap<Placement, u32>,
-    fast_mode: bool,
-    board: &'a Board,
-) -> impl FnMut(Placement, u32) + 'a {
+fn update_position<'a>(queue: &'a mut BinaryHeap<Intermediate>, values: &'a mut AHashMap<Placement, u32>, fast_mode: bool, board: &'a Board) -> impl FnMut(Placement, u32) + 'a {
     move |target: Placement, soft_drops: u32| {
-        if fast_mode && target.location.above_stack(board) {
-            return;
-        }
+        if fast_mode && target.location.above_stack(board) { return; }
         let prev_sds = values.entry(target).or_insert(40);
         if soft_drops < *prev_sds {
             *prev_sds = soft_drops;
-            queue.push(Intermediate {
-                soft_drops,
-                mv: target,
-            });
+            queue.push(Intermediate { soft_drops, mv: target });
         }
     }
 }
-
 fn shift(mut location: PieceLocation, collision_map: &CollisionMaps, dx: i8) -> Option<Placement> {
     location.x += dx;
-    if collision_map.obstructed(location) {
-        return None;
-    }
-    Some(Placement {
-        location,
-        spin: Spin::None,
-    })
+    if collision_map.obstructed(location) { return None; }
+    Some(Placement { location, spin: Spin::None })
+}
+fn rotate_cw(from: PieceLocation, map: &CollisionMaps, board: &Board) -> Option<Placement> {
+    if from.piece == Piece::O { return None; }
+    const KICKS: [[[(i8, i8); 5]; 4]; 7] = piece_lut!(piece => rotation_lut!(rotation => kicks(piece, rotation, rotation.cw())));
+    let unkicked = PieceLocation { rotation: from.rotation.cw(), ..from };
+    rotate(unkicked, map, board, KICKS[from.piece as usize][from.rotation as usize].iter().copied())
+}
+fn rotate_ccw(from: PieceLocation, map: &CollisionMaps, board: &Board) -> Option<Placement> {
+    if from.piece == Piece::O { return None; }
+    const KICKS: [[[(i8, i8); 5]; 4]; 7] = piece_lut!(piece => rotation_lut!(rotation => kicks(piece, rotation, rotation.ccw())));
+    let unkicked = PieceLocation { rotation: from.rotation.ccw(), ..from };
+    rotate(unkicked, map, board, KICKS[from.piece as usize][from.rotation as usize].iter().copied())
 }
 
-fn rotate_cw(
-    from: PieceLocation,
-    collision_map: &CollisionMaps,
-    board: &Board,
-) -> Option<Placement> {
-    if from.piece == Piece::O {
-        return None;
-    }
-    const KICKS: [[[(i8, i8); 5]; 4]; 7] =
-        piece_lut!(piece => rotation_lut!(rotation => kicks(piece, rotation, rotation.cw())));
-    let unkicked = PieceLocation {
-        rotation: from.rotation.cw(),
-        ..from
-    };
-    rotate(
-        unkicked,
-        collision_map,
-        board,
-        KICKS[from.piece as usize][from.rotation as usize]
-            .iter()
-            .copied(),
-    )
-}
-
-fn rotate_ccw(
-    from: PieceLocation,
-    collision_map: &CollisionMaps,
-    board: &Board,
-) -> Option<Placement> {
-    if from.piece == Piece::O {
-        return None;
-    }
-    const KICKS: [[[(i8, i8); 5]; 4]; 7] =
-        piece_lut!(piece => rotation_lut!(rotation => kicks(piece, rotation, rotation.ccw())));
-    let unkicked = PieceLocation {
-        rotation: from.rotation.ccw(),
-        ..from
-    };
-    rotate(
-        unkicked,
-        collision_map,
-        board,
-        KICKS[from.piece as usize][from.rotation as usize]
-            .iter()
-            .copied(),
-    )
-}
-
+// These are the inherited SRS tables, NOT certified TETR.IO SRS+ / 180 tables.
 const fn offsets(piece: Piece, rotation: Rotation) -> [(i8, i8); 5] {
     match piece {
         Piece::O => match rotation {
@@ -233,166 +108,112 @@ const fn offsets(piece: Piece, rotation: Rotation) -> [(i8, i8); 5] {
         },
     }
 }
-
 const fn kicks(piece: Piece, from: Rotation, to: Rotation) -> [(i8, i8); 5] {
-    let mut kicks = [(0, 0); 5];
+    let mut result = [(0, 0); 5];
     let from = offsets(piece, from);
     let to = offsets(piece, to);
     let mut i = 0;
-    while i < kicks.len() {
-        kicks[i] = (from[i].0 - to[i].0, from[i].1 - to[i].1);
-        i += 1;
-    }
-    kicks
+    while i < result.len() { result[i] = (from[i].0 - to[i].0, from[i].1 - to[i].1); i += 1; }
+    result
 }
-
-fn rotate(
-    unkicked: PieceLocation,
-    collision_map: &CollisionMaps,
-    board: &Board,
-    kicks: impl Iterator<Item = (i8, i8)>,
-) -> Option<Placement> {
+fn rotate(unkicked: PieceLocation, map: &CollisionMaps, board: &Board, kicks: impl Iterator<Item = (i8, i8)>) -> Option<Placement> {
     for (i, (dx, dy)) in kicks.enumerate() {
-        let target = PieceLocation {
-            x: unkicked.x + dx,
-            y: unkicked.y + dy,
-            ..unkicked
-        };
-        if collision_map.obstructed(target) {
-            continue;
-        }
-
-        // TETR.IO All-Mini+: all non-T pieces use immobility detection and
-        // count as Mini spins; T still uses the three-corner rule, but an
-        // otherwise-failing immobile T is also a Mini.
-        let immobile = is_immobile(target, collision_map);
+        let target = PieceLocation { x: unkicked.x + dx, y: unkicked.y + dy, ..unkicked };
+        if map.obstructed(target) { continue; }
+        let immobile = is_immobile(target, map);
         let spin = if target.piece != Piece::T {
             if immobile { Spin::Mini } else { Spin::None }
         } else {
-            let corners = [(-1, -1), (1, -1), (-1, 1), (1, 1)]
-                .iter()
-                .filter(|&&(cx, cy)| board.occupied((cx + target.x, cy + target.y)))
-                .count();
-            let mini_corners = [(-1, 1), (1, 1)]
-                .iter()
-                .map(|&c| target.rotation.rotate_cell(c))
-                .filter(|&(cx, cy)| board.occupied((cx + target.x, cy + target.y)))
-                .count();
-
-            if corners < 3 {
-                if immobile { Spin::Mini } else { Spin::None }
-            } else if mini_corners == 2 || i == 4 {
-                Spin::Full
-            } else {
-                Spin::Mini
-            }
+            let corners = [(-1, -1), (1, -1), (-1, 1), (1, 1)].iter().filter(|&&(cx, cy)| board.occupied((cx + target.x, cy + target.y))).count();
+            let front = [(-1, 1), (1, 1)].iter().map(|&c| target.rotation.rotate_cell(c)).filter(|&(cx, cy)| board.occupied((cx + target.x, cy + target.y))).count();
+            if corners < 3 { if immobile { Spin::Mini } else { Spin::None } }
+            else if front == 2 || i == 4 { Spin::Full }
+            else { Spin::Mini }
         };
-
-        return Some(Placement {
-            location: target,
-            spin,
-        });
+        return Some(Placement { location: target, spin });
     }
-
     None
 }
-
-fn is_immobile(location: PieceLocation, collision_map: &CollisionMaps) -> bool {
-    [(-1, 0), (1, 0), (0, -1), (0, 1)]
-        .iter()
-        .all(|&(dx, dy)| {
-            collision_map.obstructed(PieceLocation {
-                x: location.x + dx,
-                y: location.y + dy,
-                ..location
-            })
-        })
+fn is_immobile(location: PieceLocation, map: &CollisionMaps) -> bool {
+    [(-1, 0), (1, 0), (0, -1), (0, 1)].iter().all(|&(dx, dy)| map.obstructed(PieceLocation { x: location.x + dx, y: location.y + dy, ..location }))
 }
 
 #[derive(Clone, Copy, Debug, Eq)]
-struct Intermediate {
-    mv: Placement,
-    soft_drops: u32,
-}
-
-impl PartialEq for Intermediate {
-    fn eq(&self, other: &Intermediate) -> bool {
-        self.soft_drops == other.soft_drops
-    }
-}
-
+struct Intermediate { mv: Placement, soft_drops: u32 }
+impl PartialEq for Intermediate { fn eq(&self, other: &Self) -> bool { self.soft_drops == other.soft_drops } }
 impl Ord for Intermediate {
-    fn cmp(&self, other: &Intermediate) -> Ordering {
-        self.soft_drops.cmp(&other.soft_drops)
+    fn cmp(&self, other: &Self) -> Ordering {
+        // BinaryHeap is a max-heap. Reverse the cost for shortest-cost search.
+        other.soft_drops.cmp(&self.soft_drops)
     }
 }
+impl PartialOrd for Intermediate { fn partial_cmp(&self, other: &Self) -> Option<Ordering> { Some(self.cmp(other)) } }
 
-impl PartialOrd for Intermediate {
-    fn partial_cmp(&self, other: &Intermediate) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-struct CollisionMaps {
-    boards: [[u64; 10]; 4],
-}
-
+struct CollisionMaps { boards: [[u64; 10]; 4] }
 impl CollisionMaps {
     fn new(board: &Board, piece: Piece) -> Self {
         let mut boards = [[0; 10]; 4];
-        for rot in [
-            Rotation::North,
-            Rotation::West,
-            Rotation::South,
-            Rotation::East,
-        ] {
+        const CEILING: u64 = !((1u64 << 40) - 1);
+        for rot in [Rotation::North, Rotation::West, Rotation::South, Rotation::East] {
             for (dx, dy) in rot.rotate_cells(piece.cells()) {
                 for x in 0..10 {
-                    let c = board.cols.get((x + dx) as usize).copied().unwrap_or(!0);
-                    let c = match dy < 0 {
-                        true => !(!c << -dy),
-                        false => c >> dy,
-                    };
+                    // Board::occupied treats cells above row 39 as occupied.
+                    // Include those same walls in the optimized collision map.
+                    let c = board.cols.get((x + dx) as usize).map(|c| *c | CEILING).unwrap_or(!0);
+                    let c = if dy < 0 { !(!c << -dy) } else { c >> dy };
                     boards[rot as usize][x as usize] |= c;
                 }
             }
         }
-        CollisionMaps { boards }
+        Self { boards }
     }
-
     fn obstructed(&self, piece: PieceLocation) -> bool {
-        piece.y < 0
-            || self.boards[piece.rotation as usize]
-                .get(piece.x as usize)
-                .map(|&c| c & 1 << piece.y != 0)
-                .unwrap_or(true)
+        piece.y < 0 || piece.y >= 40 || self.boards[piece.rotation as usize].get(piece.x as usize).map(|&c| c & (1u64 << piece.y) != 0).unwrap_or(true)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn immobility_requires_all_four_directions_blocked() {
-        // L North at (1, 0) occupies (0,0), (1,0), (2,0), (2,1).
-        // Floor blocks down, wall blocks left, and the two extra cells below
-        // block right/up without overlapping the piece itself.
         let mut board = Board::default();
-        board.cols[3] |= 1 << 0;
+        board.cols[3] |= 1;
         board.cols[0] |= 1 << 1;
+        let location = PieceLocation { piece: Piece::L, rotation: Rotation::North, x: 1, y: 0 };
         let map = CollisionMaps::new(&board, Piece::L);
-        let location = PieceLocation {
-            piece: Piece::L,
-            rotation: Rotation::North,
-            x: 1,
-            y: 0,
-        };
         assert!(!map.obstructed(location));
         assert!(is_immobile(location, &map));
-
-        let empty = Board::default();
-        let empty_map = CollisionMaps::new(&empty, Piece::L);
-        assert!(!is_immobile(location, &empty_map));
+        assert!(!is_immobile(location, &CollisionMaps::new(&Board::default(), Piece::L)));
+    }
+    #[test]
+    fn optimized_collision_matches_cell_reference_including_ceiling() {
+        for board in [Board::default(), Board { cols: [0x0080_0001_0180; 10] }] {
+            for piece in [Piece::I, Piece::O, Piece::T, Piece::L, Piece::J, Piece::S, Piece::Z] {
+                let map = CollisionMaps::new(&board, piece);
+                for rotation in [Rotation::North, Rotation::West, Rotation::South, Rotation::East] {
+                    for x in -3..13 {
+                        for y in -3..44 {
+                            let loc = PieceLocation { piece, rotation, x, y };
+                            assert_eq!(map.obstructed(loc), loc.obstructed(&board), "{loc:?}");
+                        }
+                    }
+                }
+            }
+        }
+    }
+    #[test]
+    fn out_of_range_anchors_do_not_shift_by_64_or_more() {
+        let map = CollisionMaps::new(&Board::default(), Piece::T);
+        for y in [40, 63, 64, 127, -128] {
+            assert!(map.obstructed(PieceLocation { piece: Piece::T, rotation: Rotation::North, x: 4, y }));
+        }
+    }
+    #[test]
+    fn frontier_pops_lowest_softdrop_cost_first() {
+        let mv = Placement { location: PieceLocation { piece: Piece::O, rotation: Rotation::North, x: 0, y: 0 }, spin: Spin::None };
+        let mut heap = BinaryHeap::new();
+        for soft_drops in [7, 0, 3, 1] { heap.push(Intermediate { mv, soft_drops }); }
+        assert_eq!((0..4).map(|_| heap.pop().unwrap().soft_drops).collect::<Vec<_>>(), vec![0, 1, 3, 7]);
     }
 }
