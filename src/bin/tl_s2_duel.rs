@@ -11,7 +11,10 @@ use rand::rngs::StdRng;
 use rand::seq::SliceRandom;
 use rand::SeedableRng;
 
-const PREVIEW: usize = 12;
+// The bot's queue contains the active piece followed by the visible previews.
+// TETR.IO exposes the current piece + five NEXT pieces, so the search may see
+// exactly six queued pieces and no hidden future sequence.
+const VISIBLE_QUEUE: usize = 6;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Kind { Legacy, S2 }
@@ -38,6 +41,7 @@ fn main() {
 
     println!("TL S2 paired duel benchmark (simplified timing)");
     println!("seeds={seeds} max_pieces/player={max_pieces} node_budget/move={nodes} garbage_cap={garbage_cap} charge={charge_value:.2} surge={surge_value:.2} shape={shape_value:.2}");
+    println!("Visibility: board + active piece + hold + five NEXT pieces + combo/B2B state. Hidden future pieces are not given to the bot.");
     println!("Each seed is played twice with sides swapped. Incoming garbage can be cancelled on the next move, then uncancelled garbage rises.\n");
 
     let mut score = Score::default();
@@ -65,7 +69,7 @@ fn record(score: &mut Score, outcome: Outcome, p0: Kind, p1: Kind) {
 }
 
 fn duel(seed: u64, p0_kind: Kind, p1_kind: Kind, max_pieces: u64, nodes: u64, garbage_cap: usize, charge_value: f32, surge_value: f32, shape_value: f32) -> Outcome {
-    let sequence = piece_sequence(seed, max_pieces as usize + PREVIEW + 8);
+    let sequence = piece_sequence(seed, max_pieces as usize + VISIBLE_QUEUE + 8);
     let mut players = [
         make_player(&sequence, p0_kind, charge_value, surge_value, shape_value),
         make_player(&sequence, p1_kind, charge_value, surge_value, shape_value),
@@ -125,18 +129,19 @@ fn play_turn(players: &mut [Player; 2], active: usize, other: usize, seed: u64, 
 fn make_player(sequence: &[Piece], kind: Kind, charge_value: f32, surge_value: f32, shape_value: f32) -> Player {
     let start = Start {
         board: Board::default(),
-        queue: sequence[1..=PREVIEW].to_vec(),
+        queue: sequence[1..=VISIBLE_QUEUE].to_vec(),
         hold: Some(sequence[0]),
         combo: 0,
         back_to_back: false,
         b2b_count: 0,
+        // Do not let the search infer or speculate beyond the visible queue.
         randomizer: Randomizer::Unknown,
     };
     let config = match kind {
         Kind::Legacy => BotConfig::legacy(),
         Kind::S2 => BotConfig::tetrio_s2(charge_value, surge_value, shape_value),
     };
-    Player { bot: create_bot(start, Arc::new(config)), incoming: VecDeque::new(), next_piece: PREVIEW + 1, pieces: 0, attack: 0 }
+    Player { bot: create_bot(start, Arc::new(config)), incoming: VecDeque::new(), next_piece: VISIBLE_QUEUE + 1, pieces: 0, attack: 0 }
 }
 
 fn piece_sequence(seed: u64, len: usize) -> Vec<Piece> {
