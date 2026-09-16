@@ -14,6 +14,11 @@ pub struct GameState {
     pub bag: EnumSet<Piece>,
     pub reserve: Piece,
     pub back_to_back: bool,
+    /// TETR.IO-style B2B count. The first difficult clear establishes B2B but
+    /// is not counted, so two consecutive difficult clears result in B2B x1.
+    pub b2b_count: u16,
+    /// Current combo value used by TETR.IO's multiplier formula. The first
+    /// consecutive line clear uses combo 0, the next uses combo 1, and so on.
     pub combo: u8,
 }
 
@@ -39,6 +44,9 @@ pub struct PlacementInfo {
     pub lines_cleared: u32,
     pub combo: u32,
     pub back_to_back: bool,
+    pub b2b_count_before: u32,
+    pub b2b_count_after: u32,
+    pub b2b_broken: bool,
     pub perfect_clear: bool,
 }
 
@@ -292,23 +300,63 @@ impl GameState {
         if placement.location.piece != next {
             self.reserve = next;
         }
+
         self.board.place(placement.location);
         let cleared_mask = self.board.line_clears();
+        let lines_cleared = cleared_mask.count_ones();
+        let b2b_count_before = self.b2b_count as u32;
         let mut back_to_back = false;
-        if cleared_mask != 0 {
+        let mut b2b_broken = false;
+        let mut combo = 0;
+
+        if lines_cleared != 0 {
             self.board.remove_lines(cleared_mask);
-            let hard = cleared_mask.count_ones() == 4 || !matches!(placement.spin, Spin::None);
-            back_to_back = hard && self.back_to_back;
-            self.back_to_back = hard;
+            let perfect_clear = self.board.cols.iter().all(|&c| c == 0);
+            let difficult = lines_cleared == 4
+                || !matches!(placement.spin, Spin::None)
+                || perfect_clear;
+
+            combo = self.combo as u32;
+            self.combo = self.combo.saturating_add(1);
+
+            if difficult {
+                back_to_back = self.back_to_back;
+                if self.back_to_back {
+                    self.b2b_count = self.b2b_count.saturating_add(1);
+                } else {
+                    // TETR.IO does not count the first difficult clear. It only
+                    // establishes the chain; the next difficult clear is x1.
+                    self.b2b_count = 0;
+                }
+                self.back_to_back = true;
+            } else {
+                b2b_broken = self.back_to_back;
+                self.back_to_back = false;
+                self.b2b_count = 0;
+            }
+
+            PlacementInfo {
+                placement,
+                lines_cleared,
+                combo,
+                back_to_back,
+                b2b_count_before,
+                b2b_count_after: self.b2b_count as u32,
+                b2b_broken,
+                perfect_clear,
+            }
         } else {
             self.combo = 0;
-        }
-        PlacementInfo {
-            placement,
-            lines_cleared: cleared_mask.count_ones(),
-            combo: self.combo as u32,
-            back_to_back,
-            perfect_clear: self.board.cols.iter().all(|&c| c == 0),
+            PlacementInfo {
+                placement,
+                lines_cleared,
+                combo,
+                back_to_back,
+                b2b_count_before,
+                b2b_count_after: self.b2b_count as u32,
+                b2b_broken,
+                perfect_clear: false,
+            }
         }
     }
 }
