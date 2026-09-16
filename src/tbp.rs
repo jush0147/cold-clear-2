@@ -48,6 +48,8 @@ pub struct Start {
     pub combo: u32,
     pub back_to_back: bool,
     #[serde(default)]
+    pub b2b_count: u32,
+    #[serde(default)]
     pub randomizer: Randomizer,
 }
 
