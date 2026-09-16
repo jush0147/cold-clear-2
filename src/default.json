@@ -42,7 +42,8 @@
     "tetrio_s2": true,
     "attack_reward": 1.0,
     "surge_value": 1.0,
-    "b2b_charge_value": 1.0
+    "b2b_charge_value": 0.5,
+    "legacy_shape_value": 0.5
   },
   "freestyle_exploitation": 0.6931471805599453
 }
