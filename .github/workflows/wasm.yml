@@ -2,9 +2,9 @@ name: wasm
 
 on:
   push:
-    branches: [main, wasm-port]
+    branches: [main, wasm-port, tetrio-s2]
   pull_request:
-    branches: [main]
+    branches: [main, wasm-port]
   workflow_dispatch:
 
 jobs:
@@ -16,6 +16,9 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-unknown-unknown
+
+      - name: Run native unit tests
+        run: cargo test --lib
 
       - name: Check wasm target
         run: cargo check --target wasm32-unknown-unknown --lib
