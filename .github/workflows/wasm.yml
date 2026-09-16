@@ -1,0 +1,31 @@
+name: wasm
+
+on:
+  push:
+    branches: [wasm-port]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Check wasm target
+        run: cargo check --target wasm32-unknown-unknown --lib
+
+      - name: Install wasm-pack
+        run: cargo install wasm-pack --locked
+
+      - name: Build wasm package
+        run: wasm-pack build --release --target web
+
+      - name: Upload wasm package
+        uses: actions/upload-artifact@v4
+        with:
+          name: cold-clear-2-wasm
+          path: pkg/
