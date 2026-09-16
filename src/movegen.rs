@@ -262,9 +262,12 @@ fn rotate(
             continue;
         }
 
-        let spin;
-        if target.piece != Piece::T {
-            spin = Spin::None;
+        // TETR.IO All-Mini+: all non-T pieces use immobility detection and
+        // count as Mini spins; T still uses the three-corner rule, but an
+        // otherwise-failing immobile T is also a Mini.
+        let immobile = is_immobile(target, collision_map);
+        let spin = if target.piece != Piece::T {
+            if immobile { Spin::Mini } else { Spin::None }
         } else {
             let corners = [(-1, -1), (1, -1), (-1, 1), (1, 1)]
                 .iter()
@@ -277,13 +280,13 @@ fn rotate(
                 .count();
 
             if corners < 3 {
-                spin = Spin::None;
+                if immobile { Spin::Mini } else { Spin::None }
             } else if mini_corners == 2 || i == 4 {
-                spin = Spin::Full;
+                Spin::Full
             } else {
-                spin = Spin::Mini;
+                Spin::Mini
             }
-        }
+        };
 
         return Some(Placement {
             location: target,
@@ -292,6 +295,18 @@ fn rotate(
     }
 
     None
+}
+
+fn is_immobile(location: PieceLocation, collision_map: &CollisionMaps) -> bool {
+    [(-1, 0), (1, 0), (0, -1), (0, 1)]
+        .iter()
+        .all(|&(dx, dy)| {
+            collision_map.obstructed(PieceLocation {
+                x: location.x + dx,
+                y: location.y + dy,
+                ..location
+            })
+        })
 }
 
 #[derive(Clone, Copy, Debug, Eq)]
@@ -346,11 +361,38 @@ impl CollisionMaps {
     }
 
     fn obstructed(&self, piece: PieceLocation) -> bool {
-        let v = piece.y < 0
+        piece.y < 0
             || self.boards[piece.rotation as usize]
                 .get(piece.x as usize)
                 .map(|&c| c & 1 << piece.y != 0)
-                .unwrap_or(true);
-        v
+                .unwrap_or(true)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn immobility_requires_all_four_directions_blocked() {
+        // L North at (1, 0) occupies (0,0), (1,0), (2,0), (2,1).
+        // Floor blocks down, wall blocks left, and the two extra cells below
+        // block right/up without overlapping the piece itself.
+        let mut board = Board::default();
+        board.cols[3] |= 1 << 0;
+        board.cols[0] |= 1 << 1;
+        let map = CollisionMaps::new(&board, Piece::L);
+        let location = PieceLocation {
+            piece: Piece::L,
+            rotation: Rotation::North,
+            x: 1,
+            y: 0,
+        };
+        assert!(!map.obstructed(location));
+        assert!(is_immobile(location, &map));
+
+        let empty = Board::default();
+        let empty_map = CollisionMaps::new(&empty, Piece::L);
+        assert!(!is_immobile(location, &empty_map));
     }
 }
