@@ -40,6 +40,17 @@ impl BotConfig {
         config.freestyle_weights.tetrio_s2 = false;
         config
     }
+
+    /// Experimental TL S2 configuration with explicit values for parameter
+    /// sweeps. Keeping this constructor here prevents benchmark binaries from
+    /// reaching through the private freestyle module.
+    pub fn tetrio_s2(charge_value: f32, surge_value: f32) -> Self {
+        let mut config = Self::default();
+        config.freestyle_weights.tetrio_s2 = true;
+        config.freestyle_weights.b2b_charge_value = charge_value;
+        config.freestyle_weights.surge_value = surge_value;
+        config
+    }
 }
 
 #[derive(Debug)]
