@@ -1,77 +1,30 @@
 # Cold Clear 2
 
-Cold Clear 2 is a modern Tetris versus bot and a complete rewrite and evolution
-of [Cold Clear](https://github.com/MinusKelvin/cold-clear). It implements the
-[Tetris Bot Protocol](https://github.com/tetris-bot-protocol/tbp-spec) for
-interaction with a frontend, such as [Quadspace](https://github.com/SoRA-X7/Quadspace).
+Cold Clear 2 is a rewrite of [Cold Clear](https://github.com/MinusKelvin/cold-clear)
+using column-major bitboards, a transposition-aware search graph and native
+worker threads. It implements the [Tetris Bot Protocol](https://github.com/tetris-bot-protocol/tbp-spec).
 
-## Technical Features
+## TETR.IO S2 experiment: correctness audit in progress
 
-- Column-major bitboards
-- Multithreaded search on native targets
-- Transposition-aware game tree
-- MCTS-inspired tree expansion
+**This branch is not yet a rule-exact TETR.IO S2 replay analyst.** Do not use its
+suggestions to label a player's move as a proven mistake. Strength sweeps are
+paused while observation handling, transitions and independent rule fixtures
+are being audited. See [the audit and remaining gaps](docs/s2-audit.md).
 
-## TETR.IO Tetra League Season 2 experiment
+The branch has a draft S2 evaluator, B2B/combo/Surge bookkeeping, normal garbage
+queue primitives, a checked browser API and native/WASM regression tests.
+Pending garbage is **not yet inside DAG search**. SRS+ I kicks, 180 rotation,
+Clutch Clears, exact topout/timing, garbage-special +1 and opening double-cancel
+are also not complete. Attack-table regressions are not independent proof of
+production-game behavior.
 
-The `tetrio-s2` branch adds an experimental evaluator aimed at TETR.IO Tetra
-League Season 2 rather than generic versus Tetris.
-
-Implemented so far:
-
-- combo state advances correctly during search
-- visible B2B count is tracked instead of only a boolean B2B flag
-- Tetra League Multiplier attack calculation with DOWN rounding
-- B2B Charging and Surge accounting (B2B x4 starts a TL Surge of 4)
-- Season 2 All Clear attack (+5) and B2B treatment
-- All-Mini+ immobility detection for non-T pieces and fallback Mini T-Spins
-- the evaluator rewards actual calculated attack rather than the old hand-tuned
-  clear-type scores
-- pre-Surge B2B progress and stored Surge have search-horizon value
-- deterministic legacy-vs-S2 solitaire benchmark on identical 7-bag sequences
-  and node budgets
-- paired legacy-vs-S2 garbage duel benchmark with identical bags, cancellation,
-  bounded garbage rise, and sides swapped for every seed
-
-Still intentionally not modeled exactly yet:
-
-- real-time garbage travel / activation delay and PPS
-- the first-14-pieces double-cancel rule
-- the +1 garbage-special bonus for Quads/Spins that clear garbage
-- Surge segmentation into three timed garbage packets
-- Clutch Clears and exact TETR.IO top-out timing
-- TETR.IO-specific 180 kick paths
-
-Run the attack/survival health-check benchmark with:
-
-```sh
-cargo run --release --bin tl_s2_bench -- --seeds 10 --pieces 200 --nodes 2000
-```
-
-It compares the original Cold Clear 2 reward model with the S2 evaluator on the
-same piece sequences and search node budgets. It reports attack per piece,
-Surge releases, B2B, stack height, survival, and topouts. Because there is no
-incoming garbage, it is a regression detector rather than a win-rate test.
-
-Run the paired simplified duel benchmark with:
-
-```sh
-cargo run --release --bin tl_s2_duel -- --seeds 100 --pieces 200 --nodes 500
-```
-
-Every seed is played twice with legacy/S2 sides swapped. Attacks cancel pending
-garbage first; uncancelled garbage rises after the player's move with a bounded
-per-piece cap. This gives a useful strategy-vs-strategy objective while keeping
-the remaining timing differences explicit rather than pretending to be an exact
-TETR.IO server simulation.
+The target input is the player's own start-of-piece position: board, current,
+actual hold, five NEXT pieces and known counters/history. Opponent-board input
+is out of scope. Hidden future pieces and replay RNG state are not observations.
 
 ## WebAssembly
 
-The WASM build exposes a single-threaded `WasmBot` API intended to run inside a
-browser Web Worker. The search algorithm is unchanged; JavaScript drives it in
-small batches through `think()` instead of spawning a native worker thread.
-
-Build the browser package with:
+Build the browser package:
 
 ```sh
 rustup target add wasm32-unknown-unknown
@@ -79,36 +32,112 @@ cargo install wasm-pack
 wasm-pack build --release --target web --out-dir pkg
 ```
 
-Minimal usage:
+Run the module in a Web Worker and search in bounded batches:
 
 ```js
 import init, { WasmBot } from "./pkg/cold_clear_2.js";
-
 await init();
 const bot = new WasmBot();
 
-bot.start(JSON.stringify(startMessage));
-bot.think(100);
+bot.start(JSON.stringify({
+  // Bottom-up rows. Short boards are padded with empty rows ABOVE them.
+  board: Array.from({ length: 20 }, () => Array(10).fill(null)),
+  queue: ["O", "I", "T", "L", "J", "S"], // current + exactly five NEXT
+  hold: null,
+  combo: 0, // consecutive clears BEFORE this placement, not previous UI combo
+  back_to_back: false,
+  b2b_count: 0,
+  randomizer: { type: "unknown" },
+}));
 
+bot.think(100);
 const moves = JSON.parse(bot.suggest_json());
-const stats = JSON.parse(bot.stats_json());
+const visibleState = JSON.parse(bot.player_state_json());
+const capabilities = JSON.parse(bot.capabilities_json());
+// capabilities.rules_parity_verified === false
+// capabilities.pending_garbage_in_search === false
 ```
 
-`start()` accepts the payload of a Tetris Bot Protocol `start` message as JSON.
-It may additionally contain `b2b_count` for exact TETR.IO analysis state.
-`play_json()` accepts a placement as JSON, and `new_piece()` accepts one of
-`I`, `O`, `T`, `L`, `J`, `S`, or `Z`. `think()` returns the number of nodes
-visited as a JavaScript `BigInt` because the Rust return type is `u64`.
+`think()` returns a JavaScript BigInt node count. `stats_json()` exposes search
+statistics. An empty suggestion is not, by itself, proof of topout.
 
-For browser frontends, run `WasmBot` in a Web Worker so search work cannot block
-the UI thread. Search strength and device load can be controlled by choosing how
-many `think()` iterations to run before requesting a suggestion.
+### Correct hold and preview accounting
 
-The `wasm` GitHub Actions workflow builds both browser and Node.js packages and
-runs a runtime smoke test before uploading the browser package as an artifact.
-The `s2-benchmark` workflow runs rules tests plus both strategy benchmarks.
+CC2's internal `reserve` representation is not always actual hold. Use
+`player_state_json()` to inspect genuine current/hold/NEXT state. For replay
+playback, include the explicit hold decision even when the piece types match:
+
+```js
+function applyRecordedMove(bot, placement, usedHold, newlyRevealed) {
+  bot.play_with_hold_json(JSON.stringify(placement), usedHold);
+  const required = bot.preview_refill_needed();
+  if (newlyRevealed.length !== required) {
+    throw new Error(`Expected ${required} newly visible previews`);
+  }
+  for (const piece of newlyRevealed) bot.new_piece(piece);
+}
+```
+
+A normal placement reveals one preview. The first actual empty-hold use reveals
+two. `new_piece()` refuses to extend a full visible queue. Searching/playing with
+an incomplete queue is rejected. `play_json()` remains a compatibility method
+that infers hold from type, but cannot distinguish identical-piece hold choices.
+Invalid inputs return errors instead of silently corrupting the board.
+
+### Pending garbage primitives, not pending-aware advice yet
+
+```js
+import { preview_garbage_one_to_one } from "./pkg/cold_clear_2.js";
+const result = JSON.parse(preview_garbage_one_to_one(
+  JSON.stringify([{ lines: 8, active: false }]),
+  3, // attack under the explicitly selected normal 1:1 cancellation policy
+  0, // lines cleared by the placement
+  8, // supplied rise cap
+));
+// cancelled: 3; risen: 0; remaining: [{ lines: 5, active: false }]
+```
+
+This diagnostic function does not forecast activation or insert garbage into
+search boards. It does not apply opening double-cancel. Unknown fields such as
+hidden hole coordinates are rejected. Passing `incoming` to `WasmBot.start()`
+currently returns an unsupported-field error; it must not be silently ignored.
+
+## Correctness checks
+
+```sh
+cargo test --lib --bins --tests
+cargo test --release --test core_regressions
+cargo check --all-targets
+cargo check --lib --target wasm32-unknown-unknown
+```
+
+The `s2-correctness` Actions workflow retains native/release test output. The
+`wasm` workflow builds browser and Node packages, then executes WASM regressions
+for search, empty hold, first-hold refill, identical-piece hold decisions,
+input rejection and normal garbage-queue transitions. The browser artifact is
+`cold-clear-2-wasm`. Building it is not a real-browser performance benchmark.
+
+## Diagnostic simulators
+
+The solitaire health check has a chosen sample length, but awards no wins:
+
+```sh
+cargo run --release --bin tl_s2_bench -- --seeds 10 --pieces 200 --nodes 2000
+```
+
+The separate duel is **KO-only**, with no piece limit or attack tiebreak:
+
+```sh
+cargo run --release --bin tl_s2_duel -- --seeds 100 --nodes 500
+```
+
+Each seed is played with sides swapped. A failed search with supported legal
+moves remaining is an error, not a KO. External timeouts are incomplete runs,
+not manufactured wins/draws. The simplified simulator is NOT TETR.IO-conformant;
+its results must not be presented as TL win rates. `legacy` and `s2` use the same
+modified core with different evaluators. Only the piece stream is seeded; full
+search reproducibility has not been established.
 
 ## License
 
-Cold Clear 2 is licensed under either [Apache License Version 2.0](LICENSE-APACHE)
-or [MIT License](LICENSE-MIT), at your option.
+Licensed under [Apache License Version 2.0](LICENSE-APACHE) or [MIT License](LICENSE-MIT), at your option.
