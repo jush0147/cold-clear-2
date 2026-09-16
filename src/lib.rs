@@ -16,9 +16,9 @@ use crate::sync::BotSyncronizer;
 #[cfg(not(target_arch = "wasm32"))]
 use crate::tbp::{BotMessage, FrontendMessage};
 
-mod bot;
+pub mod bot;
 mod dag;
-mod tbp;
+pub mod tbp;
 pub mod tetrio;
 #[macro_use]
 pub mod data;
@@ -99,7 +99,7 @@ pub async fn run(
     }
 }
 
-pub(crate) fn create_bot(mut start: tbp::Start, config: Arc<BotConfig>) -> Bot {
+pub fn create_bot(mut start: tbp::Start, config: Arc<BotConfig>) -> Bot {
     let reserve = start.hold.unwrap_or_else(|| start.queue.remove(0));
 
     let speculate = matches!(start.randomizer, Randomizer::SevenBag { .. });
