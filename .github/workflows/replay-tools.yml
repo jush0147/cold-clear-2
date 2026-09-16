@@ -1,0 +1,40 @@
+name: replay-tools
+on:
+  push:
+    branches: [tetrio-s2]
+    paths: ['.github/workflows/replay-tools.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Archive audited source
+        run: |
+          mkdir -p offline-tools
+          git archive HEAD -o offline-tools/cc2-source.tar
+          git rev-parse HEAD > offline-tools/cc2-revision.txt
+      - uses: actions/checkout@v4
+        with:
+          repository: halp1/triangle
+          ref: 7837ee5bde8de2719472e0de3458abe6708593f5
+          path: reference-engine
+          persist-credentials: false
+      - name: Install build dependencies without lifecycle scripts
+        working-directory: reference-engine
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Bundle offline engine only (no login or network client)
+        run: |
+          cd reference-engine
+          npx --yes esbuild@0.25.12 src/engine/index.ts --bundle --platform=node --format=cjs --outfile=../offline-tools/triangle.cjs
+          cp LICENSE.md ../offline-tools/triangle-LICENSE.md
+          git rev-parse HEAD > ../offline-tools/triangle-revision.txt
+          git archive HEAD src/engine src/utils src/types -o ../offline-tools/triangle-source.tar
+      - uses: actions/upload-artifact@v4
+        with:
+          name: offline-replay-tools
+          path: offline-tools/
+          retention-days: 7
