@@ -2,7 +2,9 @@ name: wasm
 
 on:
   push:
-    branches: [wasm-port]
+    branches: [main, wasm-port]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 jobs:
