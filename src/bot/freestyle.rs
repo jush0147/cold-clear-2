@@ -159,7 +159,9 @@ fn evaluate(
         }
         eval += weights.surge_value * tetrio::surge_size(state.b2b_count as u32) as f32;
     } else {
-        // Legacy Cold Clear 2 line-clear rewards.
+        // Legacy Cold Clear 2 line-clear rewards. All-Mini+ can produce Mini
+        // clears beyond the two-entry legacy Mini table, so fall back to the
+        // corresponding normal-clear weight instead of indexing past the array.
         if info.perfect_clear {
             reward += weights.perfect_clear;
         }
@@ -167,10 +169,23 @@ fn evaluate(
             if info.back_to_back {
                 reward += weights.back_to_back_clear;
             }
+            let lines = info.lines_cleared.min(4) as usize;
             match info.placement.spin {
-                Spin::None => reward += weights.normal_clears[info.lines_cleared as usize],
-                Spin::Mini => reward += weights.mini_spin_clears[info.lines_cleared as usize],
-                Spin::Full => reward += weights.spin_clears[info.lines_cleared as usize],
+                Spin::None => reward += weights.normal_clears[lines],
+                Spin::Mini => {
+                    reward += weights
+                        .mini_spin_clears
+                        .get(lines)
+                        .copied()
+                        .unwrap_or(weights.normal_clears[lines]);
+                }
+                Spin::Full => {
+                    reward += weights
+                        .spin_clears
+                        .get(lines)
+                        .copied()
+                        .unwrap_or(weights.normal_clears[lines]);
+                }
             }
             reward += weights.combo_attack * (info.combo.saturating_sub(1) / 2) as f32;
         }
