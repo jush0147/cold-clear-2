@@ -5,7 +5,7 @@ use enum_dispatch::enum_dispatch;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 
-use crate::data::{GameState, Piece, Placement};
+use crate::data::{GameState, Piece, Placement, PlacementInfo};
 
 mod freestyle;
 
@@ -29,6 +29,16 @@ impl Default for BotConfig {
         static DEFAULT: Lazy<BotConfig> =
             Lazy::new(|| serde_json::from_str(include_str!("default.json")).unwrap());
         DEFAULT.clone()
+    }
+}
+
+impl BotConfig {
+    /// Same board heuristics and search parameters, but with the original
+    /// Cold Clear 2 clear-type reward model for A/B comparisons.
+    pub fn legacy() -> Self {
+        let mut config = Self::default();
+        config.freestyle_weights.tetrio_s2 = false;
+        config
     }
 }
 
@@ -65,12 +75,13 @@ impl Bot {
         }
     }
 
-    pub fn advance(&mut self, mv: Placement) {
+    pub fn advance(&mut self, mv: Placement) -> PlacementInfo {
         puffin::profile_function!();
-        self.current.advance(self.queue.pop_front().unwrap(), mv);
+        let info = self.current.advance(self.queue.pop_front().unwrap(), mv);
         if let Some(to) = self.mode.advance(&self.options, mv) {
             self.switch(to);
         };
+        info
     }
 
     pub fn new_piece(&mut self, piece: Piece) {
@@ -87,6 +98,10 @@ impl Bot {
     pub fn do_work(&self) -> Statistics {
         puffin::profile_function!();
         self.mode.do_work(&self.options)
+    }
+
+    pub fn state(&self) -> GameState {
+        self.current
     }
 
     fn switch(&mut self, to: ModeSwitch) {
