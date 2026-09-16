@@ -1,14 +1,19 @@
-use std::convert::Infallible;
 use std::sync::Arc;
 
 use bot::{BotConfig, BotOptions};
 use enumset::EnumSet;
-use futures::prelude::*;
 use tbp::Randomizer;
 
 use crate::bot::Bot;
 use crate::data::GameState;
+
+#[cfg(not(target_arch = "wasm32"))]
+use std::convert::Infallible;
+#[cfg(not(target_arch = "wasm32"))]
+use futures::prelude::*;
+#[cfg(not(target_arch = "wasm32"))]
 use crate::sync::BotSyncronizer;
+#[cfg(not(target_arch = "wasm32"))]
 use crate::tbp::{BotMessage, FrontendMessage};
 
 mod bot;
@@ -18,8 +23,12 @@ mod tbp;
 pub mod data;
 mod map;
 pub mod movegen;
+#[cfg(not(target_arch = "wasm32"))]
 mod sync;
+#[cfg(target_arch = "wasm32")]
+pub mod wasm;
 
+#[cfg(not(target_arch = "wasm32"))]
 pub async fn run(
     mut incoming: impl Stream<Item = FrontendMessage> + Unpin,
     mut outgoing: impl Sink<BotMessage, Error = Infallible> + Unpin,
@@ -89,7 +98,7 @@ pub async fn run(
     }
 }
 
-fn create_bot(mut start: tbp::Start, config: Arc<BotConfig>) -> Bot {
+pub(crate) fn create_bot(mut start: tbp::Start, config: Arc<BotConfig>) -> Bot {
     let reserve = start.hold.unwrap_or_else(|| start.queue.remove(0));
 
     let speculate = matches!(start.randomizer, Randomizer::SevenBag { .. });
@@ -117,6 +126,7 @@ fn create_bot(mut start: tbp::Start, config: Arc<BotConfig>) -> Bot {
     Bot::new(BotOptions { speculate, config }, state, &start.queue)
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn spawn_workers(bot: &Arc<BotSyncronizer>) {
     for _ in 0..1 {
         let bot = bot.clone();

@@ -1,0 +1,39 @@
+name: wasm
+
+on:
+  push:
+    branches: [main, wasm-port]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Check wasm target
+        run: cargo check --target wasm32-unknown-unknown --lib
+
+      - name: Install wasm-pack
+        run: cargo install wasm-pack --locked
+
+      - name: Build browser wasm package
+        run: wasm-pack build --release --target web --out-dir pkg
+
+      - name: Build Node wasm package for smoke test
+        run: wasm-pack build --release --target nodejs --out-dir pkg-node
+
+      - name: Run wasm smoke test
+        run: node scripts/wasm-smoke.mjs
+
+      - name: Upload browser wasm package
+        uses: actions/upload-artifact@v4
+        with:
+          name: cold-clear-2-wasm
+          path: pkg/
