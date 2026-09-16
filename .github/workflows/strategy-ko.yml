@@ -2,10 +2,13 @@ name: Strategy KO experiment
 on:
   push:
     branches: [s2-strategy-clean]
-    paths: ['src/**', 'scripts/wire-ko.py', '.github/workflows/strategy-ko.yml']
+    paths: ['src/**', '.github/workflows/strategy-ko.yml']
   workflow_dispatch:
 permissions:
   contents: write
+defaults:
+  run:
+    shell: bash
 jobs:
   native:
     runs-on: ubuntu-22.04
@@ -16,20 +19,25 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: strategy-ko-native
-      - name: Apply one-time experiment wiring
+      - name: Fix legacy serde_json duration serialization
         run: |
-          if [ -f scripts/wire-ko.py ]; then python3 scripts/wire-ko.py; fi
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('src/bin/strategy_ko.rs')
+          s = p.read_text()
+          s = s.replace('started.elapsed().as_millis()', 'started.elapsed().as_millis().min(u64::MAX as u128) as u64') if 'as_millis().min(' not in s else s
+          p.write_text(s)
+          PY
       - name: Regression tests
         run: cargo test --release --lib --bins --tests 2>&1 | tee regression.log
-      - name: Commit tested source changes on clean branch
+      - name: Commit tested fix
         if: github.ref == 'refs/heads/s2-strategy-clean'
         run: |
-          if [ -f scripts/wire-ko.py ]; then
+          if ! git diff --quiet -- src/bin/strategy_ko.rs; then
             git config user.name 'github-actions[bot]'
             git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-            git rm scripts/wire-ko.py
-            git add src/lib.rs src/bot.rs src/bot/freestyle.rs src/dag.rs src/dag/known.rs src/dag/speculated.rs src/movegen.rs src/forecast.rs
-            git commit -m 'Wire shared pending-aware KO search and isolated safety hypothesis'
+            git add src/bin/strategy_ko.rs
+            git commit -m 'Serialize completed KO reports as supported u64 durations'
             git push origin HEAD:s2-strategy-clean
           fi
       - name: Build native executable
