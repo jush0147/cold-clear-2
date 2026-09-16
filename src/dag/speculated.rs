@@ -4,7 +4,6 @@ use std::sync::atomic::{self, AtomicBool};
 use bumpalo_herd::{Herd, Member};
 use enum_map::EnumMap;
 use enumset::EnumSet;
-use rand::prelude::*;
 
 use crate::data::{GameState, Piece, Placement};
 use crate::map::StateMap;
@@ -76,14 +75,14 @@ impl<'bump, E: Evaluation> Layer<'bump, E> {
         let next = game_state
             .bag
             .iter()
-            .nth(thread_rng().gen_range(0..game_state.bag.len()))
+            .nth(crate::ko_support::random_index(game_state.bag.len()))
             .unwrap();
 
         if children[next].is_empty() {
             return SelectResult::Failed;
         }
 
-        let s: f64 = thread_rng().gen();
+        let s: f64 = crate::ko_support::random_unit();
         let i = ((-s.ln() / exploration) % children[next].len() as f64) as usize;
         SelectResult::Advance(next, children[next][i].mv)
     }

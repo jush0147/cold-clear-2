@@ -67,7 +67,7 @@ trait Mode {
     fn new_piece(&mut self, options: &BotOptions, piece: Piece);
     fn suggest(&self, options: &BotOptions) -> Vec<Placement>;
     fn ranked(&self) -> Vec<(Placement, f32)>;
-    fn do_work(&self, options: &BotOptions) -> Statistics;
+    fn do_work(&self, options: &BotOptions, budget: u64) -> Statistics;
 }
 enum ModeSwitch { Freestyle }
 
@@ -164,7 +164,11 @@ impl Bot {
     pub fn ranked_suggestions(&self) -> Vec<(Placement,f32)> { self.mode.ranked() }
     pub fn do_work(&self) -> Statistics {
         puffin::profile_function!();
-        self.mode.do_work(&self.options)
+        self.mode.do_work(&self.options, u64::MAX)
+    }
+    /// Hard evaluator-node allocation, shared by both sides of a KO experiment.
+    pub fn do_work_limited(&self, budget: u64) -> Statistics {
+        self.mode.do_work(&self.options, budget)
     }
     /// Search state. Use player_pieces() to interpret current/hold/NEXT.
     pub fn state(&self) -> GameState { self.current }
@@ -189,11 +193,14 @@ impl Bot {
 }
 
 #[derive(Copy, Clone, Debug, Default)]
-pub struct Statistics { pub nodes: u64, pub selections: u64, pub expansions: u64 }
+pub struct Statistics { pub nodes: u64, pub selections: u64, pub expansions: u64, pub max_depth: usize, pub speculative_expansions: u64, pub budget_exhausted: bool }
 impl Statistics {
     pub fn accumulate(&mut self, other: Self) {
         self.nodes += other.nodes;
         self.selections += other.selections;
         self.expansions += other.expansions;
+        self.max_depth = self.max_depth.max(other.max_depth);
+        self.speculative_expansions += other.speculative_expansions;
+        self.budget_exhausted |= other.budget_exhausted;
     }
 }

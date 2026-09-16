@@ -22,6 +22,7 @@ pub mod tbp;
 pub mod tetrio;
 pub mod replay_check;
 pub mod forecast;
+pub mod ko_support;
 pub mod analysis;
 #[macro_use]
 pub mod data;

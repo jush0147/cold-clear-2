@@ -61,6 +61,8 @@ pub fn find_moves_with_clutch(board: &Board, piece: Piece, allow_clutch: bool) -
         if let Some(mv) = rotate_180(expand.mv.location, &collision_map, board) { update(mv, expand.soft_drops); }
     }
     locks.extend(underground_locks.into_iter());
+    locks.sort_by_key(|(m, sd)| (m.location.piece as u8, m.location.x, m.location.y, m.location.rotation as u8, m.spin as u8, *sd));
+    locks.dedup_by_key(|(m, _)| *m);
     locks
 }
 

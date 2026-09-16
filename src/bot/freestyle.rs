@@ -41,7 +41,7 @@ impl Mode for Freestyle {
         self.dag.suggest()
     }
 
-    fn do_work(&self, options: &BotOptions) -> Statistics {
+    fn do_work(&self, options: &BotOptions, budget: u64) -> Statistics {
         puffin::profile_function!();
         let mut new_stats = Statistics::default();
         new_stats.selections += 1;
@@ -50,7 +50,9 @@ impl Mode for Freestyle {
             .dag
             .select(options.speculate, options.config.freestyle_exploitation)
         {
+            new_stats.max_depth = node.depth();
             let (state, next) = node.state();
+            new_stats.speculative_expansions = u64::from(next.is_none());
             if state.forecast.topped_out { node.expand(EnumMap::default()); return new_stats; }
             let next_possibilities = next.map(EnumSet::only).unwrap_or(state.bag);
 
@@ -73,6 +75,14 @@ impl Mode for Freestyle {
                         moves[state.reserve].iter()
                     });
                     for &(mv, sd_distance) in moves {
+                        if new_stats.nodes == budget {
+                            // Charge evaluated nodes, but never publish a partially
+                            // enumerated action set as a completed expansion.
+                            node.cancel();
+                            new_stats.budget_exhausted = true;
+                            return new_stats;
+                        }
+                        new_stats.nodes += 1;
                         let mut state = state;
                         let info = state.advance(next, mv);
 
@@ -87,7 +97,7 @@ impl Mode for Freestyle {
                         });
                     }
 
-                    new_stats.nodes += children[next].len() as u64;
+
                 }
             }
 
@@ -101,6 +111,9 @@ impl Mode for Freestyle {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Weights {
+    /// Experimental H1 multiplier; zero preserves legacy evaluation.
+    #[serde(default)]
+    pub pending_safety: f32,
     pub cell_coveredness: f32,
     pub max_cell_covered_height: u32,
     pub holes: f32,
@@ -183,6 +196,17 @@ fn evaluate(
     let mut eval = 0.0;
     let mut reward = 0.0;
 
+    // H1: unsafe structure costs more while observed garbage remains pending.
+    // Use the real board, before optimistic T-slot cutouts. Cancellation
+    // lowers the remaining pressure automatically.
+    if weights.pending_safety != 0.0 {
+        let (height, holes, covered) = crate::ko_support::board_danger(&state.board, weights.max_cell_covered_height);
+        let pressure = state.forecast.remaining().min(16) as f32 / 8.0;
+        eval += weights.pending_safety * pressure * (
+            weights.holes * holes as f32 + weights.cell_coveredness * covered as f32
+            + weights.height_upper_half * height.saturating_sub(10) as f32
+            + weights.height_upper_quarter * height.saturating_sub(15) as f32);
+    }
     let legacy_shape = legacy_clear_reward(weights, info);
     if weights.tetrio_s2 {
         // Actual S2 garbage is the objective, while a fraction of the original

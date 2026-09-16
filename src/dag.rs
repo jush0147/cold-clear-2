@@ -150,6 +150,15 @@ impl<E: Evaluation> Dag<E> {
 }
 
 impl<E: Evaluation> Selection<'_, E> {
+    pub fn depth(&self) -> usize { self.layers.len() }
+    pub fn cancel(self) {
+        use std::sync::atomic::Ordering;
+        self.layers.last().unwrap().kind.with(|this| match this.data {
+            LayerKind::Known(l) => l.states.get(&self.game_state).unwrap().expanding.store(false, Ordering::Relaxed),
+            LayerKind::Speculated(l) => l.states.get(&self.game_state).unwrap().expanding.store(false, Ordering::Relaxed),
+        });
+    }
+
     pub fn state(&self) -> (GameState, Option<Piece>) {
         (self.game_state, self.layers.last().unwrap().kind.piece())
     }

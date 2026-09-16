@@ -16,6 +16,13 @@ pub struct Forecast {
     packets:[Packet;16],
 }
 impl Forecast {
+    /// Zero-gravity snapshot; no PPS-derived future activation timestamps.
+    pub fn snapshot(packets: &[GarbagePacket], pieces: u32, sent: u32, scenario: u32) -> Result<Self, String> {
+        let mut f = Self::new(packets, pieces, sent, 1, 600, scenario)?;
+        f.frames_per_piece = 0;
+        Ok(f)
+    }
+
     pub fn new(packets:&[GarbagePacket], pieces_placed:u32, sent:u32, frames_per_piece:u32, delay:u32, scenario:u32) -> Result<Self,String> {
         if packets.len()>16 {return Err("forecast supports at most 16 observable packets".into());}
         if !(1..=600).contains(&frames_per_piece) || delay>600 {return Err("invalid explicit timing assumption".into());}
@@ -43,12 +50,9 @@ impl Forecast {
         if !self.enabled || self.topped_out {return;}
         self.elapsed_frames=self.elapsed_frames.saturating_add(self.frames_per_piece);
         for &attack in attacks {
-            let bonus=if self.pieces_placed<14 && self.remaining()>=self.sent {attack} else {0};
-            // Ordinary attack is consumed before opening-phase extra cancel;
-            // the extra cancel is never sent to an opponent.
-            let ordinary=self.consume(attack);
-            self.consume(bonus);
-            self.sent=self.sent.saturating_add(attack-ordinary);
+            let (cancelled, outgoing) = crate::ko_support::cancel_plan(attack, self.remaining(), self.pieces_placed, self.sent);
+            self.consume(cancelled);
+            self.sent=self.sent.saturating_add(outgoing);
         }
         if cleared==0 {
             for _ in 0..8 {
