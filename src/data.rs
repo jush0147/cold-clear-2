@@ -3,7 +3,7 @@ use enumset::{EnumSet, EnumSetType};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Deserialize)]
-#[serde(from = "Vec<[Option<char>; 10]>")]
+#[serde(try_from = "Vec<[Option<char>; 10]>")]
 pub struct Board {
     pub cols: [u64; 10],
 }
@@ -14,11 +14,11 @@ pub struct GameState {
     pub bag: EnumSet<Piece>,
     pub reserve: Piece,
     pub back_to_back: bool,
-    /// TETR.IO-style B2B count. The first difficult clear establishes B2B but
-    /// is not counted, so two consecutive difficult clears result in B2B x1.
+    /// The first difficult clear establishes B2B; the second is B2B x1.
     pub b2b_count: u16,
-    /// Current combo value used by TETR.IO's multiplier formula. The first
-    /// consecutive line clear uses combo 0, the next uses combo 1, and so on.
+    /// Number of consecutive line-clearing placements BEFORE the next move.
+    /// PlacementInfo::combo uses this number, then this field is incremented.
+    /// This is not the displayed combo counter after the previous clear.
     pub combo: u8,
 }
 
@@ -52,32 +52,15 @@ pub struct PlacementInfo {
 
 #[allow(clippy::derive_hash_xor_eq)]
 #[derive(EnumSetType, Enum, Debug, Hash, Serialize, Deserialize)]
-pub enum Piece {
-    I,
-    O,
-    T,
-    L,
-    J,
-    S,
-    Z,
-}
+pub enum Piece { I, O, T, L, J, S, Z }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub enum Rotation {
-    North,
-    West,
-    South,
-    East,
-}
+pub enum Rotation { North, West, South, East }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub enum Spin {
-    None,
-    Mini,
-    Full,
-}
+pub enum Spin { None, Mini, Full }
 
 impl Piece {
     pub const fn cells(self) -> [(i8, i8); 4] {
@@ -102,16 +85,9 @@ impl Rotation {
             Rotation::West => (-y, x),
         }
     }
-
-    pub const fn rotate_cells(self, cells: [(i8, i8); 4]) -> [(i8, i8); 4] {
-        [
-            self.rotate_cell(cells[0]),
-            self.rotate_cell(cells[1]),
-            self.rotate_cell(cells[2]),
-            self.rotate_cell(cells[3]),
-        ]
+    pub const fn rotate_cells(self, c: [(i8, i8); 4]) -> [(i8, i8); 4] {
+        [self.rotate_cell(c[0]), self.rotate_cell(c[1]), self.rotate_cell(c[2]), self.rotate_cell(c[3])]
     }
-
     pub const fn cw(self) -> Self {
         match self {
             Rotation::North => Rotation::East,
@@ -120,16 +96,14 @@ impl Rotation {
             Rotation::West => Rotation::North,
         }
     }
-
     pub const fn ccw(self) -> Self {
         match self {
             Rotation::North => Rotation::West,
-            Rotation::East => Rotation::North,
-            Rotation::South => Rotation::East,
             Rotation::West => Rotation::South,
+            Rotation::South => Rotation::East,
+            Rotation::East => Rotation::North,
         }
     }
-
     pub const fn flip(self) -> Self {
         match self {
             Rotation::North => Rotation::South,
@@ -142,23 +116,14 @@ impl Rotation {
 
 macro_rules! lutify {
     (($e:expr) for $v:ident in [$($val:expr),*]) => {
-        [
-            $(
-                {
-                    let $v = $val;
-                    $e
-                }
-            ),*
-        ]
+        [$( { let $v = $val; $e } ),*]
     };
 }
-
 macro_rules! piece_lut {
     ($v:ident => $e:expr) => {
         lutify!(($e) for $v in [Piece::I, Piece::O, Piece::T, Piece::L, Piece::J, Piece::S, Piece::Z])
     };
 }
-
 macro_rules! rotation_lut {
     ($v:ident => $e:expr) => {
         lutify!(($e) for $v in [Rotation::North, Rotation::West, Rotation::South, Rotation::East])
@@ -171,85 +136,37 @@ impl PieceLocation {
             piece_lut!(piece => rotation_lut!(rotation => rotation.rotate_cells(piece.cells())));
         self.translate_cells(LUT[self.piece as usize][self.rotation as usize])
     }
-
-    const fn translate(&self, (x, y): (i8, i8)) -> (i8, i8) {
-        (x + self.x, y + self.y)
+    const fn translate(&self, (x, y): (i8, i8)) -> (i8, i8) { (x + self.x, y + self.y) }
+    const fn translate_cells(&self, c: [(i8, i8); 4]) -> [(i8, i8); 4] {
+        [self.translate(c[0]), self.translate(c[1]), self.translate(c[2]), self.translate(c[3])]
     }
-
-    const fn translate_cells(&self, cells: [(i8, i8); 4]) -> [(i8, i8); 4] {
-        [
-            self.translate(cells[0]),
-            self.translate(cells[1]),
-            self.translate(cells[2]),
-            self.translate(cells[3]),
-        ]
-    }
-
     pub fn obstructed(&self, board: &Board) -> bool {
         self.cells().iter().any(|&cell| board.occupied(cell))
     }
-
     pub fn drop_distance(&self, board: &Board) -> i8 {
-        self.cells()
-            .iter()
-            .map(|&(x, y)| board.distance_to_ground(x, y))
-            .min()
-            .unwrap()
+        self.cells().iter().map(|&(x, y)| board.distance_to_ground(x, y)).min().unwrap()
     }
-
     pub fn above_stack(&self, board: &Board) -> bool {
-        self.cells()
-            .iter()
-            .all(|&(x, y)| y >= 64 - board.cols[x as usize].leading_zeros() as i8)
+        self.cells().iter().all(|&(x, y)| y >= 64 - board.cols[x as usize].leading_zeros() as i8)
     }
-
     pub fn canonical_form(&self) -> PieceLocation {
         match self.piece {
             Piece::T | Piece::J | Piece::L => *self,
             Piece::O => match self.rotation {
                 Rotation::North => *self,
-                Rotation::East => PieceLocation {
-                    rotation: Rotation::North,
-                    y: self.y - 1,
-                    ..*self
-                },
-                Rotation::South => PieceLocation {
-                    rotation: Rotation::North,
-                    x: self.x - 1,
-                    y: self.y - 1,
-                    ..*self
-                },
-                Rotation::West => PieceLocation {
-                    rotation: Rotation::North,
-                    x: self.x - 1,
-                    ..*self
-                },
+                Rotation::East => PieceLocation { rotation: Rotation::North, y: self.y - 1, ..*self },
+                Rotation::South => PieceLocation { rotation: Rotation::North, x: self.x - 1, y: self.y - 1, ..*self },
+                Rotation::West => PieceLocation { rotation: Rotation::North, x: self.x - 1, ..*self },
             },
             Piece::S | Piece::Z => match self.rotation {
                 Rotation::North | Rotation::East => *self,
-                Rotation::South => PieceLocation {
-                    rotation: Rotation::North,
-                    y: self.y - 1,
-                    ..*self
-                },
-                Rotation::West => PieceLocation {
-                    rotation: Rotation::East,
-                    x: self.x - 1,
-                    ..*self
-                },
+                Rotation::South => PieceLocation { rotation: Rotation::North, y: self.y - 1, ..*self },
+                Rotation::West => PieceLocation { rotation: Rotation::East, x: self.x - 1, ..*self },
             },
             Piece::I => match self.rotation {
                 Rotation::North | Rotation::East => *self,
-                Rotation::South => PieceLocation {
-                    rotation: Rotation::North,
-                    x: self.x - 1,
-                    ..*self
-                },
-                Rotation::West => PieceLocation {
-                    rotation: Rotation::East,
-                    y: self.y + 1,
-                    ..*self
-                },
+                Rotation::South => PieceLocation { rotation: Rotation::North, x: self.x - 1, ..*self },
+                Rotation::West => PieceLocation { rotation: Rotation::East, y: self.y + 1, ..*self },
             },
         }
     }
@@ -257,21 +174,15 @@ impl PieceLocation {
 
 impl Board {
     pub const fn occupied(&self, (x, y): (i8, i8)) -> bool {
-        if x < 0 || x >= 10 || y < 0 || y >= 40 {
-            return true;
-        }
+        if x < 0 || x >= 10 || y < 0 || y >= 40 { return true; }
         self.cols[x as usize] & 1 << y != 0
     }
-
     pub fn distance_to_ground(&self, x: i8, y: i8) -> i8 {
         debug_assert!((0..10).contains(&x));
         debug_assert!((0..40).contains(&y));
-        if y == 0 {
-            return 0;
-        }
+        if y == 0 { return 0; }
         (!self.cols[x as usize] << (64 - y)).leading_ones() as i8
     }
-
     pub fn place(&mut self, piece: PieceLocation) {
         for &(x, y) in &piece.cells() {
             debug_assert!((0..10).contains(&x));
@@ -279,28 +190,19 @@ impl Board {
             self.cols[x as usize] |= 1 << y;
         }
     }
-
     pub fn line_clears(&self) -> u64 {
         self.cols.iter().fold(!0, |a, b| a & b)
     }
-
     pub fn remove_lines(&mut self, lines: u64) {
-        for c in &mut self.cols {
-            clear_lines(c, lines);
-        }
+        for c in &mut self.cols { clear_lines(c, lines); }
     }
 }
 
 impl GameState {
     pub fn advance(&mut self, next: Piece, placement: Placement) -> PlacementInfo {
         self.bag.remove(next);
-        if self.bag.is_empty() {
-            self.bag = EnumSet::all();
-        }
-        if placement.location.piece != next {
-            self.reserve = next;
-        }
-
+        if self.bag.is_empty() { self.bag = EnumSet::all(); }
+        if placement.location.piece != next { self.reserve = next; }
         self.board.place(placement.location);
         let cleared_mask = self.board.line_clears();
         let lines_cleared = cleared_mask.count_ones();
@@ -308,55 +210,28 @@ impl GameState {
         let mut back_to_back = false;
         let mut b2b_broken = false;
         let mut combo = 0;
-
+        let mut perfect_clear = false;
         if lines_cleared != 0 {
             self.board.remove_lines(cleared_mask);
-            let perfect_clear = self.board.cols.iter().all(|&c| c == 0);
-            let difficult = lines_cleared == 4
-                || !matches!(placement.spin, Spin::None)
-                || perfect_clear;
-
+            perfect_clear = self.board.cols.iter().all(|&c| c == 0);
+            let difficult = lines_cleared == 4 || !matches!(placement.spin, Spin::None) || perfect_clear;
             combo = self.combo as u32;
             self.combo = self.combo.saturating_add(1);
-
             if difficult {
                 back_to_back = self.back_to_back;
-                if self.back_to_back {
-                    self.b2b_count = self.b2b_count.saturating_add(1);
-                } else {
-                    // TETR.IO does not count the first difficult clear. It only
-                    // establishes the chain; the next difficult clear is x1.
-                    self.b2b_count = 0;
-                }
+                self.b2b_count = if self.back_to_back { self.b2b_count.saturating_add(1) } else { 0 };
                 self.back_to_back = true;
             } else {
                 b2b_broken = self.back_to_back;
                 self.back_to_back = false;
                 self.b2b_count = 0;
             }
-
-            PlacementInfo {
-                placement,
-                lines_cleared,
-                combo,
-                back_to_back,
-                b2b_count_before,
-                b2b_count_after: self.b2b_count as u32,
-                b2b_broken,
-                perfect_clear,
-            }
         } else {
             self.combo = 0;
-            PlacementInfo {
-                placement,
-                lines_cleared,
-                combo,
-                back_to_back,
-                b2b_count_before,
-                b2b_count_after: self.b2b_count as u32,
-                b2b_broken,
-                perfect_clear: false,
-            }
+        }
+        PlacementInfo {
+            placement, lines_cleared, combo, back_to_back, b2b_count_before,
+            b2b_count_after: self.b2b_count as u32, b2b_broken, perfect_clear,
         }
     }
 }
@@ -364,11 +239,10 @@ impl GameState {
 #[cfg(all(target_arch = "x86_64", target_feature = "bmi2"))]
 fn clear_lines(col: &mut u64, lines: u64) {
     *col = unsafe {
-        // SAFETY: #[cfg()] guard ensures that this instruction exists at compile time
+        // SAFETY: The cfg guard ensures BMI2 is enabled at compile time.
         std::arch::x86_64::_pext_u64(*col, !lines)
     };
 }
-
 #[cfg(not(all(target_arch = "x86_64", target_feature = "bmi2")))]
 fn clear_lines(col: &mut u64, mut lines: u64) {
     while lines != 0 {
