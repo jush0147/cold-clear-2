@@ -19,6 +19,7 @@ use crate::tbp::{BotMessage, FrontendMessage};
 mod bot;
 mod dag;
 mod tbp;
+pub mod tetrio;
 #[macro_use]
 pub mod data;
 mod map;
@@ -118,6 +119,7 @@ pub(crate) fn create_bot(mut start: tbp::Start, config: Arc<BotConfig>) -> Bot {
     let state = GameState {
         reserve,
         back_to_back: start.back_to_back,
+        b2b_count: start.b2b_count.try_into().unwrap_or(u16::MAX),
         combo: start.combo.try_into().unwrap_or(255),
         bag,
         board: start.board.into(),
