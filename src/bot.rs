@@ -104,6 +104,27 @@ impl Bot {
         self.current
     }
 
+    /// Inject one garbage line at the bottom of the board and rebuild the
+    /// search tree around the changed state. Returns true if blocks overflowed
+    /// the 40-row simulation board.
+    pub fn add_garbage_line(&mut self, hole: usize) -> bool {
+        assert!(hole < 10);
+        let overflow = self.current.board.cols.iter().any(|&c| c >> 39 != 0);
+        for (x, col) in self.current.board.cols.iter_mut().enumerate() {
+            *col <<= 1;
+            if x != hole {
+                *col |= 1;
+            }
+        }
+        self.mode = Freestyle::new(
+            &self.options,
+            self.current,
+            self.queue.make_contiguous(),
+        )
+        .into();
+        overflow
+    }
+
     fn switch(&mut self, to: ModeSwitch) {
         puffin::profile_function!();
         match to {
