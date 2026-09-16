@@ -10,7 +10,9 @@ use rand::rngs::StdRng;
 use rand::seq::SliceRandom;
 use rand::SeedableRng;
 
-const PREVIEW: usize = 12;
+// Active piece + five visible NEXT pieces. Hidden future bag contents are not
+// exposed to the search; each turn reveals exactly one newly-visible preview.
+const VISIBLE_QUEUE: usize = 6;
 
 #[derive(Clone, Copy, Debug, Default)]
 struct Metrics {
@@ -46,6 +48,7 @@ fn main() {
 
     println!("TL S2 evaluator benchmark");
     println!("seeds={seeds} pieces/seed={pieces} node_budget/move={nodes}");
+    println!("Visibility: board + active piece + hold + five NEXT pieces + combo/B2B state. Hidden future pieces are not given to the bot.");
     println!("No incoming garbage: this is an attack/survival health check, not a win-rate test.\n");
 
     let mut legacy = Metrics::default();
@@ -79,10 +82,10 @@ fn print_metrics(name: &str, m: Metrics, seeds: u64) {
 }
 
 fn run(seed: u64, target_pieces: u64, node_budget: u64, config: BotConfig) -> Metrics {
-    let sequence = piece_sequence(seed, target_pieces as usize + PREVIEW + 2);
+    let sequence = piece_sequence(seed, target_pieces as usize + VISIBLE_QUEUE + 2);
     let start = Start {
         board: Board::default(),
-        queue: sequence[1..=PREVIEW].to_vec(),
+        queue: sequence[1..=VISIBLE_QUEUE].to_vec(),
         hold: Some(sequence[0]),
         combo: 0,
         back_to_back: false,
@@ -91,7 +94,7 @@ fn run(seed: u64, target_pieces: u64, node_budget: u64, config: BotConfig) -> Me
     };
 
     let mut bot = create_bot(start, Arc::new(config));
-    let mut next_piece = PREVIEW + 1;
+    let mut next_piece = VISIBLE_QUEUE + 1;
     let mut metrics = Metrics::default();
 
     for _ in 0..target_pieces {
