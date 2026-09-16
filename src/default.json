@@ -38,7 +38,10 @@
     "back_to_back_clear": 1.0,
     "combo_attack": 1.5,
     "perfect_clear": 15.0,
-    "perfect_clear_override": true
+    "perfect_clear_override": true,
+    "tetrio_s2": true,
+    "attack_reward": 1.0,
+    "surge_value": 1.0
   },
   "freestyle_exploitation": 0.6931471805599453
 }
