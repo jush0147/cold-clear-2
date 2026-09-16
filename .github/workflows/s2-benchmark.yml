@@ -1,0 +1,26 @@
+name: s2-benchmark
+
+on:
+  push:
+    branches: [tetrio-s2]
+  workflow_dispatch:
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Run rules tests
+        run: cargo test --lib
+
+      - name: Compare legacy and S2 evaluators
+        run: cargo run --release --bin tl_s2_bench -- --seeds 4 --pieces 80 --nodes 500 | tee s2-benchmark.txt
+
+      - name: Upload benchmark result
+        uses: actions/upload-artifact@v4
+        with:
+          name: s2-benchmark
+          path: s2-benchmark.txt
