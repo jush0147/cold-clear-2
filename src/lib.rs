@@ -20,10 +20,14 @@ pub mod bot;
 mod dag;
 pub mod tbp;
 pub mod tetrio;
+pub mod replay_check;
+pub mod forecast;
+pub mod analysis;
 #[macro_use]
 pub mod data;
 mod map;
 pub mod movegen;
+mod srs_plus;
 #[cfg(not(target_arch = "wasm32"))]
 mod sync;
 #[cfg(target_arch = "wasm32")]
@@ -108,6 +112,7 @@ pub fn create_bot(mut start: tbp::Start, config: Arc<BotConfig>) -> Bot {
         combo: start.combo.try_into().unwrap_or(255),
         bag,
         board: start.board,
+        forecast: crate::forecast::Forecast::default(),
     };
     let mut bot = Bot::new(BotOptions { speculate, config }, state, &start.queue);
     bot.set_initial_empty_hold(hold_is_empty);

@@ -26,6 +26,7 @@ pub enum BotMessage {
 }
 
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Start {
     pub board: Board,
     /// Current piece followed by visible NEXT pieces. Board rows are bottom-up.
@@ -88,14 +89,16 @@ impl TryFrom<Vec<[Option<char>; 10]>> for Board {
             return Err(format!("board has {} rows; maximum supported is 40", rows.len()));
         }
         let mut cols = [0u64; 10];
+        let mut garbage_rows = 0u64;
         // Short bottom-up boards are explicitly padded with empty rows above.
         // Never index a 20-row UI board as if it already contained 40 rows.
         for (y, row) in rows.iter().enumerate() {
             for (x, cell) in row.iter().enumerate() {
                 if cell.is_some() { cols[x] |= 1u64 << y; }
+                if matches!(cell, Some('G') | Some('g')) { garbage_rows |= 1u64 << y; }
             }
         }
-        Ok(Board { cols })
+        Ok(Board { cols, garbage_rows })
     }
 }
 

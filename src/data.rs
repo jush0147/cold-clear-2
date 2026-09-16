@@ -6,6 +6,8 @@ use serde::{Deserialize, Serialize};
 #[serde(try_from = "Vec<[Option<char>; 10]>")]
 pub struct Board {
     pub cols: [u64; 10],
+    /// Rows containing at least one garbage cell; sufficient for non-bomb line clears.
+    pub garbage_rows: u64,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -20,6 +22,7 @@ pub struct GameState {
     /// PlacementInfo::combo uses this number, then this field is incremented.
     /// This is not the displayed combo counter after the previous clear.
     pub combo: u8,
+    pub forecast: crate::forecast::Forecast,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -42,6 +45,7 @@ pub struct Placement {
 pub struct PlacementInfo {
     pub placement: Placement,
     pub lines_cleared: u32,
+    pub garbage_cleared: u32,
     pub combo: u32,
     pub back_to_back: bool,
     pub b2b_count_before: u32,
@@ -195,6 +199,7 @@ impl Board {
     }
     pub fn remove_lines(&mut self, lines: u64) {
         for c in &mut self.cols { clear_lines(c, lines); }
+        clear_lines(&mut self.garbage_rows, lines);
     }
 }
 
@@ -206,6 +211,7 @@ impl GameState {
         self.board.place(placement.location);
         let cleared_mask = self.board.line_clears();
         let lines_cleared = cleared_mask.count_ones();
+        let garbage_cleared = (cleared_mask & self.board.garbage_rows).count_ones();
         let b2b_count_before = self.b2b_count as u32;
         let mut back_to_back = false;
         let mut b2b_broken = false;
@@ -229,10 +235,14 @@ impl GameState {
         } else {
             self.combo = 0;
         }
-        PlacementInfo {
-            placement, lines_cleared, combo, back_to_back, b2b_count_before,
+        let info = PlacementInfo {
+            placement, lines_cleared, garbage_cleared, combo, back_to_back, b2b_count_before,
             b2b_count_after: self.b2b_count as u32, b2b_broken, perfect_clear,
+        };
+        if self.forecast.enabled {
+            self.forecast.resolve(&mut self.board, &crate::tetrio::attack(&info).packets(), lines_cleared);
         }
+        info
     }
 }
 

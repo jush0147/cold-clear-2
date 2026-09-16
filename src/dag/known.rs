@@ -33,6 +33,11 @@ impl<'bump, E: Evaluation> Layer<'bump, E> {
         });
     }
 
+    pub fn ranked(&self, state: &GameState) -> Vec<(Placement, f32)> {
+        let node = self.states.get(state).unwrap();
+        node.children.as_ref().map(|cs| cs.iter().map(|c| (c.mv, c.cached_eval.scalar())).collect()).unwrap_or_default()
+    }
+
     pub fn suggest(&self, state: &GameState) -> Vec<Placement> {
         puffin::profile_function!();
         let node = self.states.get(state).unwrap();

@@ -4,6 +4,11 @@ use ahash::AHashMap;
 use crate::data::*;
 
 pub fn find_moves(board: &Board, piece: Piece) -> Vec<(Placement, u32)> {
+    find_moves_with_clutch(board, piece, false)
+}
+
+/// Spawn-based SRS+ reachability; a preceding line clear permits Clutch rescue.
+pub fn find_moves_with_clutch(board: &Board, piece: Piece, allow_clutch: bool) -> Vec<(Placement, u32)> {
     puffin::profile_function!();
     let mut queue = BinaryHeap::new();
     let mut values = AHashMap::new();
@@ -14,7 +19,7 @@ pub fn find_moves(board: &Board, piece: Piece) -> Vec<(Placement, u32)> {
     if fast_mode {
         for &rotation in &[Rotation::North, Rotation::East, Rotation::South, Rotation::West] {
             for x in 0..10 {
-                let mut location = PieceLocation { piece, rotation, x, y: 19 };
+                let mut location = PieceLocation { piece, rotation, x, y: 21 };
                 if collision_map.obstructed(location) { continue; }
                 let distance = location.drop_distance(board);
                 location.y -= distance;
@@ -24,14 +29,15 @@ pub fn find_moves(board: &Board, piece: Piece) -> Vec<(Placement, u32)> {
                 if let Some(mv) = shift(location, &collision_map, 1) { update(mv, distance as u32); }
                 if let Some(mv) = rotate_cw(location, &collision_map, board) { update(mv, distance as u32); }
                 if let Some(mv) = rotate_ccw(location, &collision_map, board) { update(mv, distance as u32); }
+                if let Some(mv) = rotate_180(location, &collision_map, board) { update(mv, distance as u32); }
                 if location.canonical_form() == location { locks.push((mv, 0)); }
             }
         }
     } else {
-        let mut spawned = PieceLocation { piece, rotation: Rotation::North, x: 4, y: 19 };
-        if collision_map.obstructed(spawned) {
+        let mut spawned = PieceLocation { piece, rotation: Rotation::North, x: 4, y: 21 };
+        while collision_map.obstructed(spawned) {
+            if !allow_clutch || spawned.y >= 39 { return vec![]; }
             spawned.y += 1;
-            if collision_map.obstructed(spawned) { return vec![]; }
         }
         let spawned = Placement { location: spawned, spin: Spin::None };
         queue.push(Intermediate { soft_drops: 0, mv: spawned });
@@ -52,6 +58,7 @@ pub fn find_moves(board: &Board, piece: Piece) -> Vec<(Placement, u32)> {
         if let Some(mv) = shift(expand.mv.location, &collision_map, 1) { update(mv, expand.soft_drops); }
         if let Some(mv) = rotate_cw(expand.mv.location, &collision_map, board) { update(mv, expand.soft_drops); }
         if let Some(mv) = rotate_ccw(expand.mv.location, &collision_map, board) { update(mv, expand.soft_drops); }
+        if let Some(mv) = rotate_180(expand.mv.location, &collision_map, board) { update(mv, expand.soft_drops); }
     }
     locks.extend(underground_locks.into_iter());
     locks
@@ -59,7 +66,7 @@ pub fn find_moves(board: &Board, piece: Piece) -> Vec<(Placement, u32)> {
 
 fn update_position<'a>(queue: &'a mut BinaryHeap<Intermediate>, values: &'a mut AHashMap<Placement, u32>, fast_mode: bool, board: &'a Board) -> impl FnMut(Placement, u32) + 'a {
     move |target: Placement, soft_drops: u32| {
-        if fast_mode && target.location.above_stack(board) { return; }
+        if fast_mode && target.spin == Spin::None && target.location.above_stack(board) { return; }
         let prev_sds = values.entry(target).or_insert(40);
         if soft_drops < *prev_sds {
             *prev_sds = soft_drops;
@@ -73,50 +80,19 @@ fn shift(mut location: PieceLocation, collision_map: &CollisionMaps, dx: i8) -> 
     Some(Placement { location, spin: Spin::None })
 }
 fn rotate_cw(from: PieceLocation, map: &CollisionMaps, board: &Board) -> Option<Placement> {
-    if from.piece == Piece::O { return None; }
-    const KICKS: [[[(i8, i8); 5]; 4]; 7] = piece_lut!(piece => rotation_lut!(rotation => kicks(piece, rotation, rotation.cw())));
-    let unkicked = PieceLocation { rotation: from.rotation.cw(), ..from };
-    rotate(unkicked, map, board, KICKS[from.piece as usize][from.rotation as usize].iter().copied())
+    rotate_to(from, from.rotation.cw(), map, board, true)
 }
 fn rotate_ccw(from: PieceLocation, map: &CollisionMaps, board: &Board) -> Option<Placement> {
-    if from.piece == Piece::O { return None; }
-    const KICKS: [[[(i8, i8); 5]; 4]; 7] = piece_lut!(piece => rotation_lut!(rotation => kicks(piece, rotation, rotation.ccw())));
-    let unkicked = PieceLocation { rotation: from.rotation.ccw(), ..from };
-    rotate(unkicked, map, board, KICKS[from.piece as usize][from.rotation as usize].iter().copied())
+    rotate_to(from, from.rotation.ccw(), map, board, true)
 }
-
-// These are the inherited SRS tables, NOT certified TETR.IO SRS+ / 180 tables.
-const fn offsets(piece: Piece, rotation: Rotation) -> [(i8, i8); 5] {
-    match piece {
-        Piece::O => match rotation {
-            Rotation::North => [(0, 0); 5],
-            Rotation::East => [(0, -1); 5],
-            Rotation::South => [(-1, -1); 5],
-            Rotation::West => [(-1, 0); 5],
-        },
-        Piece::I => match rotation {
-            Rotation::North => [(0, 0), (-1, 0), (2, 0), (-1, 0), (2, 0)],
-            Rotation::East => [(-1, 0), (0, 0), (0, 0), (0, 1), (0, -2)],
-            Rotation::South => [(-1, 1), (1, 1), (-2, 1), (1, 0), (-2, 0)],
-            Rotation::West => [(0, 1), (0, 1), (0, 1), (0, -1), (0, 2)],
-        },
-        _ => match rotation {
-            Rotation::North => [(0, 0); 5],
-            Rotation::East => [(0, 0), (1, 0), (1, -1), (0, 2), (1, 2)],
-            Rotation::South => [(0, 0); 5],
-            Rotation::West => [(0, 0), (-1, 0), (-1, -1), (0, 2), (-1, 2)],
-        },
-    }
+fn rotate_180(from: PieceLocation, map: &CollisionMaps, board: &Board) -> Option<Placement> {
+    rotate_to(from, from.rotation.flip(), map, board, false)
 }
-const fn kicks(piece: Piece, from: Rotation, to: Rotation) -> [(i8, i8); 5] {
-    let mut result = [(0, 0); 5];
-    let from = offsets(piece, from);
-    let to = offsets(piece, to);
-    let mut i = 0;
-    while i < result.len() { result[i] = (from[i].0 - to[i].0, from[i].1 - to[i].1); i += 1; }
-    result
+fn rotate_to(from: PieceLocation, to: Rotation, map: &CollisionMaps, board: &Board, allow_fin: bool) -> Option<Placement> {
+    rotate(PieceLocation { rotation: to, ..from }, map, board,
+        crate::srs_plus::kicks(from.piece, from.rotation, to).iter().copied(), allow_fin)
 }
-fn rotate(unkicked: PieceLocation, map: &CollisionMaps, board: &Board, kicks: impl Iterator<Item = (i8, i8)>) -> Option<Placement> {
+fn rotate(unkicked: PieceLocation, map: &CollisionMaps, board: &Board, kicks: impl Iterator<Item = (i8, i8)>, allow_fin: bool) -> Option<Placement> {
     for (i, (dx, dy)) in kicks.enumerate() {
         let target = PieceLocation { x: unkicked.x + dx, y: unkicked.y + dy, ..unkicked };
         if map.obstructed(target) { continue; }
@@ -127,7 +103,7 @@ fn rotate(unkicked: PieceLocation, map: &CollisionMaps, board: &Board, kicks: im
             let corners = [(-1, -1), (1, -1), (-1, 1), (1, 1)].iter().filter(|&&(cx, cy)| board.occupied((cx + target.x, cy + target.y))).count();
             let front = [(-1, 1), (1, 1)].iter().map(|&c| target.rotation.rotate_cell(c)).filter(|&(cx, cy)| board.occupied((cx + target.x, cy + target.y))).count();
             if corners < 3 { if immobile { Spin::Mini } else { Spin::None } }
-            else if front == 2 || i == 4 { Spin::Full }
+            else if front == 2 || (allow_fin && i == 4 && dy == -2 && matches!(target.rotation, Rotation::East | Rotation::West)) { Spin::Full }
             else { Spin::Mini }
         };
         return Some(Placement { location: target, spin });
@@ -188,7 +164,7 @@ mod tests {
     }
     #[test]
     fn optimized_collision_matches_cell_reference_including_ceiling() {
-        for board in [Board::default(), Board { cols: [0x0080_0001_0180; 10] }] {
+        for board in [Board::default(), Board { cols: [0x0080_0001_0180; 10], ..Board::default() }] {
             for piece in [Piece::I, Piece::O, Piece::T, Piece::L, Piece::J, Piece::S, Piece::Z] {
                 let map = CollisionMaps::new(&board, piece);
                 for rotation in [Rotation::North, Rotation::West, Rotation::South, Rotation::East] {

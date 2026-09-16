@@ -201,16 +201,16 @@ fn generated_locks_are_in_bounds_nonoverlapping_and_grounded() {
 }
 
 fn state() -> GameState {
-    GameState { board: Board::default(), bag: EnumSet::all(), reserve: Piece::O, back_to_back: false, b2b_count: 0, combo: 0 }
+    GameState { board: Board::default(), bag: EnumSet::all(), reserve: Piece::O, back_to_back: false, b2b_count: 0, combo: 0, forecast: Default::default() }
 }
 fn quad(s: &mut GameState) -> cold_clear_2::data::PlacementInfo {
-    s.board = Board { cols: [15; 10] };
+    s.board = Board { cols: [15; 10], ..Board::default() };
     s.board.cols[4] = 0;
     s.board.cols[0] |= 1 << 5; // Avoid a perfect clear.
     s.advance(Piece::I, Placement { location: PieceLocation { piece: Piece::I, rotation: Rotation::East, x: 4, y: 2 }, spin: Spin::None })
 }
 fn single(s: &mut GameState) -> cold_clear_2::data::PlacementInfo {
-    s.board = Board { cols: [1; 10] };
+    s.board = Board { cols: [1; 10], ..Board::default() };
     s.board.cols[4] = 0;
     s.board.cols[5] = 0;
     s.advance(Piece::O, Placement { location: PieceLocation { piece: Piece::O, rotation: Rotation::North, x: 4, y: 0 }, spin: Spin::None })

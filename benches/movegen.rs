@@ -36,7 +36,8 @@ fn bench(c: &mut Criterion) {
             0b00011111,
             0b00111111,
             0b11111111,
-        ]
+        ],
+        ..Board::default()
     });
 
     // v115@LgB8HeD8BeH8CeI8AeH8BeH8CeH8AeI8AeH8AeD8Je?AgH
@@ -53,7 +54,8 @@ fn bench(c: &mut Criterion) {
             0b011110111,
             0b011111111,
             0b011111111,
-        ]
+        ],
+        ..Board::default()
     });
 
     // v115@vfH8BeH8IeA8IeH8BeH8BeB8HeB8HeB8BeH8BeH8Ie?A8SeAgH
@@ -70,7 +72,8 @@ fn bench(c: &mut Criterion) {
             0b110000001100,
             0b110000001100,
             0b111111111100,
-        ]
+        ],
+        ..Board::default()
     });
 }
 

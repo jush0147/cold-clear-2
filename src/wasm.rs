@@ -98,9 +98,10 @@ impl WasmBot {
             "explicit_hold_playback": true,
             "pending_garbage_in_search": false,
             "normal_garbage_queue_primitives": true,
-            "movement": "inherited SRS CW/CCW; SRS+ and 180 not certified",
+            "movement": "SRS+ CW/CCW/180 with Clutch spawn rescue; replay-fixture checked",
+            "pending_forecast_api": "analyze_pending_json",
             "clutch_clears": false,
-            "garbage_special_bonus": false,
+            "garbage_special_bonus": true,
             "opening_double_cancel": false,
         })).map_err(js_error)
     }
@@ -129,3 +130,20 @@ fn parse_piece(piece: &str) -> Result<Piece, JsValue> {
     }
 }
 fn js_error(err: impl std::fmt::Display) -> JsValue { JsValue::from_str(&err.to_string()) }
+
+/// Replay diagnostics at a fresh-spawn decision boundary. Counts and attack
+/// packets can be compared against independently reconstructed replay locks.
+#[wasm_bindgen]
+pub fn check_replay_lock_json(input_json: &str) -> Result<String, JsValue> {
+    let input=serde_json::from_value(parse_json(input_json)?).map_err(js_error)?;
+    serde_json::to_string(&crate::replay_check::check(input).map_err(js_error)?).map_err(js_error)
+}
+
+/// Pending-aware, snapshot-only search across ten hypothetical hole scenarios.
+/// Returns the timing/hole assumptions alongside suggestions, never a claim of
+/// exact future replay simulation.
+#[wasm_bindgen]
+pub fn analyze_pending_json(input_json:&str)->Result<String,JsValue>{
+    let input=serde_json::from_value(parse_json(input_json)?).map_err(js_error)?;
+    serde_json::to_string(&crate::analysis::analyze(input).map_err(js_error)?).map_err(js_error)
+}

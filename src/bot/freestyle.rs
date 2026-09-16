@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use super::{BotOptions, Mode, ModeSwitch, Statistics};
 use crate::dag::{ChildData, Dag, Evaluation};
 use crate::data::*;
-use crate::movegen::find_moves;
+use crate::movegen::find_moves_with_clutch;
 use crate::tetrio;
 
 pub struct Freestyle {
@@ -24,6 +24,7 @@ impl Freestyle {
 }
 
 impl Mode for Freestyle {
+    fn ranked(&self) -> Vec<(Placement,f32)> { self.dag.ranked() }
     fn advance(&mut self, _options: &BotOptions, mv: Placement) -> Option<ModeSwitch> {
         puffin::profile_function!();
         self.dag.advance(mv);
@@ -50,13 +51,14 @@ impl Mode for Freestyle {
             .select(options.speculate, options.config.freestyle_exploitation)
         {
             let (state, next) = node.state();
+            if state.forecast.topped_out { node.expand(EnumMap::default()); return new_stats; }
             let next_possibilities = next.map(EnumSet::only).unwrap_or(state.bag);
 
             let mut moves = EnumMap::default();
             {
                 puffin::profile_scope!("movegen");
                 for piece in next_possibilities | state.reserve {
-                    moves[piece] = find_moves(&state.board, piece);
+                    moves[piece] = find_moves_with_clutch(&state.board, piece, state.combo > 0);
                 }
             }
 
@@ -175,6 +177,9 @@ fn evaluate(
     info: &PlacementInfo,
     softdrop: u32,
 ) -> (Eval, Reward) {
+    if state.forecast.topped_out {
+        return (Eval { value: (-1_000_000.0).into() }, Reward { value: 0.0.into() });
+    }
     let mut eval = 0.0;
     let mut reward = 0.0;
 
@@ -363,6 +368,7 @@ struct Reward {
 }
 
 impl Evaluation for Eval {
+    fn scalar(self) -> f32 { self.value.0 }
     type Reward = Reward;
 
     fn average(of: impl Iterator<Item = Option<Self>>) -> Self {
@@ -370,7 +376,7 @@ impl Evaluation for Eval {
         let sum: f32 = of
             .map(|v| {
                 count += 1;
-                v.map(|e| e.value.0).unwrap_or(-1000.0)
+                v.map(|e| e.value.0).unwrap_or(-1_000_000.0)
             })
             .sum();
         Eval {

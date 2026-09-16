@@ -13,6 +13,7 @@ pub trait Evaluation:
     Ord + Copy + Default + std::ops::Add<Self::Reward, Output = Self> + 'static
 {
     type Reward: Copy;
+    fn scalar(self) -> f32;
 
     fn average(of: impl Iterator<Item = Option<Self>>) -> Self;
 }
@@ -115,6 +116,13 @@ impl<E: Evaluation> Dag<E> {
             }
             layer = &mut layer.next_layer;
         }
+    }
+
+    pub fn ranked(&self) -> Vec<(Placement, f32)> {
+        self.top_layer.kind.with(|this| match this.data {
+            LayerKind::Known(l) => l.ranked(&self.root),
+            LayerKind::Speculated(_) => vec![],
+        })
     }
 
     pub fn suggest(&self) -> Vec<Placement> {

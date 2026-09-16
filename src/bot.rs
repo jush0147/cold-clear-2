@@ -6,7 +6,7 @@ use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 
 use crate::data::{GameState, Piece, Placement, PlacementInfo};
-use crate::movegen::find_moves;
+use crate::movegen::find_moves_with_clutch;
 
 mod freestyle;
 use self::freestyle::Freestyle;
@@ -66,6 +66,7 @@ trait Mode {
     fn advance(&mut self, options: &BotOptions, mv: Placement) -> Option<ModeSwitch>;
     fn new_piece(&mut self, options: &BotOptions, piece: Piece);
     fn suggest(&self, options: &BotOptions) -> Vec<Placement>;
+    fn ranked(&self) -> Vec<(Placement, f32)>;
     fn do_work(&self, options: &BotOptions) -> Statistics;
 }
 enum ModeSwitch { Freestyle }
@@ -131,7 +132,7 @@ impl Bot {
         // Check membership before doing arithmetic on untrusted coordinates.
         // This also validates reachability and the spin flag using this core's
         // supported movement rules; it does NOT certify full SRS+ parity.
-        let legal = find_moves(&self.current.board, mv.location.piece);
+        let legal = find_moves_with_clutch(&self.current.board, mv.location.piece, self.current.combo > 0);
         if !legal.iter().any(|&(candidate, _)| candidate == mv) {
             return Err("placement is not reachable with the supplied spin under the supported move generator".into());
         }
@@ -142,9 +143,9 @@ impl Bot {
         if self.queue.is_empty() { return false; }
         let pieces = self.player_pieces();
         let current = match pieces.current { Some(p) => p, None => return false };
-        if !find_moves(&self.current.board, current).is_empty() { return true; }
+        if !find_moves_with_clutch(&self.current.board, current, self.current.combo > 0).is_empty() { return true; }
         let held = pieces.hold.or_else(|| pieces.next.first().copied());
-        held.map(|p| !find_moves(&self.current.board, p).is_empty()).unwrap_or(false)
+        held.map(|p| !find_moves_with_clutch(&self.current.board, p, self.current.combo > 0).is_empty()).unwrap_or(false)
     }
 
     pub fn new_piece(&mut self, piece: Piece) {
@@ -156,6 +157,11 @@ impl Bot {
         puffin::profile_function!();
         self.mode.suggest(&self.options)
     }
+    pub fn set_forecast(&mut self, forecast: crate::forecast::Forecast) {
+        self.current.forecast = forecast;
+        self.mode = Freestyle::new(&self.options, self.current, self.queue.make_contiguous()).into();
+    }
+    pub fn ranked_suggestions(&self) -> Vec<(Placement,f32)> { self.mode.ranked() }
     pub fn do_work(&self) -> Statistics {
         puffin::profile_function!();
         self.mode.do_work(&self.options)
@@ -166,6 +172,7 @@ impl Bot {
     pub fn add_garbage_line(&mut self, hole: usize) -> bool {
         assert!(hole < 10);
         let overflow = self.current.board.cols.iter().any(|&c| c >> 39 != 0);
+        self.current.board.garbage_rows = (self.current.board.garbage_rows << 1 | 1) & ((1u64 << 40) - 1);
         for (x, col) in self.current.board.cols.iter_mut().enumerate() {
             *col <<= 1;
             if x != hole { *col |= 1; }

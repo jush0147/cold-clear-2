@@ -1,0 +1,45 @@
+// SRS+ coordinate tables translated from Triangle (MIT), revision 7837ee5.
+// See THIRD_PARTY_NOTICES.md. Coordinates here use CC2 anchors and positive-up Y.
+use crate::data::{Piece, Rotation};
+pub fn kicks(piece: Piece, from: Rotation, to: Rotation) -> &'static [(i8,i8)] {
+    use Rotation::*;
+    match (piece, from, to) {
+        (Piece::I, North, East) => &[(1,0),(2,0),(-1,0),(-1,-1),(2,2)],
+        (Piece::I, North, South) => &[(1,-1),(1,0)],
+        (Piece::I, North, West) => &[(0,-1),(-1,-1),(2,-1),(2,-2),(-1,1)],
+        (Piece::I, East, North) => &[(-1,0),(-2,0),(1,0),(-2,-2),(1,1)],
+        (Piece::I, East, South) => &[(0,-1),(-1,-1),(2,-1),(-1,1),(2,-2)],
+        (Piece::I, East, West) => &[(-1,-1),(0,-1)],
+        (Piece::I, South, North) => &[(-1,1),(-1,0)],
+        (Piece::I, South, East) => &[(0,1),(-2,1),(1,1),(-2,2),(1,-1)],
+        (Piece::I, South, West) => &[(-1,0),(1,0),(-2,0),(1,1),(-2,-2)],
+        (Piece::I, West, North) => &[(0,1),(1,1),(-2,1),(1,-1),(-2,2)],
+        (Piece::I, West, East) => &[(1,1),(0,1)],
+        (Piece::I, West, South) => &[(1,0),(2,0),(-1,0),(2,2),(-1,-1)],
+        (Piece::O, North, East) => &[(0,1)],
+        (Piece::O, North, South) => &[(1,1)],
+        (Piece::O, North, West) => &[(1,0)],
+        (Piece::O, East, North) => &[(0,-1)],
+        (Piece::O, East, South) => &[(1,0)],
+        (Piece::O, East, West) => &[(1,-1)],
+        (Piece::O, South, North) => &[(-1,-1)],
+        (Piece::O, South, East) => &[(-1,0)],
+        (Piece::O, South, West) => &[(0,-1)],
+        (Piece::O, West, North) => &[(-1,0)],
+        (Piece::O, West, East) => &[(-1,1)],
+        (Piece::O, West, South) => &[(0,1)],
+        (_, North, East) => &[(0,0),(-1,0),(-1,1),(0,-2),(-1,-2)],
+        (_, North, South) => &[(0,0),(0,1),(1,1),(-1,1),(1,0),(-1,0)],
+        (_, North, West) => &[(0,0),(1,0),(1,1),(0,-2),(1,-2)],
+        (_, East, North) => &[(0,0),(1,0),(1,-1),(0,2),(1,2)],
+        (_, East, South) => &[(0,0),(1,0),(1,-1),(0,2),(1,2)],
+        (_, East, West) => &[(0,0),(1,0),(1,2),(1,1),(0,2),(0,1)],
+        (_, South, North) => &[(0,0),(0,-1),(-1,-1),(1,-1),(-1,0),(1,0)],
+        (_, South, East) => &[(0,0),(-1,0),(-1,1),(0,-2),(-1,-2)],
+        (_, South, West) => &[(0,0),(1,0),(1,1),(0,-2),(1,-2)],
+        (_, West, North) => &[(0,0),(-1,0),(-1,-1),(0,2),(-1,2)],
+        (_, West, East) => &[(0,0),(-1,0),(-1,2),(-1,1),(0,2),(0,1)],
+        (_, West, South) => &[(0,0),(-1,0),(-1,-1),(0,2),(-1,2)],
+        _ => &[],
+    }
+}
