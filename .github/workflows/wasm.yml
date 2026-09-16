@@ -20,6 +20,9 @@ jobs:
       - name: Run native unit tests
         run: cargo test --lib
 
+      - name: Run small S2 strategy benchmark
+        run: cargo run --release --bin tl_s2_bench -- --seeds 2 --pieces 40 --nodes 300
+
       - name: Check wasm target
         run: cargo check --target wasm32-unknown-unknown --lib
 
