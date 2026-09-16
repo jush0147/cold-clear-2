@@ -1,0 +1,64 @@
+{
+  "experiment": "H1: extra board danger under remaining observed incoming garbage",
+  "tested_source_commit": "4dc7ce776cda4b2a8195698318ce717ba3a18b1e",
+  "binary_sha256": "68a99cba3bd244728360dacb6f5adc26e4f84ee4d55e7afb865dc632fc90dd1d",
+  "build_and_regression_run": 35128774488,
+  "confirmation_run": 35130339363,
+  "hypothesis": "While observed garbage remains pending, penalize holes, covered depth and dangerous height more strongly. Cancellation lowers this extra pressure term.",
+  "baseline": "BotConfig::legacy() with the common zero-gravity softdrop cost set to zero; original legacy evaluator weights otherwise unchanged.",
+  "candidate": "The same baseline, changing only pending_safety from 0.0 to 1.0.",
+  "shared_protocol": {
+    "rules": "The same existing S2 movement, attack and cancellation engine for both sides",
+    "gravity": 0,
+    "human_PPS_model": false,
+    "evaluator_node_budget_per_move": 10000,
+    "node_accounting": "Hard cap including evaluated nodes from an unpublished partial final expansion; terminal searches may leave unused budget.",
+    "observation": "Own board/current/hold/NEXT5/combo/B2B-Surge/observed incoming counts and activation/own history only",
+    "hidden_inputs": "No true future sequence, simulator RNG, opponent board or future attacks are passed to choose().",
+    "future_search": "CC2 SevenBag speculation beyond known preview, without a fixed-depth cutoff",
+    "pairing": "Each seed is played twice with baseline/candidate sides exchanged",
+    "winner_condition": "KO only",
+    "piece_cap": null,
+    "attack_tiebreak": false,
+    "APP_tiebreak": false
+  },
+  "regressions": {"native_release_passed": 49, "failed": 0},
+  "control": {
+    "seeds": [0, 1], "games": 4, "candidate_wins": 2, "baseline_wins": 2,
+    "same_strategy": true, "swapped_trace_hashes_identical": true,
+    "note": "These four control matches were reproduced in CI and locally; duplicates are counted once and excluded from strategy win rate."
+  },
+  "batches": [
+    {"name": "pilot", "seed_first": 100, "seed_last": 119, "games": 40, "candidate_wins": 24, "baseline_wins": 16, "candidate_sweeps": 5, "split_pairs": 14, "baseline_sweeps": 1},
+    {"name": "validation", "seed_first": 1000, "seed_last": 1039, "games": 80, "candidate_wins": 44, "baseline_wins": 36, "candidate_sweeps": 12, "split_pairs": 20, "baseline_sweeps": 8},
+    {"name": "confirmation", "seed_first": 2000, "seed_last": 2099, "games": 200, "candidate_wins": 112, "baseline_wins": 88, "candidate_sweeps": 27, "split_pairs": 58, "baseline_sweeps": 15, "paired_two_sided_sign_p": 0.08842954698775429}
+  ],
+  "total_strategy_games": 320,
+  "candidate_wins": 180,
+  "baseline_wins": 140,
+  "candidate_win_rate": 0.5625,
+  "aborted_scored_batch_games": 0,
+  "incomplete_pairs": 0,
+  "artificial_winners": 0,
+  "maximum_observed_search_depth": 11,
+  "decision": {
+    "retain_as_experimental_candidate": true,
+    "promote_to_default": false,
+    "baseline_unchanged": true,
+    "reason": "All three disjoint batches favor the fixed candidate empirically. Retain as a candidate for subsequent comparison, not as conclusively superior. The final 200-game confirmation alone remains statistically uncertain."
+  },
+  "sampling_note": "The extra fixed 200-game confirmation was chosen after inspecting the weaker first validation. The coefficient and executable were not changed. Do not treat the pooled result as a pre-registered, optional-stopping-corrected significance claim, or treat two games in a seed as independent observations.",
+  "major_issues": [
+    "Old duel omitted incoming from search and used Randomizer::Unknown, disabling speculation. Both sides now share pending-aware search and SevenBag speculation.",
+    "This is the shared zero-gravity alternating-lock arena: outgoing activates on receipt, with the existing per-nonclear garbage rise cap. Live travel and Surge activation timing are not simulated. Unknown-hole continuation uses the existing approximate scenarios. These are conditional arena results, not official-server win rates.",
+    "An initial u128 JSON duration reporting error was fixed before these scored batches; aborted pre-fix executions were not assigned winners."
+  ],
+  "raw_game_log_sha256": "33955f9f30adbbc62b9171d9c1599312afc10857eb984fefabbfc367baeffece",
+  "reproduce": [
+    "cargo build --release --bin strategy_ko",
+    "target/release/strategy_ko --candidate 0 --start 0 --seeds 2 --nodes 10000",
+    "target/release/strategy_ko --candidate 1 --start 100 --seeds 20 --nodes 10000",
+    "target/release/strategy_ko --candidate 1 --start 1000 --seeds 40 --nodes 10000",
+    "target/release/strategy_ko --candidate 1 --start 2000 --seeds 100 --nodes 10000"
+  ]
+}
