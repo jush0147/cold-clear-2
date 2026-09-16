@@ -46,22 +46,24 @@ fn main() {
     let max_pieces = arg_u64("--pieces", 200);
     let nodes = arg_u64("--nodes", 500);
     let garbage_cap = arg_u64("--garbage-cap", 8) as usize;
+    let charge_value = arg_f32("--charge", 1.0);
+    let surge_value = arg_f32("--surge", 1.0);
 
     println!("TL S2 paired duel benchmark (simplified timing)");
-    println!("seeds={seeds} max_pieces/player={max_pieces} node_budget/move={nodes} garbage_cap={garbage_cap}");
+    println!("seeds={seeds} max_pieces/player={max_pieces} node_budget/move={nodes} garbage_cap={garbage_cap} charge={charge_value:.2} surge={surge_value:.2}");
     println!("Each seed is played twice with sides swapped. Incoming garbage can be cancelled on the next move, then uncancelled garbage rises.\n");
 
     let mut score = Score::default();
     for seed in 0..seeds {
         record(
             &mut score,
-            duel(seed, Kind::Legacy, Kind::S2, max_pieces, nodes, garbage_cap),
+            duel(seed, Kind::Legacy, Kind::S2, max_pieces, nodes, garbage_cap, charge_value, surge_value),
             Kind::Legacy,
             Kind::S2,
         );
         record(
             &mut score,
-            duel(seed, Kind::S2, Kind::Legacy, max_pieces, nodes, garbage_cap),
+            duel(seed, Kind::S2, Kind::Legacy, max_pieces, nodes, garbage_cap, charge_value, surge_value),
             Kind::S2,
             Kind::Legacy,
         );
@@ -91,11 +93,11 @@ fn record(score: &mut Score, outcome: Outcome, p0: Kind, p1: Kind) {
     }
 }
 
-fn duel(seed: u64, p0_kind: Kind, p1_kind: Kind, max_pieces: u64, nodes: u64, garbage_cap: usize) -> Outcome {
+fn duel(seed: u64, p0_kind: Kind, p1_kind: Kind, max_pieces: u64, nodes: u64, garbage_cap: usize, charge_value: f32, surge_value: f32) -> Outcome {
     let sequence = piece_sequence(seed, max_pieces as usize + PREVIEW + 8);
     let mut players = [
-        make_player(&sequence, p0_kind),
-        make_player(&sequence, p1_kind),
+        make_player(&sequence, p0_kind, charge_value, surge_value),
+        make_player(&sequence, p1_kind, charge_value, surge_value),
     ];
 
     for round in 0..max_pieces {
@@ -117,8 +119,6 @@ fn duel(seed: u64, p0_kind: Kind, p1_kind: Kind, max_pieces: u64, nodes: u64, ga
         }
     }
 
-    // At the move limit, use attack differential only as a deterministic
-    // tiebreaker; equal attack remains a draw.
     match players[0].attack.cmp(&players[1].attack) {
         std::cmp::Ordering::Greater => Outcome::P0,
         std::cmp::Ordering::Less => Outcome::P1,
@@ -153,7 +153,6 @@ fn play_turn(
     players[active].pieces += 1;
     players[active].attack += attack as u64;
 
-    // Outgoing attack first cancels queued incoming garbage.
     let cancel = attack.min(players[active].incoming.len());
     for _ in 0..cancel {
         players[active].incoming.pop_front();
@@ -166,8 +165,6 @@ fn play_turn(
             .push_back(garbage_hole(seed, active as u64, round, i as u64));
     }
 
-    // Simplified turn-based garbage activation. Only a bounded amount rises
-    // per piece; the rest remains cancellable in the queue.
     let rise = garbage_cap.min(players[active].incoming.len());
     for _ in 0..rise {
         let hole = players[active].incoming.pop_front().unwrap();
@@ -185,7 +182,7 @@ fn play_turn(
     false
 }
 
-fn make_player(sequence: &[Piece], kind: Kind) -> Player {
+fn make_player(sequence: &[Piece], kind: Kind, charge_value: f32, surge_value: f32) -> Player {
     let start = Start {
         board: Board::default(),
         queue: sequence[1..=PREVIEW].to_vec(),
@@ -197,7 +194,7 @@ fn make_player(sequence: &[Piece], kind: Kind) -> Player {
     };
     let config = match kind {
         Kind::Legacy => BotConfig::legacy(),
-        Kind::S2 => BotConfig::default(),
+        Kind::S2 => BotConfig::tetrio_s2(charge_value, surge_value),
     };
     Player {
         bot: create_bot(start, Arc::new(config)),
@@ -222,7 +219,6 @@ fn piece_sequence(seed: u64, len: usize) -> Vec<Piece> {
 }
 
 fn garbage_hole(seed: u64, sender: u64, round: u64, line: u64) -> usize {
-    // Deterministic integer mix so paired runs don't depend on mutable RNG state.
     let mut x = seed
         ^ sender.wrapping_mul(0x9E37_79B9_7F4A_7C15)
         ^ round.wrapping_mul(0xBF58_476D_1CE4_E5B9)
@@ -236,6 +232,16 @@ fn garbage_hole(seed: u64, sender: u64, round: u64, line: u64) -> usize {
 }
 
 fn arg_u64(name: &str, default: u64) -> u64 {
+    let mut args = env::args();
+    while let Some(arg) = args.next() {
+        if arg == name {
+            return args.next().and_then(|v| v.parse().ok()).unwrap_or(default);
+        }
+    }
+    default
+}
+
+fn arg_f32(name: &str, default: f32) -> f32 {
     let mut args = env::args();
     while let Some(arg) = args.next() {
         if arg == name {
