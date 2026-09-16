@@ -19,8 +19,13 @@ jobs:
       - name: Compare legacy and S2 evaluators
         run: cargo run --release --bin tl_s2_bench -- --seeds 4 --pieces 80 --nodes 500 | tee s2-benchmark.txt
 
-      - name: Upload benchmark result
+      - name: Run paired garbage duels
+        run: cargo run --release --bin tl_s2_duel -- --seeds 8 --pieces 120 --nodes 300 | tee s2-duel.txt
+
+      - name: Upload benchmark results
         uses: actions/upload-artifact@v4
         with:
           name: s2-benchmark
-          path: s2-benchmark.txt
+          path: |
+            s2-benchmark.txt
+            s2-duel.txt
