@@ -22,14 +22,14 @@ jobs:
           set -euo pipefail
           cargo run --release --bin tl_s2_bench -- --seeds 4 --pieces 80 --nodes 500 | tee s2-benchmark.txt
 
-      - name: Sweep B2B charge value in paired garbage duels
+      - name: Sweep legacy shaping in paired garbage duels
         shell: bash
         run: |
           set -euo pipefail
           : > s2-sweep.txt
-          for charge in 0.00 0.25 0.50 0.75 1.00; do
-            echo "===== charge=$charge =====" | tee -a s2-sweep.txt
-            cargo run --release --bin tl_s2_duel -- --seeds 20 --pieces 120 --nodes 300 --charge "$charge" | tee -a s2-sweep.txt
+          for shape in 0.00 0.25 0.50 0.75 1.00; do
+            echo "===== shape=$shape =====" | tee -a s2-sweep.txt
+            cargo run --release --bin tl_s2_duel -- --seeds 20 --pieces 120 --nodes 300 --charge 0.50 --shape "$shape" | tee -a s2-sweep.txt
           done
 
       - name: Upload benchmark results
