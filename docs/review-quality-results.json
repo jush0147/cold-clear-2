@@ -1,0 +1,37 @@
+{
+  "validated_implementation": "0c23cc7002f1c5e24335fae61bf65643533b2c77",
+  "validation_run_id": 35118662614,
+  "native_test_functions_passed": 53,
+  "release_subset_test_functions_passed": 49,
+  "recorded_locks_checked_by_legacy_api": 3455,
+  "recorded_locks_checked_by_review_first_step": 3455,
+  "postclear_boards_checked_without_insertion": 3205,
+  "failures": 0,
+  "recorded_endpoint_streams_matched": 20,
+  "repeatability_cases": 8,
+  "repetitions_per_case": 2,
+  "ci_empty_incoming_depth4_width4_ms": [97.6, 44.8, 48.5, 101.7, 81.0, 17.7, 125.2, 50.1],
+  "ci_active8_depth3_width2_ms": 372.399391,
+  "local_active8_depth4_width8": {
+    "before_factorization_ms": 13588.302877,
+    "after_factorization_ms": 2034.388524,
+    "before_max_step_ms": 319.325785,
+    "after_max_step_ms": 89.14644,
+    "root_actions": 51
+  },
+  "all_legal_roots_evaluated": true,
+  "actual_move_always_included": true,
+  "hold_availability_explicit": true,
+  "information_set_policy": true,
+  "gravity": 0,
+  "execution_costs": false,
+  "full_rules_parity_verified": false,
+  "playing_strength_improvement_proven": false,
+  "browser_runtime_tested": false,
+  "notes": [
+    "Recorded intermediate expectations come from the pinned independent replay engine, checked against official recorded endpoints.",
+    "First-step tests omit incoming to isolate movement and scoring; no policy optimality is inferred.",
+    "Eight review benchmarks use recorded boards/queues with controlled empty incoming and history inputs.",
+    "Latency figures are small environment-specific measurements, not performance guarantees."
+  ]
+}

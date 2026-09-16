@@ -1,53 +1,41 @@
-name: review-quality-validation
+name: review-quality
 on:
   push:
-    branches: [review-quality]
-    paths: ['.github/workflows/review-quality.yml', 'scripts/review-quality.patch.xz']
+    branches: [tetrio-s2, review-quality]
+    paths: ['src/**', 'tests/**', 'scripts/**', 'web/**', 'Cargo.*', '.github/workflows/review-quality.yml']
+  pull_request:
+    branches: [tetrio-s2]
   workflow_dispatch:
 permissions:
-  contents: write
+  contents: read
 concurrency:
-  group: review-quality-validation
-  cancel-in-progress: false
+  group: review-quality-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
-  validate:
-    if: github.ref == 'refs/heads/review-quality'
+  verify:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - name: Apply exact bounded source patch
-        run: |
-          python3 - <<'PY'
-          import pathlib,lzma,hashlib,subprocess
-          patch=lzma.decompress(pathlib.Path('scripts/review-quality.patch.xz').read_bytes())
-          assert hashlib.sha256(patch).hexdigest()=='ec5b3740b972cd7ab265a877f32b04aebc0888b2e0ecc9837774e8ec4e00faa9'
-          pathlib.Path('/tmp/review.patch').write_bytes(patch)
-          subprocess.run(['git','apply','--check','/tmp/review.patch'],check=True)
-          subprocess.run(['git','apply','/tmp/review.patch'],check=True)
-          PY
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-unknown-unknown
-      - name: Native regression suite
+      - name: Native and optimized regressions
         shell: bash
         run: |
           set -euo pipefail
           cargo test --locked --lib --bins --tests 2>&1 | tee quality-native.txt
-          cargo check --locked --all-targets
-      - name: Optimized regression suite
-        shell: bash
-        run: |
-          set -euo pipefail
           cargo test --locked --release --lib --test core_regressions --test replay_fixtures 2>&1 | tee quality-release.txt
+          cargo check --locked --all-targets
           node scripts/test-receive-ledger.cjs
+          node scripts/review-worker-protocol.cjs
       - name: Install wasm-pack
         run: cargo install wasm-pack --locked
-      - name: Build WASM
+      - name: Build browser and Node packages
         run: |
           wasm-pack build --release --target web --out-dir pkg -- --locked
           wasm-pack build --release --target nodejs --out-dir pkg-node -- --locked
-      - name: Execute recorded and fair-review WASM checks
+      - name: Execute WASM regressions and review comparisons
         shell: bash
         run: |
           set -euo pipefail
@@ -55,28 +43,14 @@ jobs:
           node scripts/recorded-wasm-smoke.cjs
           node scripts/review-smoke.cjs
           node scripts/review-session-smoke.cjs | tee quality-review.json
-      - name: Commit validated implementation
-        run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add src scripts/review-session-smoke.cjs web
-          git rm scripts/review-quality.patch.xz
-          git commit -m 'Factor revealed garbage continuations and enforce root hold availability'
-          git push origin HEAD:review-quality
-          git rev-parse HEAD > verified-commit.txt
-      - name: Preserve tested source and results
-        if: always()
-        run: |
-          mkdir -p quality-result
-          cp quality-*.txt quality-*.json verified-commit.txt quality-result/ 2>/dev/null || true
-          tar -cf quality-result/tested-source.tar src tests scripts web Cargo.toml Cargo.lock
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: review-quality-result
+          name: review-quality-${{ github.sha }}
           path: |
-            quality-result/
+            quality-native.txt
+            quality-release.txt
+            quality-review.json
             pkg/
-            pkg-node/
             web/
           retention-days: 14

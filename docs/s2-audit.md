@@ -1,28 +1,31 @@
 # S2 correctness audit
 
-Current status: experimental offline static review, not complete TETR.IO parity
-or playing-strength certified.
+Current status: experimental offline review, not complete TETR.IO parity or
+playing-strength certified.
 
-The latest implementation and tests are documented in
-[clock-free review and receive resolution](clock-free-review.md). This supersedes
-older reports of unresolved received counters and mandatory guessed piece timing.
-See [recorded-game validation](replay-validation.md) for the preceding SRS+/180,
-attack, and pending-search work and its historical evidence.
+The current implementation is described in [the review engine report](review-engine.md)
+with [validation results](review-quality-results.json). It adds actual-move
+comparison, explicit hold availability, concrete continuations and non-clairvoyant
+scenario policies on top of the existing rules and static garbage model.
 
-Inputs are own board, actual current/hold, five NEXT, combo/B2B, observed incoming
-packets and own history. Replay RNG is used only by the offline historical decoder,
-never as input to the counterfactual bot. The opponent board is excluded.
+Historical evidence is retained in [clock-free review](clock-free-review.md) and
+[recorded-game validation](replay-validation.md). The received-counter discrepancy
+was resolved by distinguishing admission from confirmation, without changing
+actual gameplay. All twenty recorded endpoints and audited counters still match.
 
-Default review is zero gravity with no execution-speed penalty. Garbage activation
-is a separate, explicitly static observation model; it is not inferred from PPS.
+Only own current/hold/next-five, board, combo/B2B, observed incoming and own
+historical counters enter review. Replay RNG is exclusively a historical decoder
+input, never a counterfactual bot input. Opponent board and future events are excluded.
 
-Implemented code, regression tests, independent-model comparisons, recorded
-endpoint agreement, and broad rules certification remain distinct evidence levels.
-Forty-four native tests and native/WASM recorded and repeated-review checks passed
-at implementation 0d6e5aac26efd7b935cfbd220c7c5c6ff620e560. Full-recording checks
-were rerun locally, including all twenty received counters, with no discrepancies.
+Implemented code, regression tests, independent-model agreement, recorded endpoint
+agreement and strategic quality are different claims. New first-step checks cover
+all 3,455 reconstructed locks but do not prove future-policy optimality. Two-width
+agreement measures sensitivity, not statistical confidence. A beam that finds no
+continuation does not prove a forced KO.
 
-All new strategy work must retain these checks. Tuning can now proceed under the
-stated static objective without pretending to solve real-time pace prediction.
-Exact live timing, unobserved opening-rule cases, uncertainty-aware future decisions
-and complete Clutch/topout coverage still need additional evidence.
+Continue preserving all native/WASM and observation regressions while tuning.
+Unverified timing/Clutch/topout edge cases, opening-rule examples absent from the
+recording, finite-horizon bias and limited garbage scenario distributions remain.
+Default review is deliberately clock-free and has no execution-speed penalty.
+KO-only duels retain no piece cap or attack tiebreak. Earlier capped/extra-preview
+scores are not valid strength evidence for this version.

@@ -1,42 +1,34 @@
 # Cold Clear 2
 
-Cold Clear 2 is a rewrite of [Cold Clear](https://github.com/MinusKelvin/cold-clear)
-by MinusKelvin. This fork's `tetrio-s2` branch adds experimental offline review of
-a player's own TETR.IO S2 position.
+A fork of MinusKelvin's [Cold Clear 2](https://github.com/MinusKelvin/cold-clear-2)
+for offline review of a player's own TETR.IO S2 position.
 
-## Current status
+## Current review engine
 
-**Working clock-free WASM review with pending-aware scenario search. Not complete
-S2 parity or playing-strength certified.**
+**Working zero-gravity WASM review, actual-move comparison and concrete future
+stacking plans. Not a certified optimal coach or complete TETR.IO emulator.**
 
-See [the current review report](docs/clock-free-review.md),
-[the earlier recorded-game audit](docs/replay-validation.md), and
-[correctness scope](docs/s2-audit.md).
+Read [the review engine and integration guide](docs/review-engine.md) and
+[machine-readable validation results](docs/review-quality-results.json).
 
-The version-19 recording's 3,455 reconstructed locks and 3,205 applicable
-post-clear boards pass the new WASM checks. All twenty endpoint received counters
-now match after distinguishing queue admission from packet confirmation.
-Intermediate expectations come from a pinned independent replay engine, not
-official per-lock logs. The original player replay is not committed.
+`ReviewSession` is the preferred interface for review. Every legal root action,
+including the actual player's move, is searched at equal lock depth and beam
+widths. Explicit hold decisions, current + next-five visibility, active/pending
+garbage, and own counters are modeled without PPS or soft-drop execution costs.
+Hidden garbage scenarios share decisions until their observable states diverge.
+Two-width sensitivity checks prevent unstable rankings from being presented as
+certain player mistakes. Concrete plans include boards, attack, cancellation,
+garbage rise, B2B and remaining visible pieces.
 
-## Review API
+The finite horizon is 1..5 locks; the beam is approximate. Scores are heuristic,
+not win probabilities. The existing S2 evaluator has not been strength-certified.
+The `web/review.worker.js` adapter supports incremental progress, seek/cancel and
+candidate detail requests. A complete replay-site UI is not included.
 
-`analyze_pending_json(requestJson)` defaults to zero-gravity placement analysis,
-without PPS, soft-drop execution penalties, or guessed piece durations. It sees
-only current/hold/next-five, own board and state, and currently observed incoming.
-Default snapshot activation and optional alternative pressure/timing assumptions
-are described in the current report. Hidden replay RNG and future events are rejected.
-
-Same-build/runtime requests with identical observations and work budgets now
-produce reproducible rankings. Equivalent no-rise hole scenarios share one search
-instead of constructing ten duplicate DAGs. Scores remain heuristic, not calibrated
-win probabilities or automatic mistake grades. Run synchronous analysis in a Web Worker.
-
-`WasmBot` remains the lower-level stateful interface. `player_state_json()` exposes
-actual player state; `preview_refill_needed()` handles empty hold correctly;
-`play_with_hold_json()` specifies hold use. The zero-execution-cost review preset
-belongs to `analyze_pending_json`, not every native/legacy configuration.
-`check_replay_lock_json()` validates recorded locks rather than recommending moves.
+Earlier APIs remain available: `analyze_pending_json` for snapshot scenario
+ranking, `WasmBot` for lower-level stateful use, and `check_replay_lock_json` for
+recorded lock verification. See [the previous static-review report](docs/clock-free-review.md)
+and [recorded-game audit](docs/replay-validation.md) for their historical scope.
 
 ## Build and test
 
@@ -45,25 +37,29 @@ rustup target add wasm32-unknown-unknown
 cargo install wasm-pack --locked
 wasm-pack build --release --target web --out-dir pkg -- --locked
 cargo test --locked --lib --bins --tests
-cargo test --locked --release --lib --test replay_fixtures
+cargo test --locked --release --lib --test core_regressions --test replay_fixtures
 wasm-pack build --release --target nodejs --out-dir pkg-node -- --locked
 node scripts/wasm-smoke.mjs
 node scripts/recorded-wasm-smoke.cjs
 node scripts/review-smoke.cjs
+node scripts/review-session-smoke.cjs
 node scripts/test-receive-ledger.cjs
+node scripts/review-worker-protocol.cjs
 ```
 
-The read-only `review-regressions` workflow repeats native, recorded-WASM and
-repeatability checks. `wasm` builds the browser package. Strategy sweeps are not
-claimed to have established a strength gain.
+The read-only `review-quality` workflow preserves regression results and the
+browser package. The latest implementation passes 53 native test functions and
+the recorded/review WASM checks. The supplied recording's 3,455 first locks and
+3,205 applicable boards were also rechecked locally; see the evidence guide.
 
-The engineering duel remains KO-only, without piece caps or attack tiebreaks:
+The engineering duel remains KO-only, without a piece cap or attack tiebreak:
 
 ```sh
 cargo run --locked --release --bin tl_s2_duel -- --seeds 20 --nodes 500
 ```
 
-Its simplified timing/KO model is not a calibrated Tetra League rating test.
+Its simplified model is not a Tetra League rating test. No new win-rate claim is
+made by the review changes.
 
 ## License
 
