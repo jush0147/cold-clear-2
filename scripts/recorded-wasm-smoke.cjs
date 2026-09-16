@@ -21,7 +21,7 @@ for (const c of fixture.cases) {
 const start = {board: [], queue: ['I', 'O', 'T', 'L', 'J', 'S'], hold: 'Z',
   combo: 0, back_to_back: false, b2b_count: 0, randomizer: {type: 'unknown'}};
 const request = {start, incoming: [{lines: 8, active: true}], pieces_placed: 30,
-  garbage_sent: 0, frames_per_piece: 12, pending_delay_frames: 20, iterations: 10};
+  garbage_sent: 0, activation_model: "snapshot", iterations: 10};
 const danger = JSON.parse(analyze_pending_json(JSON.stringify(request)));
 const empty = JSON.parse(analyze_pending_json(JSON.stringify({...request, incoming: []})));
 assert(danger.candidates.length > 0 && empty.candidates.length > 0);

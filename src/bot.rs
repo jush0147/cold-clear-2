@@ -33,6 +33,9 @@ pub struct PlayerPieces {
 pub struct BotConfig {
     pub freestyle_weights: freestyle::Weights,
     pub freestyle_exploitation: f64,
+    /// Internal search randomness, unrelated to the game randomizer.
+    #[serde(default)]
+    pub search_seed: Option<u64>,
 }
 impl Default for BotConfig {
     fn default() -> Self {

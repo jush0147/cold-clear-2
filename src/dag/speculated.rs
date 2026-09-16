@@ -55,7 +55,7 @@ impl<'bump, E: Evaluation> Layer<'bump, E> {
         candidates.into_iter().map(|c| c.mv).collect()
     }
 
-    pub fn select(&self, game_state: &GameState, exploration: f64) -> SelectResult {
+    pub fn select(&self, game_state: &GameState, exploration: f64, rng: &mut StdRng) -> SelectResult {
         puffin::profile_function!();
         let node = self
             .states
@@ -76,14 +76,14 @@ impl<'bump, E: Evaluation> Layer<'bump, E> {
         let next = game_state
             .bag
             .iter()
-            .nth(thread_rng().gen_range(0..game_state.bag.len()))
+            .nth(rng.gen_range(0..game_state.bag.len()))
             .unwrap();
 
         if children[next].is_empty() {
             return SelectResult::Failed;
         }
 
-        let s: f64 = thread_rng().gen();
+        let s: f64 = 1.0 - rng.gen::<f64>();
         let i = ((-s.ln() / exploration) % children[next].len() as f64) as usize;
         SelectResult::Advance(next, children[next][i].mv)
     }

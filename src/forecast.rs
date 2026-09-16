@@ -29,6 +29,16 @@ impl Forecast {
         }
         f.len=packets.len();Ok(f)
     }
+    /// Clock-free snapshot. Unconfirmed arrival times are not invented.
+    /// all_ready is an alternative pressure assumption, not actual timing.
+    pub fn at_snapshot(packets:&[GarbagePacket], pieces_placed:u32, sent:u32, scenario:u32, all_ready:bool) -> Result<Self,String> {
+        let mut f=Self::new(packets,pieces_placed,sent,1,0,scenario)?;
+        f.frames_per_piece=0;
+        for (i,p) in packets.iter().enumerate() {
+            f.packets[i].ready_at=if p.active || all_ready {0} else {u32::MAX};
+        }
+        Ok(f)
+    }
     pub fn remaining(&self)->u32 {self.packets[..self.len].iter().map(|p|p.lines).sum()}
     fn consume(&mut self,mut lines:u32)->u32 {
         let mut consumed=0;

@@ -1,5 +1,6 @@
 const fs = require('node:fs');
 const path = require('node:path');
+const {attachReceiveLedger} = require('./receive-ledger.cjs');
 if (!process.argv[2] || !process.argv[3]) {
  console.error('Usage: node scripts/reconstruct-replay.cjs replay.ttrm /path/to/triangle.cjs [output-dir]'); process.exit(2);
 }
@@ -24,13 +25,14 @@ function config(o, opponents, date) {
  };
 }
 const clone = v => JSON.parse(JSON.stringify(v));
-let output=[];let allLocks=[];
+let output=[];let allLocks=[];let receiveTraces=[];
 for (let r=0;r<replay.replay.rounds.length;r++) {
  const round=replay.replay.rounds[r];
  const ends=round.map(p=>p.replay.events.find(e=>e.type==='end').data);
  for(let p=0;p<round.length;p++) {
   const source=round[p].replay;const end=ends[p];const o=end.options;
   const e=new Engine(config(o,ends.filter((_,i)=>i!==p).map(v=>v.options.gameid),replay.ts));
+  const receiveAudit=attachReceiveLedger(e);
   const frames=Array.from({length:source.frames+2},()=>[]);
   for(const f of source.events) if(['keydown','keyup','ige'].includes(f.type)) frames[f.frame].push(f);
   const locks=[];let pre;
@@ -41,6 +43,12 @@ for (let r=0;r<replay.replay.rounds.length;r++) {
   try {while(e.frame<=source.frames){e.tick(frames[e.frame]||[]);}}catch(err){error=String(err.stack);}
   const expected={pieces:end.stats.piecesplaced,lines:end.stats.lines,combo:end.stats.combo-1,b2b:end.stats.btb-1,garbage:{attack:end.stats.garbage.attack,sent:end.stats.garbage.sent,receive:end.stats.garbage.received,cleared:end.stats.garbage.cleared}};
   const actual=clone(e.stats);
+  const receipt=receiveAudit.ledger.summary();
+  // Reference receive means queue admission. Recorded v19 received means
+  // remaining lines at confirmation. Preserve both without mutating gameplay.
+  const referenceAdmissionCounter=actual.garbage.receive;
+  actual.garbage.receive=receipt.confirmed;
+  receiveTraces.push({stream:receiveTraces.length,expected_received:expected.garbage.receive,events:receiveAudit.events});
   const expectedBoard=end.game.board.slice().reverse();
   const occ=b=>b.map(row=>row.map(v=>v?1:0));
   const boardExact=JSON.stringify(e.board.state.map(row=>row.map(v=>v?.mino??null)))===JSON.stringify(expectedBoard);
@@ -48,9 +56,11 @@ for (let r=0;r<replay.replay.rounds.length;r++) {
   const differences={};
   for(const k of ['pieces','lines','combo','b2b']) if(actual[k]!==expected[k]) differences[k]=[expected[k],actual[k]];
   for(const k of Object.keys(expected.garbage)) if(actual.garbage[k]!==expected.garbage[k]) differences['garbage.'+k]=[expected.garbage[k],actual.garbage[k]];
-  const out={round:r+1,player:p,frames:source.frames,locks:locks.length,boardExact,boardOccupancy,differences,error};
+  const out={receive_audit:receipt,reference_admission_counter:referenceAdmissionCounter,round:r+1,player:p,frames:source.frames,locks:locks.length,boardExact,boardOccupancy,differences,error};
   console.log(JSON.stringify(out));output.push(out);allLocks.push(...locks);
  }
 }
 fs.writeFileSync(path.join(outputDir,'replay-validation.json'),JSON.stringify({reference:'halp1/triangle@7837ee5bde8de2719472e0de3458abe6708593f5',streams:output},null,2));
 fs.writeFileSync(path.join(outputDir,'replay-locks.json'),JSON.stringify(allLocks));
+
+fs.writeFileSync(path.join(outputDir,'receive-traces.json'),JSON.stringify({streams:receiveTraces}));

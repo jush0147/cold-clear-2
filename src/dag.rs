@@ -2,6 +2,8 @@ use bumpalo_herd::Herd;
 use enum_map::EnumMap;
 use once_cell::sync::Lazy;
 use ouroboros::self_referencing;
+use parking_lot::Mutex;
+use rand::{rngs::StdRng, SeedableRng};
 
 use crate::data::Placement;
 use crate::data::{GameState, Piece};
@@ -19,6 +21,7 @@ pub trait Evaluation:
 }
 
 pub struct Dag<E: Evaluation> {
+    search_rng: Mutex<StdRng>,
     root: GameState,
     top_layer: Box<LayerCommon<E>>,
 }
@@ -75,7 +78,7 @@ struct BackpropUpdate {
 }
 
 impl<E: Evaluation> Dag<E> {
-    pub fn new(root: GameState, queue: &[Piece]) -> Self {
+    pub fn new(root: GameState, queue: &[Piece], seed: Option<u64>) -> Self {
         let mut top_layer = LayerCommon::default();
         top_layer.kind.initialize_root(&root);
 
@@ -86,6 +89,7 @@ impl<E: Evaluation> Dag<E> {
         }
 
         Dag {
+            search_rng: Mutex::new(seed.map(StdRng::seed_from_u64).unwrap_or_else(StdRng::from_entropy)),
             root,
             top_layer: Box::new(top_layer),
         }
@@ -132,12 +136,13 @@ impl<E: Evaluation> Dag<E> {
 
     pub fn select(&self, speculate: bool, exploration: f64) -> Option<Selection<E>> {
         puffin::profile_function!();
+        let mut rng = self.search_rng.lock();
         let mut layers = vec![&*self.top_layer];
         let mut game_state = self.root;
         loop {
             let &layer = layers.last().unwrap();
 
-            match layer.kind.select(&game_state, speculate, exploration) {
+            match layer.kind.select(&game_state, speculate, exploration, &mut rng) {
                 SelectResult::Failed => return None,
                 SelectResult::Done => return Some(Selection { layers, game_state }),
                 SelectResult::Advance(next, placement) => {
@@ -245,11 +250,11 @@ impl<E: Evaluation> WithBump<E> {
         })
     }
 
-    fn select(&self, game_state: &GameState, speculate: bool, exploration: f64) -> SelectResult {
+    fn select(&self, game_state: &GameState, speculate: bool, exploration: f64, rng: &mut StdRng) -> SelectResult {
         puffin::profile_function!();
         self.with(|this| match this.data {
-            LayerKind::Known(l) => l.select(game_state, exploration),
-            LayerKind::Speculated(l) if speculate => l.select(game_state, exploration),
+            LayerKind::Known(l) => l.select(game_state, exploration, rng),
+            LayerKind::Speculated(l) if speculate => l.select(game_state, exploration, rng),
             LayerKind::Speculated(_) => SelectResult::Failed,
         })
     }
