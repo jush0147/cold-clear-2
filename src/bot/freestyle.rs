@@ -127,6 +127,8 @@ pub struct Weights {
     pub attack_reward: f32,
     #[serde(default = "one")]
     pub surge_value: f32,
+    #[serde(default = "one")]
+    pub b2b_charge_value: f32,
 }
 
 fn one() -> f32 {
@@ -144,10 +146,17 @@ fn evaluate(
 
     if weights.tetrio_s2 {
         // Use actual TL S2 garbage rather than hand-tuned clear-type scores.
-        // Stored Surge is also valued as future attack so breaking B2B does not
-        // create artificial value merely by moving charge into immediate reward.
         let attack = tetrio::attack(info);
         reward += weights.attack_reward * attack.total as f32;
+
+        // Search horizons are short, so waiting until B2B x4 to value Surge makes
+        // x0..x3 look worthless and encourages premature Doubles/Triples. Give
+        // each step toward x4 terminal value, then switch to the actual stored
+        // Surge value once charging has begun.
+        if state.back_to_back {
+            let progress = (state.b2b_count as u32 + 1).min(4);
+            eval += weights.b2b_charge_value * progress as f32;
+        }
         eval += weights.surge_value * tetrio::surge_size(state.b2b_count as u32) as f32;
     } else {
         // Legacy Cold Clear 2 line-clear rewards.
