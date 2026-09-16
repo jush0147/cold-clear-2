@@ -33,22 +33,18 @@ impl Default for BotConfig {
 }
 
 impl BotConfig {
-    /// Same board heuristics and search parameters, but with the original
-    /// Cold Clear 2 clear-type reward model for A/B comparisons.
     pub fn legacy() -> Self {
         let mut config = Self::default();
         config.freestyle_weights.tetrio_s2 = false;
         config
     }
 
-    /// Experimental TL S2 configuration with explicit values for parameter
-    /// sweeps. Keeping this constructor here prevents benchmark binaries from
-    /// reaching through the private freestyle module.
-    pub fn tetrio_s2(charge_value: f32, surge_value: f32) -> Self {
+    pub fn tetrio_s2(charge_value: f32, surge_value: f32, shape_value: f32) -> Self {
         let mut config = Self::default();
         config.freestyle_weights.tetrio_s2 = true;
         config.freestyle_weights.b2b_charge_value = charge_value;
         config.freestyle_weights.surge_value = surge_value;
+        config.freestyle_weights.legacy_shape_value = shape_value;
         config
     }
 }
@@ -115,9 +111,6 @@ impl Bot {
         self.current
     }
 
-    /// Inject one garbage line at the bottom of the board and rebuild the
-    /// search tree around the changed state. Returns true if blocks overflowed
-    /// the 40-row simulation board.
     pub fn add_garbage_line(&mut self, hole: usize) -> bool {
         assert!(hole < 10);
         let overflow = self.current.board.cols.iter().any(|&c| c >> 39 != 0);
