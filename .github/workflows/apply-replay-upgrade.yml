@@ -1,109 +1,42 @@
-name: replay-upgrade
+name: replay-regressions
 on:
   push:
     branches: [tetrio-s2]
-    paths: ['.github/workflows/apply-replay-upgrade.yml']
+    paths: ['src/**', 'tests/**', 'Cargo.*', 'scripts/recorded-wasm-smoke.cjs', '.github/workflows/apply-replay-upgrade.yml']
+  pull_request:
+    branches: [tetrio-s2]
   workflow_dispatch:
 permissions:
-  contents: write
+  contents: read
 concurrency:
-  group: replay-upgrade
-  cancel-in-progress: false
+  group: replay-regressions-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
-  validate:
-    if: github.ref == 'refs/heads/tetrio-s2'
+  recorded:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: tetrio-s2
-      - name: Apply hash-checked source patch
-        run: |
-          python3 - <<'PY'
-          import base64, lzma, hashlib, pathlib, subprocess
-          encoded=''.join(pathlib.Path(f'scripts/upgrade-part{i}.txt').read_text().strip() for i in [1,2,3])
-          patch=lzma.decompress(base64.b64decode(encoded, validate=True))
-          assert hashlib.sha256(patch).hexdigest() == '48527fd4df2ee9f8539c7cb36aae3c10113e5f48bf5811db99cd8e1df951ddd9'
-          pathlib.Path('/tmp/replay-upgrade.patch').write_bytes(patch)
-          subprocess.run(['git','apply','--check','/tmp/replay-upgrade.patch'],check=True)
-          subprocess.run(['git','apply','/tmp/replay-upgrade.patch'],check=True)
-          PY
-          python3 scripts/replay-upgrade-followup.py
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-unknown-unknown
-      - name: Native and recorded-game regressions
-        id: tests
-        shell: bash
+      - name: Debug and release regressions
         run: |
-          set -euo pipefail
-          cargo test --lib --bins --tests 2>&1 | tee replay-native-tests.txt
-          cargo check --all-targets
-      - name: Release-mode recorded-game regressions
-        id: release
-        if: always() && steps.tests.outcome != 'skipped'
-        shell: bash
-        run: |
-          set -euo pipefail
-          cargo test --release --test replay_fixtures 2>&1 | tee replay-release-tests.txt
+          cargo test --locked --lib --bins --tests
+          cargo test --locked --release --test replay_fixtures
+          cargo check --locked --all-targets
       - name: Install wasm-pack
-        if: always() && steps.tests.outcome != 'skipped'
         run: cargo install wasm-pack --locked
-      - name: Build browser and Node WASM
-        id: wasm
-        if: always() && steps.tests.outcome != 'skipped'
-        run: |
-          wasm-pack build --release --target web --out-dir pkg
-          wasm-pack build --release --target nodejs --out-dir pkg-node
-      - name: Execute WASM regression tests
-        id: smoke
-        if: always() && steps.wasm.outcome == 'success'
+      - name: Build and execute recorded WASM fixtures
         shell: bash
         run: |
           set -euo pipefail
-          node scripts/wasm-smoke.mjs | tee replay-wasm-smoke.json
-          node - <<'JS'
-          const assert=require('node:assert/strict');
-          const fs=require('node:fs');
-          const {analyze_pending_json,check_replay_lock_json}=require('./pkg-node/cold_clear_2.js');
-          const cases=JSON.parse(fs.readFileSync('tests/fixtures/replay-v19.json','utf8')).cases;
-          for(const c of cases){
-            const start={...c.start,board:c.rows.map(r=>[...r].map(v=>v==='.'?null:v))};
-            const o=JSON.parse(check_replay_lock_json(JSON.stringify({start,placement:c.placement})));
-            assert.deepEqual(o.packets,c.expected.raw_attack,`packets ${c.index}`);
-            assert.equal(o.lines,c.expected.lines,`lines ${c.index}`);
-            assert.equal(o.garbage_cleared,c.expected.garbage_cleared,`garbage ${c.index}`);
-          }
-          const start={board:[],queue:['I','O','T','L','J','S'],hold:'Z',combo:0,back_to_back:false,b2b_count:0,randomizer:{type:'unknown'}};
-          const r=JSON.parse(analyze_pending_json(JSON.stringify({start,incoming:[{lines:8,active:true}],pieces_placed:30,garbage_sent:0,frames_per_piece:12,pending_delay_frames:20,iterations:20})));
-          assert(r.candidates.length>0);assert.equal(r.pending_garbage_in_search,true);
-          fs.writeFileSync('pending-smoke.json',JSON.stringify(r,null,2));
-          console.log('Recorded WASM fixtures passed:',cases.length);
-          console.log('Pending-aware WASM search:',r.nodes,'nodes',r.candidates.length,'candidates');
-          JS
-      - name: Commit only validated source changes
-        if: success() && steps.tests.outcome == 'success' && steps.release.outcome == 'success' && steps.smoke.outcome == 'success'
-        run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add src tests benches scripts/reconstruct-replay.cjs THIRD_PARTY_NOTICES.md Cargo.lock
-          git rm scripts/upgrade-part1.txt scripts/upgrade-part2.txt scripts/upgrade-part3.txt
-          git commit -m 'Add replay-tested SRS+, surface Minis, garbage-special scoring, and pending-aware scenario search'
-          git push origin HEAD:tetrio-s2
-          git rev-parse HEAD > verified-commit.txt
-      - name: Archive exact tested source
-        if: always()
-        run: |
-          mkdir -p replay-result
-          cp replay-*.txt replay-*.json pending-smoke.json verified-commit.txt replay-result/ 2>/dev/null || true
-          tar --exclude=target --exclude=.git --exclude=pkg --exclude=pkg-node --exclude=replay-result -cf replay-result/tested-source.tar src tests benches scripts Cargo.toml Cargo.lock THIRD_PARTY_NOTICES.md
+          wasm-pack build --release --target nodejs --out-dir pkg-node -- --locked
+          node scripts/wasm-smoke.mjs
+          node scripts/recorded-wasm-smoke.cjs | tee recorded-wasm.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: replay-upgrade-result
-          path: |
-            replay-result/
-            pkg/
-            pkg-node/
-          retention-days: 7
+          name: recorded-wasm-${{ github.sha }}
+          path: recorded-wasm.json
+          retention-days: 14

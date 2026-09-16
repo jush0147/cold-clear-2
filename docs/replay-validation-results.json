@@ -1,0 +1,28 @@
+{
+  "source_revision": "6fe462b4ddc6448e73d97c8ab9af35c6242e1ad9",
+  "replay_sha256": "1e1780dec45f2ff24188971601eaab83e367c64de795dbd1a77efde78bd019f2",
+  "replay_version": 19,
+  "rounds": 10,
+  "player_streams": 20,
+  "independent_reference": "halp1/triangle@7837ee5bde8de2719472e0de3458abe6708593f5",
+  "endpoint_boards_exact": 20,
+  "endpoint_key_counters_match": 20,
+  "endpoint_receive_counter_mismatches": 15,
+  "wasm_recorded_locks_checked": 3455,
+  "wasm_reachable": 3455,
+  "wasm_scoring_and_counters_match": 3455,
+  "postclear_boards_checked_without_garbage_insertion": 3205,
+  "postclear_boards_matched": 3205,
+  "baseline_unreachable": 35,
+  "baseline_scoring_formula_missing_special_bonus_cases": 205,
+  "retained_anonymized_fixtures": 50,
+  "native_test_functions_passed": 40,
+  "pending_garbage_in_scenario_search": true,
+  "full_rules_parity_verified": false,
+  "notes": [
+    "Intermediate outputs are independently reconstructed, not directly recorded official per-lock outputs.",
+    "The single observed PC produced packets [1, 5].",
+    "There are no observed opening double-cancellation examples in this recording.",
+    "No playing-strength or win-rate claim is made."
+  ]
+}
