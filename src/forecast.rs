@@ -15,7 +15,17 @@ pub struct Forecast {
     len:usize,
     packets:[Packet;16],
 }
+#[derive(Clone, Copy, Debug, Default, serde::Serialize)]
+pub struct Resolution {
+    pub cancelled: u32, pub outgoing: u32, pub risen: u32, pub overflow: bool,
+}
 impl Forecast {
+    /// An information-set key must not expose hypothetical hole coordinates.
+    pub(crate) fn observed_key(mut self) -> Self {
+        for packet in &mut self.packets { packet.hole = 0; }
+        self
+    }
+
     pub fn new(packets:&[GarbagePacket], pieces_placed:u32, sent:u32, frames_per_piece:u32, delay:u32, scenario:u32) -> Result<Self,String> {
         if packets.len()>16 {return Err("forecast supports at most 16 observable packets".into());}
         if !(1..=600).contains(&frames_per_piece) || delay>600 {return Err("invalid explicit timing assumption".into());}
@@ -49,15 +59,17 @@ impl Forecast {
         consumed
     }
     fn pop(&mut self){self.packets.copy_within(1..self.len,0);self.len-=1;self.packets[self.len]=Packet::default();}
-    pub fn resolve(&mut self,board:&mut Board,attacks:&[u32],cleared:u32) {
-        if !self.enabled || self.topped_out {return;}
+    pub fn resolve(&mut self,board:&mut Board,attacks:&[u32],cleared:u32) -> Resolution {
+        let mut result = Resolution::default();
+        if !self.enabled || self.topped_out {return result;}
         self.elapsed_frames=self.elapsed_frames.saturating_add(self.frames_per_piece);
         for &attack in attacks {
             let bonus=if self.pieces_placed<14 && self.remaining()>=self.sent {attack} else {0};
             // Ordinary attack is consumed before opening-phase extra cancel;
             // the extra cancel is never sent to an opponent.
             let ordinary=self.consume(attack);
-            self.consume(bonus);
+            result.cancelled += ordinary + self.consume(bonus);
+            result.outgoing += attack - ordinary;
             self.sent=self.sent.saturating_add(attack-ordinary);
         }
         if cleared==0 {
@@ -65,12 +77,14 @@ impl Forecast {
                 if self.len==0 || self.packets[0].ready_at>self.elapsed_frames {break;}
                 let hole=self.packets[0].hole;
                 self.consume(1);
-                if board.cols.iter().any(|&c|c>>39!=0) {self.topped_out=true;break;}
+                if board.cols.iter().any(|&c|c>>39!=0) {self.topped_out=true;result.overflow=true;break;}
                 for (x,col) in board.cols.iter_mut().enumerate(){*col=(*col<<1)|u64::from(x!=hole as usize);}
                 board.garbage_rows=(board.garbage_rows<<1)|1;
+                result.risen += 1;
             }
         }
         self.pieces_placed=self.pieces_placed.saturating_add(1);
+        result
     }
 }
 #[cfg(test)]

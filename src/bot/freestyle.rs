@@ -177,6 +177,20 @@ fn evaluate(
     info: &PlacementInfo,
     softdrop: u32,
 ) -> (Eval, Reward) {
+    let cutouts = state.bag.contains(Piece::T) as usize
+        + (state.reserve == Piece::T) as usize + (state.bag.len() <= 3) as usize;
+    evaluate_with_cutouts(weights, state, info, softdrop, cutouts)
+}
+
+/// The review horizon may use only T pieces already in the observation.
+pub(crate) fn review_score(config: &super::BotConfig, state: GameState,
+    info: &PlacementInfo, visible_ts: usize) -> (f32, f32) {
+    let (eval, reward) = evaluate_with_cutouts(&config.freestyle_weights, state, info, 0, visible_ts);
+    (eval.value.0, reward.value.0)
+}
+
+fn evaluate_with_cutouts(weights: &Weights, mut state: GameState,
+    info: &PlacementInfo, softdrop: u32, cutout_count: usize) -> (Eval, Reward) {
     if state.forecast.topped_out {
         return (Eval { value: (-1_000_000.0).into() }, Reward { value: 0.0.into() });
     }
@@ -212,9 +226,6 @@ fn evaluate(
     }
     reward += weights.softdrop * softdrop as f32;
 
-    let cutout_count = state.bag.contains(Piece::T) as usize
-        + (state.reserve == Piece::T) as usize
-        + (state.bag.len() <= 3) as usize;
     for _ in 0..cutout_count {
         let location =
             well_known_tslot_left(&state.board).or_else(|| well_known_tslot_right(&state.board));

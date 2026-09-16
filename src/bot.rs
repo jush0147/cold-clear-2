@@ -9,6 +9,7 @@ use crate::data::{GameState, Piece, Placement, PlacementInfo};
 use crate::movegen::find_moves_with_clutch;
 
 mod freestyle;
+pub(crate) use freestyle::review_score;
 use self::freestyle::Freestyle;
 
 pub struct Bot {

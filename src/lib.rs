@@ -126,3 +126,6 @@ fn spawn_workers(bot: &Arc<BotSyncronizer>) {
         std::thread::spawn(move || bot.work_loop());
     }
 }
+
+/// Fair, finite-horizon offline review with explicit hold and information sets.
+pub mod review;

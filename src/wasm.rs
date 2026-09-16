@@ -147,3 +147,24 @@ pub fn analyze_pending_json(input_json:&str)->Result<String,JsValue>{
     let input=serde_json::from_value(parse_json(input_json)?).map_err(js_error)?;
     serde_json::to_string(&crate::analysis::analyze(input).map_err(js_error)?).map_err(js_error)
 }
+
+/// Incremental fair review. Drive one root at a time in a Web Worker.
+#[wasm_bindgen]
+pub struct ReviewSession { inner: crate::review::Session }
+#[wasm_bindgen]
+impl ReviewSession {
+    #[wasm_bindgen(constructor)]
+    pub fn new(input_json: &str) -> Result<ReviewSession, JsValue> {
+        let request = serde_json::from_value(parse_json(input_json)?).map_err(js_error)?;
+        Ok(Self {inner: crate::review::Session::new(request).map_err(js_error)?})
+    }
+    /// One root action, at both beam widths. True means every root is finished.
+    pub fn step(&mut self) -> bool { self.inner.step() }
+    pub fn report_json(&self) -> Result<String, JsValue> {
+        serde_json::to_string(&self.inner.report()).map_err(js_error)
+    }
+    /// Index is an action id, not its current ranking.
+    pub fn candidate_json(&self, action_id: usize) -> Result<String, JsValue> {
+        serde_json::to_string(&self.inner.details(action_id).map_err(js_error)?).map_err(js_error)
+    }
+}
