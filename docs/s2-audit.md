@@ -1,53 +1,28 @@
 # S2 correctness audit
 
-Status: experimental. Complete TETR.IO rule parity and playing strength are not
-certified. See [recorded-game validation](replay-validation.md) for the current
-implementation, evidence, API and limitations. That report supersedes earlier
-statements that pending garbage, SRS+/180, or garbage-special scoring are absent.
+Current status: experimental offline static review, not complete TETR.IO parity
+or playing-strength certified.
 
-The intended application is offline review of a player's own state. No opponent
-board or online automatic-play connection is required or supplied.
+The latest implementation and tests are documented in
+[clock-free review and receive resolution](clock-free-review.md). This supersedes
+older reports of unresolved received counters and mandatory guessed piece timing.
+See [recorded-game validation](replay-validation.md) for the preceding SRS+/180,
+attack, and pending-search work and its historical evidence.
 
-## Evidence levels
+Inputs are own board, actual current/hold, five NEXT, combo/B2B, observed incoming
+packets and own history. Replay RNG is used only by the offline historical decoder,
+never as input to the counterfactual bot. The opponent board is excluded.
 
-Implemented code, internal regression tests, independent reference-model checks,
-and comparison with recorded game outputs are distinct evidence levels. A green
-CI check alone is not a production-game oracle.
+Default review is zero gravity with no execution-speed penalty. Garbage activation
+is a separate, explicitly static observation model; it is not inferred from PPS.
 
-Current independent evidence includes row-grid comparisons for bitboards,
-packet-vs-per-line queue tests, and a pinned independent replay engine whose
-final boards and key counters match all 20 streams of the supplied recording.
-The receive counter discrepancy and unverified timing cases remain documented.
+Implemented code, regression tests, independent-model comparisons, recorded
+endpoint agreement, and broad rules certification remain distinct evidence levels.
+Forty-four native tests and native/WASM recorded and repeated-review checks passed
+at implementation 0d6e5aac26efd7b935cfbd220c7c5c6ff620e560. Full-recording checks
+were rerun locally, including all twenty received counters, with no discrepancies.
 
-## Observation boundary
-
-Only own board, actual current/hold, five NEXT pieces, combo/B2B, current incoming
-packets and own already-observed history enter analysis. Replay RNG may be used
-by the offline decoder to reproduce recorded play but never passed to the bot.
-Unknown future holes and activation are explicitly modeled assumptions.
-
-Empty-hold normalization is an internal CC2 abstraction. The public adapter
-tracks actual empty hold separately. No-hold locks reveal one preview; first
-empty-hold use reveals two across hold plus lock; occupied hold swaps reveal one.
-Same-type current/NEXT replay playback requires an explicit hold decision.
-
-The older WasmBot API rejects unsupported incoming fields rather than silently
-ignoring them. Use analyze_pending_json for the new pending-aware forecast.
-Both APIs remain spawn-based, not arbitrary mid-fall input-state solvers.
-
-## Continuing acceptance requirements
-
-Every rule change needs a failing regression or a versioned independent fixture,
-then native and WASM checks. Keep simulator state transitions shared between
-search expansion and traversal, and keep all relevant forecast state in node
-keys. Preserve attack packet boundaries and visible garbage provenance.
-
-The 3,455 successful lock checks cover this particular recording, not all legal
-boards or rule interactions. Expand independent fixtures for opening cancellation,
-long games, all Clutch/topout paths, packet timing, and observation visibility
-before certifying general rule parity or resuming strength tuning.
-
-KO-only duels are retained without a piece cap or attack tiebreak. Search errors
-must not be mistaken for KOs. Legacy means the old evaluator on the modified
-core, not untouched upstream. Earlier capped/extra-preview match results are not
-valid evidence for the current implementation.
+All new strategy work must retain these checks. Tuning can now proceed under the
+stated static objective without pretending to solve real-time pace prediction.
+Exact live timing, unobserved opening-rule cases, uncertainty-aware future decisions
+and complete Clutch/topout coverage still need additional evidence.

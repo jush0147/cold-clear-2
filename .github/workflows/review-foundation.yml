@@ -1,69 +1,49 @@
-name: review-foundation
+name: review-regressions
 on:
   push:
     branches: [tetrio-s2]
-    paths: ['.github/workflows/review-foundation.yml']
+    paths: ['src/**', 'tests/**', 'scripts/**', 'Cargo.*', '.github/workflows/review-foundation.yml']
+  pull_request:
+    branches: [tetrio-s2]
   workflow_dispatch:
 permissions:
-  contents: write
+  contents: read
 concurrency:
-  group: review-foundation
-  cancel-in-progress: false
+  group: review-regressions-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
-  validate:
-    if: github.ref == 'refs/heads/tetrio-s2'
+  review:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: tetrio-s2
-      - name: Apply bounded and readable source migration
-        run: python3 scripts/review-foundation.py
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-unknown-unknown
-      - name: Native, release, and receipt accounting regressions
+      - name: Native, release and receipt regressions
         shell: bash
         run: |
           set -euo pipefail
-          cargo test --locked --lib --bins --tests 2>&1 | tee review-native.txt
-          cargo test --locked --release --lib --test replay_fixtures 2>&1 | tee review-release.txt
+          cargo test --locked --lib --bins --tests 2>&1 | tee native-review.txt
+          cargo test --locked --release --lib --test replay_fixtures
           cargo check --locked --all-targets
           node scripts/test-receive-ledger.cjs | tee receive-tests.json
       - name: Install wasm-pack
         run: cargo install wasm-pack --locked
-      - name: Build browser and Node WASM
-        run: |
-          wasm-pack build --release --target web --out-dir pkg -- --locked
-          wasm-pack build --release --target nodejs --out-dir pkg-node -- --locked
-      - name: Execute recorded and deterministic WASM review checks
+      - name: Build and execute WASM regressions
         shell: bash
         run: |
           set -euo pipefail
-          node scripts/wasm-smoke.mjs | tee review-smoke.json
-          node scripts/recorded-wasm-smoke.cjs | tee recorded-smoke.json
+          wasm-pack build --release --target nodejs --out-dir pkg-node -- --locked
+          node scripts/wasm-smoke.mjs
+          node scripts/recorded-wasm-smoke.cjs
           node scripts/review-smoke.cjs | tee review-repeatability.json
-      - name: Commit validated implementation
-        run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add src tests/replay_fixtures.rs scripts/reconstruct-replay.cjs scripts/recorded-wasm-smoke.cjs
-          git commit -m 'Make review clock-free and reproducible; audit received garbage at confirmation'
-          git push origin HEAD:tetrio-s2
-          git rev-parse HEAD > verified-commit.txt
-      - name: Archive tested source and outcomes
-        if: always()
-        run: |
-          mkdir -p review-result
-          cp review-*.txt review-*.json receive-tests.json recorded-smoke.json verified-commit.txt review-result/ 2>/dev/null || true
-          tar -cf review-result/tested-source.tar src tests scripts Cargo.toml Cargo.lock
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: clock-free-review-result
+          name: review-regressions-${{ github.sha }}
           path: |
-            review-result/
-            pkg/
-            pkg-node/
+            native-review.txt
+            receive-tests.json
+            review-repeatability.json
           retention-days: 14
