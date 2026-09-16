@@ -129,10 +129,44 @@ pub struct Weights {
     pub surge_value: f32,
     #[serde(default = "one")]
     pub b2b_charge_value: f32,
+    #[serde(default)]
+    pub legacy_shape_value: f32,
 }
 
 fn one() -> f32 {
     1.0
+}
+
+fn legacy_clear_reward(weights: &Weights, info: &PlacementInfo) -> f32 {
+    let mut reward = 0.0;
+    if info.perfect_clear {
+        reward += weights.perfect_clear;
+    }
+    if !info.perfect_clear || !weights.perfect_clear_override {
+        if info.back_to_back {
+            reward += weights.back_to_back_clear;
+        }
+        let lines = info.lines_cleared.min(4) as usize;
+        match info.placement.spin {
+            Spin::None => reward += weights.normal_clears[lines],
+            Spin::Mini => {
+                reward += weights
+                    .mini_spin_clears
+                    .get(lines)
+                    .copied()
+                    .unwrap_or(weights.normal_clears[lines]);
+            }
+            Spin::Full => {
+                reward += weights
+                    .spin_clears
+                    .get(lines)
+                    .copied()
+                    .unwrap_or(weights.normal_clears[lines]);
+            }
+        }
+        reward += weights.combo_attack * (info.combo.saturating_sub(1) / 2) as f32;
+    }
+    reward
 }
 
 fn evaluate(
@@ -144,54 +178,25 @@ fn evaluate(
     let mut eval = 0.0;
     let mut reward = 0.0;
 
+    let legacy_shape = legacy_clear_reward(weights, info);
     if weights.tetrio_s2 {
-        // Use actual TL S2 garbage rather than hand-tuned clear-type scores.
+        // Actual S2 garbage is the objective, while a fraction of the original
+        // CC2 reward remains as shaping. The latter encodes useful planning
+        // preferences such as avoiding inefficient normal clears that raw
+        // immediate attack alone cannot see through a short search horizon.
         let attack = tetrio::attack(info);
         reward += weights.attack_reward * attack.total as f32;
+        reward += weights.legacy_shape_value * legacy_shape;
 
-        // Search horizons are short, so waiting until B2B x4 to value Surge makes
-        // x0..x3 look worthless and encourages premature Doubles/Triples. Give
-        // each step toward x4 terminal value, then switch to the actual stored
-        // Surge value once charging has begun.
         if state.back_to_back {
             let progress = (state.b2b_count as u32 + 1).min(4);
             eval += weights.b2b_charge_value * progress as f32;
         }
         eval += weights.surge_value * tetrio::surge_size(state.b2b_count as u32) as f32;
     } else {
-        // Legacy Cold Clear 2 line-clear rewards. All-Mini+ can produce Mini
-        // clears beyond the two-entry legacy Mini table, so fall back to the
-        // corresponding normal-clear weight instead of indexing past the array.
-        if info.perfect_clear {
-            reward += weights.perfect_clear;
-        }
-        if !info.perfect_clear || !weights.perfect_clear_override {
-            if info.back_to_back {
-                reward += weights.back_to_back_clear;
-            }
-            let lines = info.lines_cleared.min(4) as usize;
-            match info.placement.spin {
-                Spin::None => reward += weights.normal_clears[lines],
-                Spin::Mini => {
-                    reward += weights
-                        .mini_spin_clears
-                        .get(lines)
-                        .copied()
-                        .unwrap_or(weights.normal_clears[lines]);
-                }
-                Spin::Full => {
-                    reward += weights
-                        .spin_clears
-                        .get(lines)
-                        .copied()
-                        .unwrap_or(weights.normal_clears[lines]);
-                }
-            }
-            reward += weights.combo_attack * (info.combo.saturating_sub(1) / 2) as f32;
-        }
+        reward += legacy_shape;
     }
 
-    // checklist
     if info.placement.location.piece == Piece::T
         && (info.lines_cleared < 2 || !matches!(info.placement.spin, Spin::Full))
     {
@@ -202,7 +207,6 @@ fn evaluate(
     }
     reward += weights.softdrop * softdrop as f32;
 
-    // cutouts
     let cutout_count = state.bag.contains(Piece::T) as usize
         + (state.reserve == Piece::T) as usize
         + (state.bag.len() <= 3) as usize;
@@ -222,7 +226,6 @@ fn evaluate(
         }
     }
 
-    // holes
     eval += weights.holes
         * state
             .board
@@ -236,7 +239,6 @@ fn evaluate(
             })
             .sum::<u32>() as f32;
 
-    // cell coveredness
     let mut coveredness = 0;
     for &c in &state.board.cols {
         let height = 64 - c.leading_zeros();
@@ -250,7 +252,6 @@ fn evaluate(
     }
     eval += weights.cell_coveredness * coveredness as f32;
 
-    // tetris well depth
     let (tetris_well_column, tetris_well_height) = state
         .board
         .cols
@@ -270,7 +271,6 @@ fn evaluate(
     let tetris_well_depth = (full_lines_except_well >> tetris_well_height).trailing_ones();
     eval += tetris_well_depth as f32 * weights.tetris_well_depth;
 
-    // height
     let highest_point = state
         .board
         .cols
@@ -286,7 +286,6 @@ fn evaluate(
         eval += weights.height_upper_quarter * (highest_point - 15) as f32;
     }
 
-    // row transitions
     let mut row_transitions = 0;
     row_transitions += (!0 ^ state.board.cols[0]).count_ones();
     row_transitions += (!0 ^ state.board.cols[9]).count_ones();
