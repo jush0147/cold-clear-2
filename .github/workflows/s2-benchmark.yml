@@ -19,8 +19,13 @@ jobs:
       - name: Compare legacy and S2 evaluators
         run: cargo run --release --bin tl_s2_bench -- --seeds 4 --pieces 80 --nodes 500 | tee s2-benchmark.txt
 
-      - name: Run paired garbage duels
-        run: cargo run --release --bin tl_s2_duel -- --seeds 8 --pieces 120 --nodes 300 | tee s2-duel.txt
+      - name: Sweep B2B charge value in paired garbage duels
+        run: |
+          : > s2-sweep.txt
+          for charge in 0.00 0.25 0.50 0.75 1.00; do
+            echo "===== charge=$charge =====" | tee -a s2-sweep.txt
+            cargo run --release --bin tl_s2_duel -- --seeds 20 --pieces 120 --nodes 300 --charge "$charge" | tee -a s2-sweep.txt
+          done
 
       - name: Upload benchmark results
         uses: actions/upload-artifact@v4
@@ -28,4 +33,4 @@ jobs:
           name: s2-benchmark
           path: |
             s2-benchmark.txt
-            s2-duel.txt
+            s2-sweep.txt
