@@ -24,22 +24,25 @@ Implemented so far:
 - Tetra League Multiplier attack calculation with DOWN rounding
 - B2B Charging and Surge accounting (B2B x4 starts a TL Surge of 4)
 - Season 2 All Clear attack (+5) and B2B treatment
+- All-Mini+ immobility detection for non-T pieces and fallback Mini T-Spins
 - the evaluator rewards actual calculated attack rather than the old hand-tuned
   clear-type scores
-- stored Surge is represented as future value at the search horizon
-- deterministic legacy-vs-S2 benchmark on identical 7-bag sequences and node
-  budgets
+- pre-Surge B2B progress and stored Surge have search-horizon value
+- deterministic legacy-vs-S2 solitaire benchmark on identical 7-bag sequences
+  and node budgets
+- paired legacy-vs-S2 garbage duel benchmark with identical bags, cancellation,
+  bounded garbage rise, and sides swapped for every seed
 
-Still intentionally not modeled yet:
+Still intentionally not modeled exactly yet:
 
-- incoming garbage queues and cancellation
+- real-time garbage travel / activation delay and PPS
 - the first-14-pieces double-cancel rule
 - the +1 garbage-special bonus for Quads/Spins that clear garbage
-- All-Mini+ immobility detection for non-T pieces / fallback Mini T-Spins
-- Surge segmentation into three garbage packets
-- Clutch Clears and full 1v1 timing
+- Surge segmentation into three timed garbage packets
+- Clutch Clears and exact TETR.IO top-out timing
+- TETR.IO-specific 180 kick paths
 
-Run the current health-check benchmark with:
+Run the attack/survival health-check benchmark with:
 
 ```sh
 cargo run --release --bin tl_s2_bench -- --seeds 10 --pieces 200 --nodes 2000
@@ -48,8 +51,19 @@ cargo run --release --bin tl_s2_bench -- --seeds 10 --pieces 200 --nodes 2000
 It compares the original Cold Clear 2 reward model with the S2 evaluator on the
 same piece sequences and search node budgets. It reports attack per piece,
 Surge releases, B2B, stack height, survival, and topouts. Because there is no
-incoming garbage yet, this is not a win-rate benchmark; it is meant to catch
-regressions before adding a full two-player simulator.
+incoming garbage, it is a regression detector rather than a win-rate test.
+
+Run the paired simplified duel benchmark with:
+
+```sh
+cargo run --release --bin tl_s2_duel -- --seeds 100 --pieces 200 --nodes 500
+```
+
+Every seed is played twice with legacy/S2 sides swapped. Attacks cancel pending
+garbage first; uncancelled garbage rises after the player's move with a bounded
+per-piece cap. This gives a useful strategy-vs-strategy objective while keeping
+the remaining timing differences explicit rather than pretending to be an exact
+TETR.IO server simulation.
 
 ## WebAssembly
 
@@ -92,6 +106,7 @@ many `think()` iterations to run before requesting a suggestion.
 
 The `wasm` GitHub Actions workflow builds both browser and Node.js packages and
 runs a runtime smoke test before uploading the browser package as an artifact.
+The `s2-benchmark` workflow runs rules tests plus both strategy benchmarks.
 
 ## License
 
