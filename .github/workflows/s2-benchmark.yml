@@ -12,6 +12,9 @@ concurrency:
   group: s2-correctness-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  CARGO_TERM_COLOR: never
+
 jobs:
   audit:
     runs-on: ubuntu-latest
@@ -22,37 +25,39 @@ jobs:
         with:
           targets: wasm32-unknown-unknown
       - name: Native regression tests
-        run: cargo test --lib --bins --tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo test --lib --bins --tests 2>&1 | tee native-tests.txt
+      - name: Release-mode board and observation regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo test --release --test core_regressions 2>&1 | tee release-tests.txt
       - name: Check all native targets
         run: cargo check --all-targets
       - name: Check WASM library
         run: cargo check --lib --target wasm32-unknown-unknown
-      - name: Inspect public upstream rule evidence
+      - name: Inspect public upstream evidence (not a parity test)
+        if: always()
+        run: python3 scripts/inspect-rule-evidence.py
+      - name: Retain regression evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: s2-correctness-${{ github.sha }}
+          path: |
+            native-tests.txt
+            release-tests.txt
+            rule-evidence.json
+          retention-days: 14
+      - name: Record audit scope
         if: always()
         shell: bash
         run: |
-          python3 - <<'PY'
-          import re, hashlib, urllib.request, urllib.parse
-          base = 'https://tetr.io/'
-          try:
-              req = urllib.request.Request(base, headers={'User-Agent': 'Mozilla/5.0'})
-              html = urllib.request.urlopen(req, timeout=20).read().decode('utf-8')
-              scripts = re.findall(r'<script[^>]+src=[\"\x27]([^\"\x27]+)', html)
-              print('Public script URLs:', scripts)
-              candidates = [urllib.parse.urljoin(base, s) for s in scripts if 'tetrio' in s.lower()]
-              for url in candidates[:2]:
-                  raw = urllib.request.urlopen(url, timeout=30).read().decode('utf-8')
-                  print('PUBLIC CLIENT', url, 'bytes', len(raw), 'sha256', hashlib.sha256(raw.encode()).hexdigest())
-                  for key in ['allclear_garbage', 'allclear', 'b2bcharging', 'garbagespecial', 'all-mini', 'openerphase']:
-                      hits = list(re.finditer(re.escape(key), raw, flags=re.I))
-                      print('KEY', key, 'matches', len(hits))
-                      for m in hits[:4]:
-                          print(raw[max(0,m.start()-180):m.end()+360])
-          except Exception as exc:
-              print('Public client evidence unavailable:', type(exc).__name__, str(exc))
-          PY
-      - name: Record audit scope
-        if: always()
-        run: |
-          echo 'Strength sweeps are paused. Passing regression tests is not certification of TETR.IO parity.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Strength sweeps are paused. Regression success is NOT certification of TETR.IO parity.' >> "$GITHUB_STEP_SUMMARY"
           echo "Audited revision: $GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
+          echo '## Native tests' >> "$GITHUB_STEP_SUMMARY"
+          grep -E '^running |^test result:' native-tests.txt >> "$GITHUB_STEP_SUMMARY" || true
+          echo '## Release tests' >> "$GITHUB_STEP_SUMMARY"
+          grep -E '^running |^test result:' release-tests.txt >> "$GITHUB_STEP_SUMMARY" || true
