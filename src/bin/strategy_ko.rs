@@ -169,7 +169,7 @@ fn duel(seed: u64, swapped: bool, s: Settings) -> Result<Value, String> {
         "pressure_turns":[players[0].pressure_turns,players[1].pressure_turns],
         "max_search_depth":[players[0].stats.max_depth,players[1].stats.max_depth],
         "speculative_expansions":[players[0].stats.speculative_expansions,players[1].stats.speculative_expansions],
-        "trace_hash":format!("{digest:016x}"),"elapsed_ms":started.elapsed().as_millis()}))
+        "trace_hash":format!("{digest:016x}"),"elapsed_ms":started.elapsed().as_millis().min(u64::MAX as u128) as u64}))
 }
 fn main() -> Result<(), String> {
     let s = settings(&env::args().skip(1).collect::<Vec<_>>())?;
