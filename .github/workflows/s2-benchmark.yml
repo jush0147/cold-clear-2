@@ -1,41 +1,58 @@
-name: s2-benchmark
+name: s2-correctness
 
 on:
   push:
     branches: [tetrio-s2]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: s2-correctness-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  benchmark:
+  audit:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-
       - uses: dtolnay/rust-toolchain@stable
-
-      - name: Run rules tests
-        run: cargo test --lib
-
-      - name: Compare legacy and S2 evaluators
-        shell: bash
-        run: |
-          set -euo pipefail
-          cargo run --release --bin tl_s2_bench -- --seeds 4 --pieces 80 --nodes 500 | tee s2-benchmark.txt
-
-      - name: Sweep legacy shaping in paired garbage duels
-        shell: bash
-        run: |
-          set -euo pipefail
-          : > s2-sweep.txt
-          for shape in 0.00 0.25 0.50 0.75 1.00; do
-            echo "===== shape=$shape =====" | tee -a s2-sweep.txt
-            cargo run --release --bin tl_s2_duel -- --seeds 20 --pieces 120 --nodes 300 --charge 0.50 --shape "$shape" | tee -a s2-sweep.txt
-          done
-
-      - name: Upload benchmark results
-        uses: actions/upload-artifact@v4
         with:
-          name: s2-benchmark
-          path: |
-            s2-benchmark.txt
-            s2-sweep.txt
+          targets: wasm32-unknown-unknown
+      - name: Native regression tests
+        run: cargo test --lib --bins --tests
+      - name: Check all native targets
+        run: cargo check --all-targets
+      - name: Check WASM library
+        run: cargo check --lib --target wasm32-unknown-unknown
+      - name: Inspect public upstream rule evidence
+        if: always()
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import re, hashlib, urllib.request, urllib.parse
+          base = 'https://tetr.io/'
+          try:
+              req = urllib.request.Request(base, headers={'User-Agent': 'Mozilla/5.0'})
+              html = urllib.request.urlopen(req, timeout=20).read().decode('utf-8')
+              scripts = re.findall(r'<script[^>]+src=[\"\x27]([^\"\x27]+)', html)
+              print('Public script URLs:', scripts)
+              candidates = [urllib.parse.urljoin(base, s) for s in scripts if 'tetrio' in s.lower()]
+              for url in candidates[:2]:
+                  raw = urllib.request.urlopen(url, timeout=30).read().decode('utf-8')
+                  print('PUBLIC CLIENT', url, 'bytes', len(raw), 'sha256', hashlib.sha256(raw.encode()).hexdigest())
+                  for key in ['allclear_garbage', 'allclear', 'b2bcharging', 'garbagespecial', 'all-mini', 'openerphase']:
+                      hits = list(re.finditer(re.escape(key), raw, flags=re.I))
+                      print('KEY', key, 'matches', len(hits))
+                      for m in hits[:4]:
+                          print(raw[max(0,m.start()-180):m.end()+360])
+          except Exception as exc:
+              print('Public client evidence unavailable:', type(exc).__name__, str(exc))
+          PY
+      - name: Record audit scope
+        if: always()
+        run: |
+          echo 'Strength sweeps are paused. Passing regression tests is not certification of TETR.IO parity.' >> "$GITHUB_STEP_SUMMARY"
+          echo "Audited revision: $GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
