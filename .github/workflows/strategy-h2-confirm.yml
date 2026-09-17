@@ -1,0 +1,48 @@
+name: H2 fixed-winner confirmation
+on:
+  push:
+    branches: [s2-strategy-clean]
+    paths: ['.github/workflows/strategy-h2-confirm.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+defaults:
+  run:
+    shell: bash
+jobs:
+  confirm:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      max-parallel: 10
+      matrix:
+        batch: [0,1,2,3,4,5,6,7,8,9]
+    steps:
+      - name: Download frozen H2 decider engine
+        uses: actions/download-artifact@v4
+        with:
+          name: h2-decider-engine
+          path: engine
+          github-token: ${{ github.token }}
+          run-id: 35186497116
+      - name: Verify frozen source and binary
+        run: |
+          test "$(cat engine/commit.txt)" = 'd57ee778d0ec8638dc8df7ad399210b5b25b6390'
+          sha256sum -c engine/sha256.txt
+          chmod +x engine/strategy_h2
+      - name: Run fixed H2 winner vs H1 on 20 fresh seeds, both sides
+        env:
+          BATCH: ${{ matrix.batch }}
+        run: |
+          START=$((7000 + BATCH * 20))
+          mkdir -p results
+          engine/strategy_h2 --attack 1.0 --cancel 0 --incumbent-attack 0 --incumbent-cancel 0 --start "$START" --seeds 20 --nodes 10000 | tee results/ko.jsonl
+          cp engine/commit.txt engine/sha256.txt results/
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: h2-confirm-batch-${{ matrix.batch }}
+          path: results/
+          if-no-files-found: error
