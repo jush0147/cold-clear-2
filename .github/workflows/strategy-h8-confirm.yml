@@ -1,0 +1,67 @@
+name: H8 fixed-finalist confirmation
+on:
+  push:
+    branches: [s2-strategy-clean]
+    paths: ['.github/workflows/strategy-h8-confirm.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+defaults:
+  run:
+    shell: bash
+jobs:
+  confirm:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      max-parallel: 10
+      matrix:
+        include:
+          - { id: b00, start: 36000 }
+          - { id: b01, start: 36020 }
+          - { id: b02, start: 36040 }
+          - { id: b03, start: 36060 }
+          - { id: b04, start: 36080 }
+          - { id: b05, start: 36100 }
+          - { id: b06, start: 36120 }
+          - { id: b07, start: 36140 }
+          - { id: b08, start: 36160 }
+          - { id: b09, start: 36180 }
+    steps:
+      - name: Download frozen H8 engine from screening run
+        uses: actions/download-artifact@v4
+        with:
+          name: h8-engine
+          path: engine
+          github-token: ${{ github.token }}
+          run-id: 35234339252
+      - name: Verify frozen H8 source and executable
+        run: |
+          test "$(cat engine/commit.txt)" = '8d33ce0ebcfe1d7d5e06ab69fbbcf14eefd4b3c0'
+          echo 'b10841d7c67af3af3c81dc57011523b291e82fbd9d653c63d9666ceb6ab74107  engine/strategy_h8.rs' | sha256sum -c -
+          echo '516605d87181820fb98da3073995f34fc70f92aed3a9747a77a8293aafa2d827  engine/strategy_h8' | sha256sum -c -
+          grep -F 'config.freestyle_weights.pending_safety = 1.0;' engine/strategy_h8.rs
+          grep -F 'config.freestyle_weights.useful_attack_reward = strategy.useful_attack_reward;' engine/strategy_h8.rs
+          grep -F 'config.freestyle_weights.row_transitions *= strategy.row_transition_scale;' engine/strategy_h8.rs
+          chmod +x engine/strategy_h8
+      - name: Run 20 fresh paired seeds, KO only
+        env:
+          START: ${{ matrix.start }}
+        run: |
+          mkdir -p results
+          printf '%s\n' 'fixed finalist after validation: attack=0.75,row=3.0; validation 44-36 vs H6C' > results/finalist-record.txt
+          cp engine/commit.txt engine/source.sha256 engine/executable.sha256 results/
+          engine/strategy_h8 \
+            --useful-attack-reward 0.75 \
+            --row-transition-scale 3.0 \
+            --incumbent-useful-attack-reward 1.0 \
+            --incumbent-row-transition-scale 2.5 \
+            --start "$START" --seeds 20 --nodes 10000 | tee results/ko.jsonl
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: h8-confirm-${{ matrix.id }}
+          path: results/
+          if-no-files-found: error
