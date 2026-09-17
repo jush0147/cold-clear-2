@@ -1,0 +1,100 @@
+{
+  "experiment": "H4 structured attack setup shaping",
+  "status": "do_not_promote",
+  "hypothesis": "On top of the H2 incumbent, legacy T-slot, Quad-well, and wasted-T shaping may be misweighted for TL S2 KO play.",
+  "incumbent": {
+    "name": "H2",
+    "pending_safety": 1.0,
+    "useful_attack_reward": 1.0,
+    "cancellation_reward": 0.0,
+    "h3_b2b_charge_value": 0.0,
+    "h3_surge_bank_value": 0.0,
+    "tslot_scale": 1.0,
+    "well_scale": 1.0,
+    "wasted_t_scale": 1.0,
+    "softdrop": 0.0
+  },
+  "tested_source_commit": "2c5520bee4bd7761116dea4386f45e927b362bcc",
+  "frozen_executable_sha256": "ff1b5197114cd5a01ea4d9dc6313ec20397c0920d23f9492112d9dcacea9fc9d",
+  "protocol": {
+    "node_budget_per_move": 10000,
+    "preview": "current + NEXT 5 only",
+    "randomizer": "SevenBag with only visible information used to derive current bag remainder",
+    "garbage_scenarios_under_pressure": 10,
+    "gravity": 0,
+    "result": "KO only",
+    "side_swap": true
+  },
+  "screening": {
+    "run_id": 35193475795,
+    "seeds": "13000-13009",
+    "games_per_config": 20,
+    "configs": [
+      {"tslot":0.0,"well":1.0,"wasted_t":1.0,"candidate":12,"incumbent":8},
+      {"tslot":0.5,"well":0.5,"wasted_t":0.5,"candidate":12,"incumbent":8},
+      {"tslot":0.5,"well":1.0,"wasted_t":1.0,"candidate":9,"incumbent":11},
+      {"tslot":1.0,"well":0.0,"wasted_t":1.0,"candidate":7,"incumbent":13},
+      {"tslot":1.0,"well":0.5,"wasted_t":1.0,"candidate":11,"incumbent":9},
+      {"tslot":1.0,"well":1.0,"wasted_t":0.0,"candidate":11,"incumbent":9},
+      {"tslot":1.0,"well":1.0,"wasted_t":0.5,"candidate":7,"incumbent":13},
+      {"tslot":1.0,"well":1.0,"wasted_t":1.5,"candidate":9,"incumbent":11},
+      {"tslot":1.0,"well":1.0,"wasted_t":2.0,"candidate":11,"incumbent":9},
+      {"tslot":1.0,"well":1.5,"wasted_t":1.0,"candidate":8,"incumbent":12},
+      {"tslot":1.0,"well":2.0,"wasted_t":1.0,"candidate":8,"incumbent":12},
+      {"tslot":1.5,"well":0.5,"wasted_t":1.5,"candidate":12,"incumbent":8},
+      {"tslot":1.5,"well":1.0,"wasted_t":1.0,"candidate":8,"incumbent":12},
+      {"tslot":1.5,"well":1.5,"wasted_t":1.5,"candidate":10,"incumbent":10},
+      {"tslot":2.0,"well":0.5,"wasted_t":2.0,"candidate":10,"incumbent":10},
+      {"tslot":2.0,"well":1.0,"wasted_t":1.0,"candidate":10,"incumbent":10}
+    ]
+  },
+  "validation": {
+    "run_id": 35194335437,
+    "seeds": "14000-14039",
+    "games_per_config": 80,
+    "configs": [
+      {"tslot":1.0,"well":0.5,"wasted_t":1.0,"candidate":48,"incumbent":32,"candidate_sweeps":18,"incumbent_sweeps":10,"splits":12},
+      {"tslot":0.5,"well":0.5,"wasted_t":0.5,"candidate":46,"incumbent":34,"candidate_sweeps":13,"incumbent_sweeps":7,"splits":20},
+      {"tslot":1.5,"well":0.5,"wasted_t":1.5,"candidate":41,"incumbent":39,"candidate_sweeps":10,"incumbent_sweeps":9,"splits":21},
+      {"tslot":0.0,"well":1.0,"wasted_t":1.0,"candidate":30,"incumbent":50,"candidate_sweeps":5,"incumbent_sweeps":15,"splits":20},
+      {"tslot":1.0,"well":1.0,"wasted_t":0.0,"candidate":28,"incumbent":52,"candidate_sweeps":5,"incumbent_sweeps":17,"splits":18},
+      {"tslot":1.0,"well":1.0,"wasted_t":2.0,"candidate":27,"incumbent":53,"candidate_sweeps":6,"incumbent_sweeps":19,"splits":15}
+    ]
+  },
+  "finalist_decider": {
+    "run_id": 35195558496,
+    "seeds": "15000-15199",
+    "games": 400,
+    "candidate": {"tslot":1.0,"well":0.5,"wasted_t":1.0,"wins":198,"sweeps":43},
+    "comparison": {"tslot":0.5,"well":0.5,"wasted_t":0.5,"wins":202,"sweeps":45},
+    "splits": 112,
+    "paired_two_sided_sign_p": 0.915,
+    "decision": "Treat as effectively tied and carry the simpler one-variable finalist (1.0, 0.5, 1.0) into confirmation."
+  },
+  "fixed_finalist_confirmation": {
+    "run_id": 35196525528,
+    "seeds": "17000-17199",
+    "games": 400,
+    "candidate_config": {"tslot":1.0,"well":0.5,"wasted_t":1.0},
+    "incumbent_config": {"tslot":1.0,"well":1.0,"wasted_t":1.0},
+    "candidate_wins": 210,
+    "incumbent_wins": 190,
+    "candidate_sweeps": 52,
+    "incumbent_sweeps": 42,
+    "splits": 106,
+    "paired_two_sided_sign_p": 0.3533280324715825,
+    "all_games_complete": true,
+    "all_reasons": "no_legal_placement"
+  },
+  "decision": {
+    "keep": false,
+    "promote": false,
+    "incumbent_after_experiment": "H2",
+    "reason": "Halving the legacy Quad-well shaping produced a positive validation signal but only 210-190 in the pre-fixed fresh-seed confirmation, with paired p ~= 0.353. Evidence is insufficient to replace H2. T-slot removal and large wasted-T changes also failed validation."
+  },
+  "interpretation": [
+    "The strongest repeatable H4 signal was that legacy Quad-well shaping may be somewhat too strong, not that T-slot shaping should be removed.",
+    "The effect did not survive final confirmation strongly enough for promotion.",
+    "Do not promote any H4 setup-shaping scale; keep H2 as incumbent and revisit these variables only during later joint optimization if other surviving features justify interaction testing."
+  ]
+}
