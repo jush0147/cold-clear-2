@@ -134,6 +134,12 @@ pub struct Weights {
     /// H3: terminal value per line of currently banked Surge once charged.
     #[serde(default)]
     pub h3_surge_bank_value: f32,
+    /// H6B: scale only the always-on base hole penalty; H1 pressure safety is untouched.
+    #[serde(default = "one")]
+    pub h6_base_holes_scale: f32,
+    /// H6B: scale only the always-on base coveredness penalty; H1 pressure safety is untouched.
+    #[serde(default = "one")]
+    pub h6_base_coveredness_scale: f32,
     pub cell_coveredness: f32,
     pub max_cell_covered_height: u32,
     pub holes: f32,
@@ -302,7 +308,7 @@ fn evaluate(
         }
     }
 
-    eval += weights.holes
+    eval += weights.h6_base_holes_scale * weights.holes
         * state
             .board
             .cols
@@ -326,7 +332,7 @@ fn evaluate(
             holes &= !(1 << y);
         }
     }
-    eval += weights.cell_coveredness * coveredness as f32;
+    eval += weights.h6_base_coveredness_scale * weights.cell_coveredness * coveredness as f32;
 
     let (tetris_well_column, tetris_well_height) = state
         .board
