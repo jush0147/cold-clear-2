@@ -1,0 +1,56 @@
+name: H4 fresh-seed validation
+on:
+  push:
+    branches: [s2-strategy-clean]
+    paths: ['.github/workflows/strategy-h4-validate.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+defaults:
+  run:
+    shell: bash
+jobs:
+  validate:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix:
+        include:
+          - { id: t050w050u050, t: 0.50, w: 0.50, u: 0.50, screen: '12-8' }
+          - { id: t000w100u100, t: 0.00, w: 1.00, u: 1.00, screen: '12-8' }
+          - { id: t150w050u150, t: 1.50, w: 0.50, u: 1.50, screen: '12-8' }
+          - { id: t100w050u100, t: 1.00, w: 0.50, u: 1.00, screen: '11-9' }
+          - { id: t100w100u200, t: 1.00, w: 1.00, u: 2.00, screen: '11-9' }
+          - { id: t100w100u000, t: 1.00, w: 1.00, u: 0.00, screen: '11-9' }
+    steps:
+      - name: Download frozen H4 engine from screening run
+        uses: actions/download-artifact@v4
+        with:
+          name: h4-engine
+          path: engine
+          github-token: ${{ github.token }}
+          run-id: 35193475795
+      - name: Verify frozen source and executable
+        run: |
+          test "$(cat engine/commit.txt)" = '2c5520bee4bd7761116dea4386f45e927b362bcc'
+          echo 'ff1b5197114cd5a01ea4d9dc6313ec20397c0920d23f9492112d9dcacea9fc9d  engine/strategy_h4' | sha256sum -c -
+          chmod +x engine/strategy_h4
+      - name: Run 40 fresh seeds, both sides, KO only
+        env:
+          TSLOT: ${{ matrix.t }}
+          WELL: ${{ matrix.w }}
+          WASTED: ${{ matrix.u }}
+        run: |
+          mkdir -p results
+          printf '%s\n' '${{ matrix.screen }}' > results/screening-record.txt
+          cp engine/commit.txt engine/sha256.txt results/
+          engine/strategy_h4 --tslot-scale "$TSLOT" --well-scale "$WELL" --wasted-t-scale "$WASTED" --incumbent-tslot-scale 1 --incumbent-well-scale 1 --incumbent-wasted-t-scale 1 --start 14000 --seeds 40 --nodes 10000 | tee results/ko.jsonl
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: h4-validate-${{ matrix.id }}
+          path: results/
+          if-no-files-found: error
