@@ -1,0 +1,48 @@
+name: H5 fixed-finalist confirmation
+on:
+  push:
+    branches: [s2-strategy-clean]
+    paths: ['.github/workflows/strategy-h5-confirm.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+defaults:
+  run:
+    shell: bash
+jobs:
+  confirm:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      max-parallel: 10
+      matrix:
+        batch: [0,1,2,3,4,5,6,7,8,9]
+    steps:
+      - name: Download frozen H5 engine from screening run
+        uses: actions/download-artifact@v4
+        with:
+          name: h5-engine
+          path: engine
+          github-token: ${{ github.token }}
+          run-id: 35203592286
+      - name: Verify frozen source and executable
+        run: |
+          test "$(cat engine/commit.txt)" = '3970fbee15a94f19970cc3b4b9c915ccce0e3565'
+          echo '2f45c6a132d2c559223716bd39ad71452a96c92e9a100105d06409fe14028365  engine/strategy_h5' | sha256sum -c -
+          chmod +x engine/strategy_h5
+      - name: Confirm combo 4x finalist against H2 incumbent
+        env:
+          BATCH: ${{ matrix.batch }}
+        run: |
+          mkdir -p results
+          START=$((20000 + BATCH * 20))
+          engine/strategy_h5 --combo-scale 4 --incumbent-combo-scale 1 --start "$START" --seeds 20 --nodes 10000 | tee results/ko.jsonl
+          cp engine/commit.txt engine/sha256.txt results/
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: h5-confirm-batch-${{ matrix.batch }}
+          path: results/
+          if-no-files-found: error
