@@ -13,7 +13,7 @@ const PREVIEW: usize = 6;
 struct Strategy { attack: f32, cancel: f32 }
 
 #[derive(Clone, Copy)]
-struct Settings { seeds: u64, start: u64, nodes: u64, strategy: Strategy }
+struct Settings { seeds: u64, start: u64, nodes: u64, strategy: Strategy, incumbent: Strategy }
 
 fn settings(args: &[String]) -> Result<Settings, String> {
     let mut s = Settings {
@@ -21,6 +21,7 @@ fn settings(args: &[String]) -> Result<Settings, String> {
         start: 3000,
         nodes: 10000,
         strategy: Strategy::default(),
+        incumbent: Strategy::default(),
     };
     if args.len() % 2 != 0 { return Err("expected flag/value pairs".into()); }
     for p in args.chunks_exact(2) {
@@ -30,12 +31,16 @@ fn settings(args: &[String]) -> Result<Settings, String> {
             "--nodes" => s.nodes = p[1].parse().map_err(|_| "invalid nodes")?,
             "--attack" => s.strategy.attack = p[1].parse().map_err(|_| "invalid attack reward")?,
             "--cancel" => s.strategy.cancel = p[1].parse().map_err(|_| "invalid cancellation reward")?,
+            "--incumbent-attack" => s.incumbent.attack = p[1].parse().map_err(|_| "invalid incumbent attack reward")?,
+            "--incumbent-cancel" => s.incumbent.cancel = p[1].parse().map_err(|_| "invalid incumbent cancellation reward")?,
             _ => return Err(format!("unknown flag {}; no piece cap or tiebreak", p[0])),
         }
     }
     if s.seeds == 0 || s.nodes < 1000
         || !s.strategy.attack.is_finite() || s.strategy.attack < 0.0
         || !s.strategy.cancel.is_finite() || s.strategy.cancel < 0.0
+        || !s.incumbent.attack.is_finite() || s.incumbent.attack < 0.0
+        || !s.incumbent.cancel.is_finite() || s.incumbent.cancel < 0.0
     {
         return Err("positive seeds, >=1000 nodes and finite nonnegative H2 rewards required".into());
     }
@@ -184,7 +189,7 @@ fn consume(q: &mut VecDeque<Packet>, mut n: u32) {
 fn duel(seed: u64, swapped: bool, s: Settings) -> Result<Value, String> {
     let mut sequence = Sequence::new(seed);
     let visible: Vec<_> = (0..PREVIEW).map(|i| sequence.get(i)).collect();
-    let incumbent = Strategy::default();
+    let incumbent = s.incumbent;
     let strategies = if swapped {
         [s.strategy, incumbent]
     } else {
@@ -267,6 +272,8 @@ fn duel(seed: u64, swapped: bool, s: Settings) -> Result<Value, String> {
         "node_budget": s.nodes,
         "attack_reward": s.strategy.attack,
         "cancellation_reward": s.strategy.cancel,
+        "incumbent_attack_reward": s.incumbent.attack,
+        "incumbent_cancellation_reward": s.incumbent.cancel,
         "nodes": [players[0].stats.nodes, players[1].stats.nodes],
         "unused_nodes": [players[0].unused, players[1].unused],
         "pressure_turns": [players[0].pressure_turns, players[1].pressure_turns],
@@ -282,9 +289,11 @@ fn main() -> Result<(), String> {
     println!("{}", json!({
         "type": "protocol",
         "experiment": "H2 useful outgoing attack and cancellation",
-        "incumbent": "H1 pending_safety=1.0; legacy evaluator otherwise unchanged",
+        "incumbent": "H1 pending_safety=1.0 plus configured H2 rewards",
         "candidate_attack_reward": s.strategy.attack,
         "candidate_cancellation_reward": s.strategy.cancel,
+        "incumbent_attack_reward": s.incumbent.attack,
+        "incumbent_cancellation_reward": s.incumbent.cancel,
         "speculate": true,
         "information": "own current/hold/next5/board/b2b/combo/observable incoming/history only",
         "arena": "shared zero-gravity turn-based S2 authority; no human PPS model",
@@ -300,7 +309,7 @@ fn main() -> Result<(), String> {
         for swapped in [false, true] {
             let game = duel(seed, swapped, s)
                 .map_err(|e| format!("ABORT seed={seed} swapped={swapped}: {e}; no winner assigned"))?;
-            if s.strategy.attack == 0.0 && s.strategy.cancel == 0.0 {
+            if s.strategy.attack == s.incumbent.attack && s.strategy.cancel == s.incumbent.cancel {
                 if let Some(t) = &control_trace {
                     if t != &game["trace_hash"] { return Err("H1/H1 paired game not repeatable".into()); }
                 }
@@ -331,9 +340,22 @@ mod tests {
             vec!["--nodes", "0"],
             vec!["--attack", "NaN"],
             vec!["--cancel", "-0.1"],
+            vec!["--incumbent-attack", "NaN"],
+            vec!["--incumbent-cancel", "-0.1"],
         ] {
             assert!(settings(&args.iter().map(|x| x.to_string()).collect::<Vec<_>>()).is_err());
         }
+    }
+
+    #[test]
+    fn accepts_direct_h2_vs_h2_configuration() {
+        let args = vec![
+            "--attack", "1.0", "--cancel", "0",
+            "--incumbent-attack", "0.5", "--incumbent-cancel", "0",
+        ].into_iter().map(str::to_string).collect::<Vec<_>>();
+        let s = settings(&args).unwrap();
+        assert_eq!((s.strategy.attack, s.strategy.cancel), (1.0, 0.0));
+        assert_eq!((s.incumbent.attack, s.incumbent.cancel), (0.5, 0.0));
     }
 
     #[test]
