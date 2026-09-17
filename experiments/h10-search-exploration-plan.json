@@ -1,0 +1,51 @@
+{
+  "experiment": "H10 search exploitation/exploration",
+  "status": "planned",
+  "incumbent": {
+    "name": "H9",
+    "pending_safety": 1.0,
+    "useful_attack_reward": 1.0,
+    "row_transition_scale": 2.5,
+    "combo_scale": 1.0,
+    "h9_cavity_excavation": -0.5,
+    "freestyle_exploitation": 0.6931471805599453
+  },
+  "hypothesis": "The evaluator now has a useful light cavity-cost signal, but delayed-payoff lines such as donation or building upward before a Quad can still be starved if temporarily lower-ranked branches receive too few search selections. Changing only DAG child-selection exploitation may improve KO performance by preserving or pruning those branches more appropriately.",
+  "selection_rule": {
+    "implementation": "child rank i = floor(((-ln(U))/exploitation) mod child_count)",
+    "default": "ln(2), which before finite-list wrap corresponds to approximately 50%, 25%, 12.5%, ... across successive ranks",
+    "direction": "smaller exploitation explores lower-ranked children more; larger exploitation concentrates more strongly on current high-ranked children",
+    "finite_list_note": "modulo wrap means the exact finite-list probabilities are not the infinite geometric distribution"
+  },
+  "screen": {
+    "incumbent_exploitation": 0.6931471805599453,
+    "candidate_grid": [
+      {"approx_rank0_share": 0.25, "exploitation": 0.2876820724517809},
+      {"approx_rank0_share": 0.35, "exploitation": 0.4307829160924542},
+      {"approx_rank0_share": 0.40, "exploitation": 0.5108256237659907},
+      {"approx_rank0_share": 0.45, "exploitation": 0.5978370007556204},
+      {"approx_rank0_share": 0.55, "exploitation": 0.7985076962177716},
+      {"approx_rank0_share": 0.60, "exploitation": 0.916290731874155},
+      {"approx_rank0_share": 0.65, "exploitation": 1.0498221244986778},
+      {"approx_rank0_share": 0.75, "exploitation": 1.3862943611198906}
+    ],
+    "paired_seeds_per_config": 20,
+    "games_per_config": 40,
+    "total_games": 320,
+    "seed_start": 40000,
+    "nodes_per_move": 10000
+  },
+  "protocol": {
+    "preview": "current + NEXT5",
+    "speculation": "SevenBag after visible preview, never true hidden future",
+    "incoming_garbage": "10 hidden-hole scenarios while under observed pressure",
+    "gravity": 0,
+    "result": "KO only",
+    "side_swap": true,
+    "opponent_board_visible_to_bot": false,
+    "hidden_future_visible_to_bot": false,
+    "search_rng": "deterministic and separate from authority RNG"
+  },
+  "selection": "Use the screen to identify stable direction/region, then fresh-seed validate survivors. Pre-fix one finalist before a 200-paired-seed / 400-KO confirmation against H9.",
+  "promotion_rule": "No promotion from screening or validation. A fixed finalist must beat H9 in fresh confirmation. If no stable region survives validation, keep H9 and stop scalar exploitation tuning rather than inventing intermediate values post-hoc."
+}
