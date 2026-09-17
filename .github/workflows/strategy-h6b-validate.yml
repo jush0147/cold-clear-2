@@ -1,0 +1,54 @@
+name: H6B fresh-seed validation
+on:
+  push:
+    branches: [s2-strategy-clean]
+    paths: ['.github/workflows/strategy-h6b-validate.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+defaults:
+  run:
+    shell: bash
+jobs:
+  validate:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        include:
+          - { id: h150c050, holes: 1.50, covered: 0.50, screen: '26-14' }
+          - { id: h150c100, holes: 1.50, covered: 1.00, screen: '23-17' }
+          - { id: h100c050, holes: 1.00, covered: 0.50, screen: '23-17' }
+          - { id: h100c150, holes: 1.00, covered: 1.50, screen: '23-17' }
+          - { id: h050c150, holes: 0.50, covered: 1.50, screen: '23-17' }
+    steps:
+      - name: Download frozen H6B engine from screening run
+        uses: actions/download-artifact@v4
+        with:
+          name: h6b-engine
+          path: engine
+          github-token: ${{ github.token }}
+          run-id: 35210837816
+      - name: Verify frozen source and executable
+        run: |
+          test "$(cat engine/commit.txt)" = '1b1c7a77a923966bc86a0609aeebb579f7740a73'
+          echo '3a6d96e05ad4d117cea48fedd65bc3e20b48e91d82198a8aa47723b19e4740a6  engine/strategy_h6b' | sha256sum -c -
+          chmod +x engine/strategy_h6b
+      - name: Run 40 fresh seeds, both sides, KO only
+        env:
+          HOLES: ${{ matrix.holes }}
+          COVERED: ${{ matrix.covered }}
+        run: |
+          mkdir -p results
+          engine/strategy_h6b --holes-scale "$HOLES" --covered-scale "$COVERED" --incumbent-holes-scale 1 --incumbent-covered-scale 1 --start 24000 --seeds 40 --nodes 10000 | tee results/ko.jsonl
+          cp engine/commit.txt engine/sha256.txt results/
+          printf '%s\n' '${{ matrix.screen }}' > results/screening-record.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: h6b-validate-${{ matrix.id }}
+          path: results/
+          if-no-files-found: error
