@@ -1,0 +1,68 @@
+{
+  "experiment": "H6B base-only holes and coveredness shaping",
+  "status": "do_not_promote",
+  "hypothesis": "The always-on cavity evaluator may misweight raw hole count versus coveredness while H1 pending-garbage safety remains frozen.",
+  "incumbent_before_experiment": "H2",
+  "tested_source_commit": "1b1c7a77a923966bc86a0609aeebb579f7740a73",
+  "frozen_executable_sha256": "3a6d96e05ad4d117cea48fedd65bc3e20b48e91d82198a8aa47723b19e4740a6",
+  "protocol": {
+    "node_budget_per_move": 10000,
+    "preview": "current + NEXT 5 only",
+    "gravity": 0,
+    "result": "KO only",
+    "side_swap": true,
+    "h1_pending_safety": "frozen at incumbent weights",
+    "h2_useful_attack_reward": 1.0
+  },
+  "screening": {
+    "run_id": 35210837816,
+    "seeds": "23100-23119",
+    "games_per_config": 40,
+    "incumbent": {"holes_scale":1.0,"covered_scale":1.0},
+    "configs": [
+      {"holes":0.5,"covered":0.5,"candidate":19,"incumbent":21,"candidate_sweeps":4,"incumbent_sweeps":5,"splits":11},
+      {"holes":0.5,"covered":1.0,"candidate":20,"incumbent":20,"candidate_sweeps":5,"incumbent_sweeps":5,"splits":10},
+      {"holes":0.5,"covered":1.5,"candidate":23,"incumbent":17,"candidate_sweeps":8,"incumbent_sweeps":5,"splits":7},
+      {"holes":0.5,"covered":2.0,"candidate":22,"incumbent":18,"candidate_sweeps":6,"incumbent_sweeps":4,"splits":10},
+      {"holes":1.0,"covered":0.5,"candidate":23,"incumbent":17,"candidate_sweeps":6,"incumbent_sweeps":3,"splits":11},
+      {"holes":1.0,"covered":1.5,"candidate":23,"incumbent":17,"candidate_sweeps":7,"incumbent_sweeps":4,"splits":9},
+      {"holes":1.0,"covered":2.0,"candidate":15,"incumbent":25,"candidate_sweeps":4,"incumbent_sweeps":9,"splits":7},
+      {"holes":1.5,"covered":0.5,"candidate":26,"incumbent":14,"candidate_sweeps":8,"incumbent_sweeps":2,"splits":10},
+      {"holes":1.5,"covered":1.0,"candidate":23,"incumbent":17,"candidate_sweeps":6,"incumbent_sweeps":3,"splits":11},
+      {"holes":1.5,"covered":1.5,"candidate":19,"incumbent":21,"candidate_sweeps":4,"incumbent_sweeps":5,"splits":11},
+      {"holes":1.5,"covered":2.0,"candidate":17,"incumbent":23,"candidate_sweeps":3,"incumbent_sweeps":6,"splits":11},
+      {"holes":2.0,"covered":0.5,"candidate":14,"incumbent":26,"candidate_sweeps":2,"incumbent_sweeps":8,"splits":10},
+      {"holes":2.0,"covered":1.0,"candidate":21,"incumbent":19,"candidate_sweeps":6,"incumbent_sweeps":5,"splits":9},
+      {"holes":2.0,"covered":1.5,"candidate":16,"incumbent":24,"candidate_sweeps":3,"incumbent_sweeps":7,"splits":10},
+      {"holes":2.0,"covered":2.0,"candidate":12,"incumbent":28,"candidate_sweeps":3,"incumbent_sweeps":11,"splits":6}
+    ],
+    "selected_for_fresh_validation": [
+      {"holes":1.5,"covered":0.5},
+      {"holes":1.5,"covered":1.0},
+      {"holes":1.0,"covered":0.5},
+      {"holes":1.0,"covered":1.5},
+      {"holes":0.5,"covered":1.5}
+    ]
+  },
+  "validation": {
+    "run_id": 35213102993,
+    "seeds": "24000-24039",
+    "games_per_config": 80,
+    "configs": [
+      {"holes":1.5,"covered":0.5,"candidate":40,"incumbent":40,"candidate_sweeps":10,"incumbent_sweeps":10,"splits":20,"paired_two_sided_sign_p":1.0},
+      {"holes":1.5,"covered":1.0,"candidate":33,"incumbent":47,"candidate_sweeps":6,"incumbent_sweeps":13,"splits":21,"paired_two_sided_sign_p":0.1670684814453125},
+      {"holes":1.0,"covered":0.5,"candidate":38,"incumbent":42,"candidate_sweeps":6,"incumbent_sweeps":8,"splits":26,"paired_two_sided_sign_p":0.79052734375},
+      {"holes":1.0,"covered":1.5,"candidate":33,"incumbent":47,"candidate_sweeps":6,"incumbent_sweeps":13,"splits":21,"paired_two_sided_sign_p":0.1670684814453125},
+      {"holes":0.5,"covered":1.5,"candidate":42,"incumbent":38,"candidate_sweeps":12,"incumbent_sweeps":10,"splits":18,"paired_two_sided_sign_p":0.8318119049072266}
+    ],
+    "all_games_complete": true,
+    "all_reasons": "no_legal_placement"
+  },
+  "decision": {
+    "keep": false,
+    "promote": false,
+    "finalist": null,
+    "incumbent_after_experiment": "H2",
+    "reason": "The screening leader 1.5/0.5 regressed exactly to 40-40 on fresh seeds and no alternative produced a convincing fresh-seed advantage. No fixed-finalist confirmation is warranted."
+  }
+}
