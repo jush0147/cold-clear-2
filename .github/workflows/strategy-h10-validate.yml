@@ -1,0 +1,57 @@
+name: H10 fresh-seed exploitation validation
+on:
+  push:
+    branches: [s2-strategy-clean]
+    paths: ['.github/workflows/strategy-h10-validate.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+defaults:
+  run:
+    shell: bash
+jobs:
+  validate:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        include:
+          - { id: p40, exploitation: 0.5108256237659907, share: 0.40, screen: '25-15' }
+          - { id: p55, exploitation: 0.7985076962177716, share: 0.55, screen: '25-15' }
+    steps:
+      - name: Download frozen H10 engine from screening run
+        uses: actions/download-artifact@v4
+        with:
+          name: h10-engine
+          path: engine
+          github-token: ${{ github.token }}
+          run-id: 35284463845
+      - name: Verify frozen H10 source and executable
+        run: |
+          test "$(cat engine/commit.txt)" = '327b45964fb60a30a40f9137c0d0e07e4667a0a6'
+          echo 'ff871957179fab3c1a025d0dd443ecd9d0c05f62ab07d040bc2c70183ce69544  engine/freestyle.rs' | sha256sum -c -
+          echo '2f9a0dfe40b1553b4c71e36d42cb856ed5dd2c232601bcdbde98e432e6821865  engine/strategy_h10.rs' | sha256sum -c -
+          echo '4dd9bae9a6c4d85f520fa1d5f586c792cea46a9f1185ecc66a1b6c12d30d8624  engine/strategy_h10' | sha256sum -c -
+          chmod +x engine/strategy_h10
+      - name: Run 40 fresh paired seeds, KO only
+        env:
+          EXPLOIT: ${{ matrix.exploitation }}
+          SHARE: ${{ matrix.share }}
+        run: |
+          mkdir -p results
+          printf '%s\n' '${{ matrix.screen }}' > results/screening-record.txt
+          printf '%s\n' "$SHARE" > results/approx-rank0-share.txt
+          cp engine/commit.txt engine/core.sha256 engine/harness.sha256 engine/executable.sha256 results/
+          engine/strategy_h10 \
+            --exploitation "$EXPLOIT" \
+            --incumbent-exploitation 0.6931471805599453 \
+            --start 41000 --seeds 40 --nodes 10000 | tee results/ko.jsonl
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: h10-validate-${{ matrix.id }}
+          path: results/
+          if-no-files-found: error
