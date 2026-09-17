@@ -1,0 +1,52 @@
+name: H6C fresh-seed validation
+on:
+  push:
+    branches: [s2-strategy-clean]
+    paths: ['.github/workflows/strategy-h6c-validate.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+defaults:
+  run:
+    shell: bash
+jobs:
+  validate:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        include:
+          - { id: r150, scale: 1.50, screen: '25-15' }
+          - { id: r250, scale: 2.50, screen: '24-16' }
+          - { id: r300, scale: 3.00, screen: '28-12' }
+          - { id: r400, scale: 4.00, screen: '27-13' }
+    steps:
+      - name: Download frozen H6C engine from screening run
+        uses: actions/download-artifact@v4
+        with:
+          name: h6c-engine
+          path: engine
+          github-token: ${{ github.token }}
+          run-id: 35214925328
+      - name: Verify frozen source and executable
+        run: |
+          test "$(cat engine/commit.txt)" = 'd9131dbb125af812f7943da644715d5893cb1a66'
+          echo 'af3adbcc54bb6524688a723fdab988bdc4bca0c64501bb96ed3944f9893b120e  engine/strategy_h6c' | sha256sum -c -
+          chmod +x engine/strategy_h6c
+      - name: Run 40 fresh seeds, both sides, KO only
+        env:
+          SCALE: ${{ matrix.scale }}
+        run: |
+          mkdir -p results
+          engine/strategy_h6c --row-transition-scale "$SCALE" --incumbent-row-transition-scale 1 --start 26000 --seeds 40 --nodes 10000 | tee results/ko.jsonl
+          cp engine/commit.txt engine/sha256.txt results/
+          printf '%s\n' '${{ matrix.screen }}' > results/screening-record.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: h6c-validate-${{ matrix.id }}
+          path: results/
+          if-no-files-found: error
