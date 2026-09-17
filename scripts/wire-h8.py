@@ -110,6 +110,32 @@ if old not in s:
 s = s.replace(old, new, 1)
 s = s.replace('"H6C A/A paired game not repeatable"', '"H8 A/A paired game not repeatable"')
 
+# Upgrade inherited H6C parser tests to the two-dimensional H8 strategy.
+s = s.replace(
+    '            vec!["--incumbent-row-transition-scale", "-0.1"],\n',
+    '            vec!["--incumbent-row-transition-scale", "-0.1"],\n'
+    '            vec!["--useful-attack-reward", "NaN"],\n'
+    '            vec!["--useful-attack-reward", "-0.1"],\n'
+    '            vec!["--incumbent-useful-attack-reward", "NaN"],\n'
+    '            vec!["--incumbent-useful-attack-reward", "-0.1"],\n',
+    1,
+)
+s = s.replace(
+    'fn accepts_direct_h6c_vs_h6c_configuration()',
+    'fn accepts_direct_h8_vs_h8_configuration()',
+    1,
+)
+s = s.replace(
+    '        assert_eq!(s.strategy, Strategy { row_transition_scale: 0.5 });',
+    '        assert_eq!(s.strategy, Strategy { row_transition_scale: 0.5, useful_attack_reward: 1.0 });',
+    1,
+)
+s = s.replace(
+    '        assert_eq!(s.incumbent, Strategy { row_transition_scale: 1.5 });',
+    '        assert_eq!(s.incumbent, Strategy { row_transition_scale: 1.5, useful_attack_reward: 1.0 });',
+    1,
+)
+
 # Hard guards: H8 must be exactly H1 + joint H2/H6C retuning, with rejected ideas off.
 required = [
     'config.freestyle_weights.softdrop = 0.0;',
@@ -121,6 +147,8 @@ required = [
     'config.freestyle_weights.h6_base_holes_scale = 1.0;',
     'config.freestyle_weights.h6_base_coveredness_scale = 1.0;',
     'config.freestyle_weights.row_transitions *= strategy.row_transition_scale;',
+    'Strategy { row_transition_scale: 0.5, useful_attack_reward: 1.0 }',
+    'Strategy { row_transition_scale: 1.5, useful_attack_reward: 1.0 }',
 ]
 for needle in required:
     if needle not in s:
