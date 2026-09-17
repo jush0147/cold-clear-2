@@ -1,0 +1,43 @@
+{
+  "experiment": "H9 sealed-cavity excavation cost",
+  "status": "screening_started",
+  "incumbent": {
+    "name": "H6C",
+    "pending_safety": 1.0,
+    "useful_attack_reward": 1.0,
+    "cancellation_reward": 0.0,
+    "row_transition_scale": 2.5,
+    "combo_scale": 1.0,
+    "h9_cavity_excavation": 0.0
+  },
+  "hypothesis": "Legacy holes and coveredness treat cavities mostly by vertical emptiness/depth. A separate lower-bound excavation cost for sealed empty components may distinguish side-accessible caves from pockets that require clearing blockers before they can be reached.",
+  "metric": {
+    "domain": "real post-placement board before optimistic T-slot cutouts",
+    "component_definition": "4-neighbor connected empty cells below the global board surface",
+    "component_cost": "minimum number of occupied cells vertically above any cell in the component",
+    "sky_access": "if any cell in the component has zero blockers above it, component cost is zero",
+    "aggregation": "sum component cost once per empty component",
+    "reason_not_to_multiply_by_component_size": "existing holes already prices empty-cell count; H9 is intended to add accessibility/excavation information rather than duplicate hole count"
+  },
+  "screen": {
+    "candidate_weights": [-0.25, -0.5, -0.75, -1.0, -1.5, -2.0, -3.0],
+    "incumbent_weight": 0.0,
+    "paired_seeds_per_config": 20,
+    "games_per_config": 40,
+    "seed_start": 37000,
+    "nodes_per_move": 10000
+  },
+  "protocol": {
+    "preview": "current + NEXT5",
+    "speculation": "SevenBag after visible preview, never true hidden future",
+    "incoming_garbage": "10 hidden-hole scenarios while under observed pressure",
+    "gravity": 0,
+    "result": "KO only",
+    "side_swap": true,
+    "opponent_board_visible_to_bot": false,
+    "hidden_future_visible_to_bot": false
+  },
+  "selection": "screen shared seeds, fresh-seed validate survivors, then fixed-finalist fresh 400-KO confirmation",
+  "promotion_rule": "H9 is not promoted from screening or validation. The fixed finalist must beat H6C in fresh confirmation. If not, H6C remains incumbent and H9 is recorded as rejected.",
+  "screening_run": 35263555245
+}
