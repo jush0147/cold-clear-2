@@ -1,0 +1,114 @@
+name: H4 structured attack setup screening
+on:
+  push:
+    branches: [s2-strategy-clean]
+    paths:
+      - 'scripts/wire-h4.py'
+      - '.github/workflows/strategy-h4.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+defaults:
+  run:
+    shell: bash
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    outputs:
+      source_sha: ${{ steps.meta.outputs.source_sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: strategy-h4-native
+      - name: Apply isolated H4 wiring
+        run: python3 scripts/wire-h4.py
+      - name: Regression tests
+        run: cargo test --release --lib --bins --tests 2>&1 | tee regression.log
+      - name: Commit tested H4 source
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm scripts/wire-h4.py
+          git add src/bin/strategy_h4.rs
+          git commit -m 'Add isolated H4 structured attack setup harness'
+          git push origin HEAD:s2-strategy-clean
+      - name: Build frozen executable
+        run: cargo build --release --bin strategy_h4
+      - id: meta
+        name: Package exact tested source and binary
+        run: |
+          mkdir -p h4-engine
+          cp target/release/strategy_h4 regression.log h4-engine/
+          git rev-parse HEAD | tee h4-engine/commit.txt
+          echo "source_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          sha256sum target/release/strategy_h4 | awk '{print $1 "  strategy_h4"}' | tee h4-engine/sha256.txt
+          git archive --format=tar.gz -o h4-engine/source.tar.gz HEAD
+      - uses: actions/upload-artifact@v4
+        with:
+          name: h4-engine
+          path: h4-engine/
+          if-no-files-found: error
+      - name: H2/H2 A/A control
+        run: target/release/strategy_h4 --tslot-scale 1 --well-scale 1 --wasted-t-scale 1 --incumbent-tslot-scale 1 --incumbent-well-scale 1 --incumbent-wasted-t-scale 1 --start 13000 --seeds 2 --nodes 10000 | tee h4-control.jsonl
+      - uses: actions/upload-artifact@v4
+        with:
+          name: h4-control
+          path: h4-control.jsonl
+          if-no-files-found: error
+
+  screen:
+    needs: build
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      max-parallel: 16
+      matrix:
+        include:
+          - { id: t000w100u100, tslot: 0.00, well: 1.00, wasted: 1.00 }
+          - { id: t050w100u100, tslot: 0.50, well: 1.00, wasted: 1.00 }
+          - { id: t150w100u100, tslot: 1.50, well: 1.00, wasted: 1.00 }
+          - { id: t200w100u100, tslot: 2.00, well: 1.00, wasted: 1.00 }
+          - { id: t100w000u100, tslot: 1.00, well: 0.00, wasted: 1.00 }
+          - { id: t100w050u100, tslot: 1.00, well: 0.50, wasted: 1.00 }
+          - { id: t100w150u100, tslot: 1.00, well: 1.50, wasted: 1.00 }
+          - { id: t100w200u100, tslot: 1.00, well: 2.00, wasted: 1.00 }
+          - { id: t100w100u000, tslot: 1.00, well: 1.00, wasted: 0.00 }
+          - { id: t100w100u050, tslot: 1.00, well: 1.00, wasted: 0.50 }
+          - { id: t100w100u150, tslot: 1.00, well: 1.00, wasted: 1.50 }
+          - { id: t100w100u200, tslot: 1.00, well: 1.00, wasted: 2.00 }
+          - { id: t150w050u150, tslot: 1.50, well: 0.50, wasted: 1.50 }
+          - { id: t150w150u150, tslot: 1.50, well: 1.50, wasted: 1.50 }
+          - { id: t050w050u050, tslot: 0.50, well: 0.50, wasted: 0.50 }
+          - { id: t200w050u200, tslot: 2.00, well: 0.50, wasted: 2.00 }
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: h4-engine
+          path: engine
+      - name: Verify frozen engine
+        env:
+          EXPECTED: ${{ needs.build.outputs.source_sha }}
+        run: |
+          test "$(cat engine/commit.txt)" = "$EXPECTED"
+          (cd engine && sha256sum -c sha256.txt)
+          chmod +x engine/strategy_h4
+      - name: Run 10 shared seeds, both sides, KO only
+        env:
+          TSLOT: ${{ matrix.tslot }}
+          WELL: ${{ matrix.well }}
+          WASTED: ${{ matrix.wasted }}
+        run: |
+          mkdir -p results
+          engine/strategy_h4 --tslot-scale "$TSLOT" --well-scale "$WELL" --wasted-t-scale "$WASTED" --incumbent-tslot-scale 1 --incumbent-well-scale 1 --incumbent-wasted-t-scale 1 --start 13100 --seeds 10 --nodes 10000 | tee results/ko.jsonl
+          cp engine/commit.txt engine/sha256.txt results/
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: h4-screen-${{ matrix.id }}
+          path: results/
+          if-no-files-found: error
