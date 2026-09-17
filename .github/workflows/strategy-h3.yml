@@ -1,0 +1,113 @@
+name: H3 B2B charge and Surge screening
+on:
+  push:
+    branches: [s2-strategy-clean]
+    paths:
+      - 'scripts/wire-h3.py'
+      - '.github/workflows/strategy-h3.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+defaults:
+  run:
+    shell: bash
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    outputs:
+      source_sha: ${{ steps.meta.outputs.source_sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: strategy-h3-native
+      - name: Apply isolated H3 wiring
+        run: python3 scripts/wire-h3.py
+      - name: Regression tests
+        run: cargo test --release --lib --bins --tests 2>&1 | tee regression.log
+      - name: Commit tested H3 source
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm scripts/wire-h3.py
+          git add src/bot/freestyle.rs src/bin/strategy_h3.rs
+          git commit -m 'Add isolated H3 B2B and Surge inventory values'
+          git push origin HEAD:s2-strategy-clean
+      - name: Build frozen executable
+        run: cargo build --release --bin strategy_h3
+      - id: meta
+        name: Package exact tested source and binary
+        run: |
+          mkdir -p h3-engine
+          cp target/release/strategy_h3 regression.log h3-engine/
+          git rev-parse HEAD | tee h3-engine/commit.txt
+          echo "source_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          sha256sum target/release/strategy_h3 | awk '{print $1 "  strategy_h3"}' | tee h3-engine/sha256.txt
+          git archive --format=tar.gz -o h3-engine/source.tar.gz HEAD
+      - uses: actions/upload-artifact@v4
+        with:
+          name: h3-engine
+          path: h3-engine/
+          if-no-files-found: error
+      - name: H2/H2 A/A control
+        run: target/release/strategy_h3 --charge 0 --surge-bank 0 --incumbent-charge 0 --incumbent-surge-bank 0 --start 9000 --seeds 2 --nodes 10000 | tee h3-control.jsonl
+      - uses: actions/upload-artifact@v4
+        with:
+          name: h3-control
+          path: h3-control.jsonl
+          if-no-files-found: error
+
+  screen:
+    needs: build
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      max-parallel: 16
+      matrix:
+        include:
+          - { id: c025s000, charge: 0.25, surge: 0.00 }
+          - { id: c050s000, charge: 0.50, surge: 0.00 }
+          - { id: c100s000, charge: 1.00, surge: 0.00 }
+          - { id: c150s000, charge: 1.50, surge: 0.00 }
+          - { id: c000s005, charge: 0.00, surge: 0.05 }
+          - { id: c000s010, charge: 0.00, surge: 0.10 }
+          - { id: c000s025, charge: 0.00, surge: 0.25 }
+          - { id: c000s050, charge: 0.00, surge: 0.50 }
+          - { id: c025s005, charge: 0.25, surge: 0.05 }
+          - { id: c025s010, charge: 0.25, surge: 0.10 }
+          - { id: c050s005, charge: 0.50, surge: 0.05 }
+          - { id: c050s010, charge: 0.50, surge: 0.10 }
+          - { id: c050s025, charge: 0.50, surge: 0.25 }
+          - { id: c100s005, charge: 1.00, surge: 0.05 }
+          - { id: c100s010, charge: 1.00, surge: 0.10 }
+          - { id: c100s025, charge: 1.00, surge: 0.25 }
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: h3-engine
+          path: engine
+      - name: Verify frozen engine
+        env:
+          EXPECTED: ${{ needs.build.outputs.source_sha }}
+        run: |
+          test "$(cat engine/commit.txt)" = "$EXPECTED"
+          (cd engine && sha256sum -c sha256.txt)
+          chmod +x engine/strategy_h3
+      - name: Run 10 shared seeds, both sides, KO only
+        env:
+          CHARGE: ${{ matrix.charge }}
+          SURGE: ${{ matrix.surge }}
+        run: |
+          mkdir -p results
+          engine/strategy_h3 --charge "$CHARGE" --surge-bank "$SURGE" --incumbent-charge 0 --incumbent-surge-bank 0 --start 9100 --seeds 10 --nodes 10000 | tee results/ko.jsonl
+          cp engine/commit.txt engine/sha256.txt results/
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: h3-screen-${{ matrix.id }}
+          path: results/
+          if-no-files-found: error
