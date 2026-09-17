@@ -84,10 +84,18 @@ impl Mode for Freestyle {
                         }
                         new_stats.nodes += 1;
                         let mut state = state;
+                        let incoming_before = state.forecast.remaining();
+                        let sent_before = state.forecast.sent;
                         let info = state.advance(next, mv);
 
-                        let (eval, reward) =
-                            evaluate(&options.config.freestyle_weights, state, &info, sd_distance);
+                        let (eval, reward) = evaluate(
+                            &options.config.freestyle_weights,
+                            state,
+                            &info,
+                            sd_distance,
+                            incoming_before,
+                            sent_before,
+                        );
 
                         children[next].push(ChildData {
                             resulting_state: state,
@@ -114,6 +122,12 @@ pub struct Weights {
     /// Experimental H1 multiplier; zero preserves legacy evaluation.
     #[serde(default)]
     pub pending_safety: f32,
+    /// H2: reward garbage that remains after cancellation and is actually sent.
+    #[serde(default)]
+    pub useful_attack_reward: f32,
+    /// H2: independently reward visible incoming garbage actually cancelled.
+    #[serde(default)]
+    pub cancellation_reward: f32,
     pub cell_coveredness: f32,
     pub max_cell_covered_height: u32,
     pub holes: f32,
@@ -189,6 +203,8 @@ fn evaluate(
     mut state: GameState,
     info: &PlacementInfo,
     softdrop: u32,
+    incoming_before: u32,
+    sent_before: u32,
 ) -> (Eval, Reward) {
     if state.forecast.topped_out {
         return (Eval { value: (-1_000_000.0).into() }, Reward { value: 0.0.into() });
@@ -225,6 +241,23 @@ fn evaluate(
     } else {
         reward += legacy_shape;
     }
+
+    // H2 is deliberately orthogonal to the older tetrio_s2 switch. The
+    // incumbent keeps the complete legacy shaping plus H1. Candidate changes
+    // only these two coefficients. With a forecast enabled, a line clear cannot
+    // raise garbage, so queue shrinkage on that transition is cancellation.
+    let raw_attack = tetrio::attack(info).total;
+    let (useful_outgoing, cancelled) = useful_attack_delta(
+        state.forecast.enabled,
+        info.lines_cleared,
+        raw_attack,
+        incoming_before,
+        state.forecast.remaining(),
+        sent_before,
+        state.forecast.sent,
+    );
+    reward += weights.useful_attack_reward * useful_outgoing as f32;
+    reward += weights.cancellation_reward * cancelled as f32;
 
     if info.placement.location.piece == Piece::T
         && (info.lines_cleared < 2 || !matches!(info.placement.spin, Spin::Full))
@@ -329,6 +362,49 @@ fn evaluate(
             value: reward.into(),
         },
     )
+}
+
+fn useful_attack_delta(
+    forecast_enabled: bool,
+    lines_cleared: u32,
+    raw_attack: u32,
+    incoming_before: u32,
+    incoming_after: u32,
+    sent_before: u32,
+    sent_after: u32,
+) -> (u32, u32) {
+    if lines_cleared == 0 {
+        return (0, 0);
+    }
+    if forecast_enabled {
+        (
+            sent_after.saturating_sub(sent_before),
+            incoming_before.saturating_sub(incoming_after),
+        )
+    } else {
+        (raw_attack, 0)
+    }
+}
+
+#[cfg(test)]
+mod h2_tests {
+    use super::useful_attack_delta;
+
+    #[test]
+    fn h2_separates_outgoing_from_cancelled_lines() {
+        assert_eq!(useful_attack_delta(true, 2, 7, 5, 0, 10, 12), (2, 5));
+        assert_eq!(useful_attack_delta(true, 2, 3, 8, 5, 4, 4), (0, 3));
+    }
+
+    #[test]
+    fn h2_does_not_mistake_garbage_rise_for_cancellation() {
+        assert_eq!(useful_attack_delta(true, 0, 0, 8, 0, 0, 0), (0, 0));
+    }
+
+    #[test]
+    fn raw_attack_is_used_when_no_forecast_is_attached() {
+        assert_eq!(useful_attack_delta(false, 4, 6, 0, 0, 0, 0), (6, 0));
+    }
 }
 
 fn well_known_tslot_left(board: &Board) -> Option<PieceLocation> {
