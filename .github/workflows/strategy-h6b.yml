@@ -1,0 +1,112 @@
+name: H6B cavity shaping screening
+on:
+  push:
+    branches: [s2-strategy-clean]
+    paths:
+      - 'scripts/wire-h6b.py'
+      - '.github/workflows/strategy-h6b.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+defaults:
+  run:
+    shell: bash
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    outputs:
+      source_sha: ${{ steps.meta.outputs.source_sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: strategy-h6b-native
+      - name: Apply isolated H6B wiring
+        run: python3 scripts/wire-h6b.py
+      - name: Regression tests
+        run: cargo test --release --lib --bins --tests 2>&1 | tee regression.log
+      - name: Commit tested H6B source
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm scripts/wire-h6b.py
+          git add src/bot/freestyle.rs src/bin/strategy_h6b.rs
+          git commit -m 'Add isolated H6B base cavity shaping harness'
+          git push origin HEAD:s2-strategy-clean
+      - name: Build frozen executable
+        run: cargo build --release --bin strategy_h6b
+      - id: meta
+        name: Package exact tested source and binary
+        run: |
+          mkdir -p h6b-engine
+          cp target/release/strategy_h6b regression.log h6b-engine/
+          git rev-parse HEAD | tee h6b-engine/commit.txt
+          echo "source_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          sha256sum target/release/strategy_h6b | awk '{print $1 "  strategy_h6b"}' | tee h6b-engine/sha256.txt
+          git archive --format=tar.gz -o h6b-engine/source.tar.gz HEAD
+      - uses: actions/upload-artifact@v4
+        with:
+          name: h6b-engine
+          path: h6b-engine/
+          if-no-files-found: error
+      - name: H2/H2 A/A control
+        run: target/release/strategy_h6b --holes-scale 1 --covered-scale 1 --incumbent-holes-scale 1 --incumbent-covered-scale 1 --start 23000 --seeds 2 --nodes 10000 | tee h6b-control.jsonl
+      - uses: actions/upload-artifact@v4
+        with:
+          name: h6b-control
+          path: h6b-control.jsonl
+          if-no-files-found: error
+
+  screen:
+    needs: build
+    runs-on: ubuntu-22.04
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      max-parallel: 15
+      matrix:
+        include:
+          - { id: h050c050, holes: 0.50, covered: 0.50 }
+          - { id: h050c100, holes: 0.50, covered: 1.00 }
+          - { id: h050c150, holes: 0.50, covered: 1.50 }
+          - { id: h050c200, holes: 0.50, covered: 2.00 }
+          - { id: h100c050, holes: 1.00, covered: 0.50 }
+          - { id: h100c150, holes: 1.00, covered: 1.50 }
+          - { id: h100c200, holes: 1.00, covered: 2.00 }
+          - { id: h150c050, holes: 1.50, covered: 0.50 }
+          - { id: h150c100, holes: 1.50, covered: 1.00 }
+          - { id: h150c150, holes: 1.50, covered: 1.50 }
+          - { id: h150c200, holes: 1.50, covered: 2.00 }
+          - { id: h200c050, holes: 2.00, covered: 0.50 }
+          - { id: h200c100, holes: 2.00, covered: 1.00 }
+          - { id: h200c150, holes: 2.00, covered: 1.50 }
+          - { id: h200c200, holes: 2.00, covered: 2.00 }
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: h6b-engine
+          path: engine
+      - name: Verify frozen engine
+        env:
+          EXPECTED: ${{ needs.build.outputs.source_sha }}
+        run: |
+          test "$(cat engine/commit.txt)" = "$EXPECTED"
+          (cd engine && sha256sum -c sha256.txt)
+          chmod +x engine/strategy_h6b
+      - name: Run 20 shared seeds, both sides, KO only
+        env:
+          HOLES: ${{ matrix.holes }}
+          COVERED: ${{ matrix.covered }}
+        run: |
+          mkdir -p results
+          engine/strategy_h6b --holes-scale "$HOLES" --covered-scale "$COVERED" --incumbent-holes-scale 1 --incumbent-covered-scale 1 --start 23100 --seeds 20 --nodes 10000 | tee results/ko.jsonl
+          cp engine/commit.txt engine/sha256.txt results/
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: h6b-screen-${{ matrix.id }}
+          path: results/
+          if-no-files-found: error
