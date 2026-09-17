@@ -1,0 +1,51 @@
+name: H6 fresh-seed validation
+on:
+  push:
+    branches: [s2-strategy-clean]
+    paths: ['.github/workflows/strategy-h6-validate.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+defaults:
+  run:
+    shell: bash
+jobs:
+  validate:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        include:
+          - { id: h000, height: 0.00, screen: '23-17' }
+          - { id: h075, height: 0.75, screen: '24-16' }
+          - { id: h300, height: 3.00, screen: '24-16' }
+    steps:
+      - name: Download frozen H6 engine from screening run
+        uses: actions/download-artifact@v4
+        with:
+          name: h6-engine
+          path: engine
+          github-token: ${{ github.token }}
+          run-id: 35208164709
+      - name: Verify frozen source and executable
+        run: |
+          test "$(cat engine/commit.txt)" = 'dd882d0d048979008a88dbd1e0bed51cca7a23ef'
+          echo '147c7a0c4e3ba91201c05b23cd6e0ccd28f0afd50344e541d8be3d4ddd19c464  engine/strategy_h6' | sha256sum -c -
+          chmod +x engine/strategy_h6
+      - name: Run 40 fresh seeds, both sides, KO only
+        env:
+          HEIGHT: ${{ matrix.height }}
+        run: |
+          mkdir -p results
+          printf '%s\n' '${{ matrix.screen }}' > results/screening-record.txt
+          cp engine/commit.txt engine/sha256.txt results/
+          engine/strategy_h6 --height-scale "$HEIGHT" --incumbent-height-scale 1 --start 22000 --seeds 40 --nodes 10000 | tee results/ko.jsonl
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: h6-validate-${{ matrix.id }}
+          path: results/
+          if-no-files-found: error
