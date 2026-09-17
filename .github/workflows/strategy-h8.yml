@@ -1,0 +1,116 @@
+name: H8 joint attack-row screening
+on:
+  push:
+    branches: [s2-strategy-clean]
+    paths:
+      - 'scripts/wire-h8.py'
+      - '.github/workflows/strategy-h8.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+defaults:
+  run:
+    shell: bash
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: strategy-h8-native
+      - name: Generate isolated H8 harness
+        run: python3 scripts/wire-h8.py
+      - name: Check H8 harness and core regressions
+        run: |
+          cargo test --release --bin strategy_h8 2>&1 | tee h8-regression.log
+          cargo test --release --lib
+      - name: Build frozen executable
+        run: cargo build --release --bin strategy_h8
+      - name: Package exact tested source and binary
+        run: |
+          mkdir -p h8-engine
+          cp target/release/strategy_h8 h8-engine/
+          cp src/bin/strategy_h8.rs h8-engine/
+          cp h8-regression.log h8-engine/
+          git rev-parse HEAD | tee h8-engine/commit.txt
+          sha256sum src/bin/strategy_h8.rs | awk '{print $1 "  strategy_h8.rs"}' | tee h8-engine/source.sha256
+          sha256sum target/release/strategy_h8 | awk '{print $1 "  strategy_h8"}' | tee h8-engine/executable.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: h8-engine
+          path: h8-engine/
+          if-no-files-found: error
+      - name: H6C/H6C A/A control
+        run: |
+          target/release/strategy_h8 \
+            --useful-attack-reward 1 \
+            --incumbent-useful-attack-reward 1 \
+            --row-transition-scale 2.5 \
+            --incumbent-row-transition-scale 2.5 \
+            --start 33990 --seeds 2 --nodes 10000 | tee h8-control.jsonl
+      - uses: actions/upload-artifact@v4
+        with:
+          name: h8-control
+          path: h8-control.jsonl
+          if-no-files-found: error
+
+  screen:
+    needs: build
+    runs-on: ubuntu-22.04
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      max-parallel: 10
+      matrix:
+        include:
+          - { id: a050r200, attack: 0.50, row: 2.0 }
+          - { id: a050r250, attack: 0.50, row: 2.5 }
+          - { id: a050r300, attack: 0.50, row: 3.0 }
+          - { id: a050r400, attack: 0.50, row: 4.0 }
+          - { id: a075r200, attack: 0.75, row: 2.0 }
+          - { id: a075r250, attack: 0.75, row: 2.5 }
+          - { id: a075r300, attack: 0.75, row: 3.0 }
+          - { id: a075r400, attack: 0.75, row: 4.0 }
+          - { id: a100r200, attack: 1.00, row: 2.0 }
+          - { id: a100r300, attack: 1.00, row: 3.0 }
+          - { id: a100r400, attack: 1.00, row: 4.0 }
+          - { id: a125r200, attack: 1.25, row: 2.0 }
+          - { id: a125r250, attack: 1.25, row: 2.5 }
+          - { id: a125r300, attack: 1.25, row: 3.0 }
+          - { id: a125r400, attack: 1.25, row: 4.0 }
+          - { id: a150r200, attack: 1.50, row: 2.0 }
+          - { id: a150r250, attack: 1.50, row: 2.5 }
+          - { id: a150r300, attack: 1.50, row: 3.0 }
+          - { id: a150r400, attack: 1.50, row: 4.0 }
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: h8-engine
+          path: engine
+      - name: Verify frozen H8 engine
+        run: |
+          (cd engine && sha256sum -c source.sha256 && sha256sum -c executable.sha256)
+          chmod +x engine/strategy_h8
+      - name: Run 20 shared seeds, both sides, KO only
+        env:
+          ATTACK: ${{ matrix.attack }}
+          ROW: ${{ matrix.row }}
+        run: |
+          mkdir -p results
+          engine/strategy_h8 \
+            --useful-attack-reward "$ATTACK" \
+            --incumbent-useful-attack-reward 1 \
+            --row-transition-scale "$ROW" \
+            --incumbent-row-transition-scale 2.5 \
+            --start 34000 --seeds 20 --nodes 10000 | tee results/ko.jsonl
+          cp engine/commit.txt engine/source.sha256 engine/executable.sha256 results/
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: h8-screen-${{ matrix.id }}
+          path: results/
+          if-no-files-found: error
