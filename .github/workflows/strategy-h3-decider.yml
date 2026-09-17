@@ -1,0 +1,48 @@
+name: H3 finalist direct decider
+on:
+  push:
+    branches: [s2-strategy-clean]
+    paths: ['.github/workflows/strategy-h3-decider.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+defaults:
+  run:
+    shell: bash
+jobs:
+  decider:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      max-parallel: 10
+      matrix:
+        batch: [0,1,2,3,4,5,6,7,8,9]
+    steps:
+      - name: Download frozen H3 engine from screening run
+        uses: actions/download-artifact@v4
+        with:
+          name: h3-engine
+          path: engine
+          github-token: ${{ github.token }}
+          run-id: 35188669010
+      - name: Verify frozen source and executable
+        run: |
+          test "$(cat engine/commit.txt)" = '746889310b98b047afc96ff664ccb1a1427412f1'
+          echo 'fcaa2d9c5d3da06a10fe90e28989274b100f2c17151db6637b0aa29eb86c2edf  engine/strategy_h3' | sha256sum -c -
+          chmod +x engine/strategy_h3
+      - name: Directly compare charge 1.5 against charge 0.25
+        env:
+          BATCH: ${{ matrix.batch }}
+        run: |
+          mkdir -p results
+          START=$((11000 + BATCH * 20))
+          engine/strategy_h3 --charge 1.5 --surge-bank 0 --incumbent-charge 0.25 --incumbent-surge-bank 0 --start "$START" --seeds 20 --nodes 10000 | tee results/ko.jsonl
+          cp engine/commit.txt engine/sha256.txt results/
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: h3-decider-batch-${{ matrix.batch }}
+          path: results/
+          if-no-files-found: error
