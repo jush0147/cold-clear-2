@@ -1,0 +1,62 @@
+{
+  "experiment": "H9 sealed-cavity excavation cost",
+  "status": "promoted",
+  "incumbent_before": "H6C",
+  "candidate": {
+    "pending_safety": 1.0,
+    "useful_attack_reward": 1.0,
+    "cancellation_reward": 0.0,
+    "row_transition_scale": 2.5,
+    "combo_scale": 1.0,
+    "h9_cavity_excavation": -0.5
+  },
+  "screening": {
+    "run": 35263555245,
+    "seeds": "37000-37019",
+    "games_per_config": 40,
+    "results": {
+      "-0.25": {"candidate": 21, "incumbent": 19},
+      "-0.5": {"candidate": 24, "incumbent": 16},
+      "-0.75": {"candidate": 24, "incumbent": 16},
+      "-1.0": {"candidate": 19, "incumbent": 21},
+      "-1.5": {"candidate": 20, "incumbent": 20},
+      "-2.0": {"candidate": 13, "incumbent": 27},
+      "-3.0": {"candidate": 12, "incumbent": 28, "candidate_sweeps": 2, "incumbent_sweeps": 10, "split": 8, "paired_p": 0.03857421875}
+    }
+  },
+  "validation": {
+    "run": 35266198506,
+    "seeds": "38000-38039",
+    "games_per_config": 80,
+    "results": {
+      "-0.5": {"candidate": 48, "incumbent": 32, "candidate_sweeps": 14, "incumbent_sweeps": 6, "split": 20, "paired_p": 0.11531829833984375},
+      "-0.75": {"candidate": 33, "incumbent": 47, "candidate_sweeps": 5, "incumbent_sweeps": 12, "split": 23, "paired_p": 0.143463134765625}
+    },
+    "fixed_finalist": -0.5
+  },
+  "confirmation": {
+    "run": 35269371051,
+    "workflow_commit": "2b02f429ae1a92499a08b77cd26e09e0dd5940f9",
+    "engine_source_commit": "097ccda01192594416b7d1b3b47bf5211e8d9589",
+    "seeds": "39000-39199",
+    "paired_seeds": 200,
+    "completed_games": 400,
+    "candidate_wins": 228,
+    "incumbent_wins": 172,
+    "candidate_win_rate": 0.57,
+    "candidate_sweeps": 62,
+    "incumbent_sweeps": 34,
+    "split_pairs": 104,
+    "paired_exact_sign_p": 0.005572997762164588,
+    "reasons": {"no_legal_placement": 400},
+    "node_budget": 10000,
+    "search_depth_range": [9, 12],
+    "all_pairs_complete": true
+  },
+  "frozen_engine": {
+    "core_sha256": "ff871957179fab3c1a025d0dd443ecd9d0c05f62ab07d040bc2c70183ce69544",
+    "harness_sha256": "5d8b27c06e3cfe2c1ba6476152c1b8b6e6975c7fdb12fdd0df14ba343bda69a3",
+    "executable_sha256": "2739b42cf86cce5b5d264c3f7624bbb5b183d53d0772965adedde6073ae2bd95"
+  },
+  "decision": "PROMOTE H9. The new incumbent is H6C plus h9_cavity_excavation=-0.5. Heavy excavation penalties were harmful; the promoted feature is deliberately a light structural signal, not a hard rule against temporary structural debt."
+}
