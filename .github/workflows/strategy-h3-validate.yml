@@ -1,0 +1,53 @@
+name: H3 fresh-seed validation
+on:
+  push:
+    branches: [s2-strategy-clean]
+    paths: ['.github/workflows/strategy-h3-validate.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+defaults:
+  run:
+    shell: bash
+jobs:
+  validate:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        include:
+          - { id: c150s000, charge: 1.50, surge: 0.00, screen: '15-5' }
+          - { id: c025s000, charge: 0.25, surge: 0.00, screen: '14-6' }
+          - { id: c000s025, charge: 0.00, surge: 0.25, screen: '13-7' }
+          - { id: c000s050, charge: 0.00, surge: 0.50, screen: '13-7' }
+    steps:
+      - name: Download frozen H3 engine from screening run
+        uses: actions/download-artifact@v4
+        with:
+          name: h3-engine
+          path: engine
+          github-token: ${{ github.token }}
+          run-id: 35188669010
+      - name: Verify frozen source and executable
+        run: |
+          test "$(cat engine/commit.txt)" = '746889310b98b047afc96ff664ccb1a1427412f1'
+          echo 'fcaa2d9c5d3da06a10fe90e28989274b100f2c17151db6637b0aa29eb86c2edf  engine/strategy_h3' | sha256sum -c -
+          chmod +x engine/strategy_h3
+      - name: Run 40 fresh seeds, both sides, KO only
+        env:
+          CHARGE: ${{ matrix.charge }}
+          SURGE: ${{ matrix.surge }}
+        run: |
+          mkdir -p results
+          printf '%s\n' '${{ matrix.screen }}' > results/screening-record.txt
+          cp engine/commit.txt engine/sha256.txt results/
+          engine/strategy_h3 --charge "$CHARGE" --surge-bank "$SURGE" --incumbent-charge 0 --incumbent-surge-bank 0 --start 10000 --seeds 40 --nodes 10000 | tee results/ko.jsonl
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: h3-validate-${{ matrix.id }}
+          path: results/
+          if-no-files-found: error
