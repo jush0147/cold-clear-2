@@ -1,0 +1,64 @@
+name: H9 fixed-finalist cavity confirmation
+on:
+  push:
+    branches: [s2-strategy-clean]
+    paths: ['.github/workflows/strategy-h9-confirm.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+defaults:
+  run:
+    shell: bash
+jobs:
+  confirm:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 80
+    strategy:
+      fail-fast: false
+      max-parallel: 10
+      matrix:
+        include:
+          - { id: b00, start: 39000 }
+          - { id: b01, start: 39020 }
+          - { id: b02, start: 39040 }
+          - { id: b03, start: 39060 }
+          - { id: b04, start: 39080 }
+          - { id: b05, start: 39100 }
+          - { id: b06, start: 39120 }
+          - { id: b07, start: 39140 }
+          - { id: b08, start: 39160 }
+          - { id: b09, start: 39180 }
+    steps:
+      - name: Download frozen H9 engine from screening run
+        uses: actions/download-artifact@v4
+        with:
+          name: h9-engine
+          path: engine
+          github-token: ${{ github.token }}
+          run-id: 35263555245
+      - name: Verify frozen H9 source and executable
+        run: |
+          test "$(cat engine/commit.txt)" = '097ccda01192594416b7d1b3b47bf5211e8d9589'
+          echo 'ff871957179fab3c1a025d0dd443ecd9d0c05f62ab07d040bc2c70183ce69544  engine/freestyle.rs' | sha256sum -c -
+          echo '5d8b27c06e3cfe2c1ba6476152c1b8b6e6975c7fdb12fdd0df14ba343bda69a3  engine/strategy_h9.rs' | sha256sum -c -
+          echo '2739b42cf86cce5b5d264c3f7624bbb5b183d53d0772965adedde6073ae2bd95  engine/strategy_h9' | sha256sum -c -
+          chmod +x engine/strategy_h9
+      - name: Run 20 fresh paired seeds, KO only
+        env:
+          START: ${{ matrix.start }}
+        run: |
+          mkdir -p results
+          printf '%s\n' 'validation -0.5: 48-32, sweeps 14-6, split 20' > results/validation-record.txt
+          printf '%s\n' '-0.5' > results/fixed-finalist.txt
+          cp engine/commit.txt engine/core.sha256 engine/harness.sha256 engine/executable.sha256 results/
+          engine/strategy_h9 \
+            --cavity-excavation -0.5 \
+            --incumbent-cavity-excavation 0 \
+            --start "$START" --seeds 20 --nodes 10000 | tee results/ko.jsonl
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: h9-confirm-${{ matrix.id }}
+          path: results/
+          if-no-files-found: error
