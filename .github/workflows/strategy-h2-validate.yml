@@ -1,0 +1,56 @@
+name: H2 fresh-seed validation
+on:
+  push:
+    branches: [s2-strategy-clean]
+    paths: ['.github/workflows/strategy-h2-validate.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+defaults:
+  run:
+    shell: bash
+jobs:
+  validate:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      max-parallel: 7
+      matrix:
+        include:
+          - { id: a050c00, attack: 0.50, cancel: 0.00, screen: '14-6' }
+          - { id: a050c100, attack: 0.50, cancel: 1.00, screen: '14-6' }
+          - { id: a150c075, attack: 1.50, cancel: 0.75, screen: '14-6' }
+          - { id: a025c00, attack: 0.25, cancel: 0.00, screen: '13-7' }
+          - { id: a025c025, attack: 0.25, cancel: 0.25, screen: '13-7' }
+          - { id: a100c00, attack: 1.00, cancel: 0.00, screen: '13-7' }
+          - { id: a100c100, attack: 1.00, cancel: 1.00, screen: '13-7' }
+    steps:
+      - name: Download frozen H2 executable from screening run
+        uses: actions/download-artifact@v4
+        with:
+          name: h2-engine
+          path: engine
+          github-token: ${{ github.token }}
+          run-id: 35179488664
+      - name: Verify frozen executable and source identity
+        run: |
+          test "$(cat engine/commit.txt)" = 'c0b3c282d78e84e7cd44017bb1b71b67754cd8f4'
+          echo '3b8f3c14b3a5bc90512085c71f1e5af37bc9f54cccff6b4b9a1f787525254c9a  engine/strategy_h2' | sha256sum -c -
+          chmod +x engine/strategy_h2
+      - name: Run 40 fresh seeds and both sides, KO only
+        env:
+          ATTACK: ${{ matrix.attack }}
+          CANCEL: ${{ matrix.cancel }}
+        run: |
+          mkdir -p results
+          printf '%s\n' '${{ matrix.screen }}' > results/screening-record.txt
+          cp engine/commit.txt engine/sha256.txt results/
+          engine/strategy_h2 --attack "$ATTACK" --cancel "$CANCEL" --start 4000 --seeds 40 --nodes 10000 | tee results/ko.jsonl
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: h2-validate-${{ matrix.id }}
+          path: results/
+          if-no-files-found: error
