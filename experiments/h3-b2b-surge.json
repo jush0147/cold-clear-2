@@ -1,0 +1,97 @@
+{
+  "experiment": "H3 B2B charge and Surge inventory value",
+  "status": "reverted_not_promoted",
+  "hypothesis": "With H1 pending safety and the H2 useful outgoing attack reward fixed, assigning terminal value to accumulated B2B charge and/or banked Surge may improve KO performance over the H2 incumbent.",
+  "incumbent": {
+    "name": "H2 incumbent",
+    "pending_safety": 1.0,
+    "useful_attack_reward": 1.0,
+    "cancellation_reward": 0.0,
+    "h3_b2b_charge_value": 0.0,
+    "h3_surge_bank_value": 0.0
+  },
+  "candidate_feature_semantics": {
+    "b2b_charge_value": "Terminal leaf-state value for live B2B count progress, capped at four for the charge-progress term.",
+    "surge_bank_value": "Terminal leaf-state value per line of banked Surge once B2B count reaches the Surge threshold.",
+    "no_double_counting": "Actual Surge release remains rewarded only through H2 useful outgoing attack; H3 does not add another release reward."
+  },
+  "shared_protocol": {
+    "nodes_per_move": 10000,
+    "gravity": 0,
+    "preview": "current + exactly NEXT5, then SevenBag speculation",
+    "paired_side_swap": true,
+    "winner_rule": "KO only",
+    "piece_cap": false,
+    "opponent_board_visible": false,
+    "hidden_future_visible": false
+  },
+  "tested_source_commit": "746889310b98b047afc96ff664ccb1a1427412f1",
+  "frozen_binary_sha256": "fcaa2d9c5d3da06a10fe90e28989274b100f2c17151db6637b0aa29eb86c2edf",
+  "workflow_runs": {
+    "screening": 35188669010,
+    "validation": 35190179603,
+    "finalist_decider": 35191359461,
+    "fixed_finalist_confirmation": 35192077900
+  },
+  "screening": {
+    "seeds": "9100-9109",
+    "games_per_candidate": 20,
+    "top_candidates": [
+      {"b2b_charge_value": 1.5, "surge_bank_value": 0.0, "candidate_wins": 15, "incumbent_wins": 5},
+      {"b2b_charge_value": 0.25, "surge_bank_value": 0.0, "candidate_wins": 14, "incumbent_wins": 6},
+      {"b2b_charge_value": 0.0, "surge_bank_value": 0.25, "candidate_wins": 13, "incumbent_wins": 7},
+      {"b2b_charge_value": 0.0, "surge_bank_value": 0.5, "candidate_wins": 13, "incumbent_wins": 7}
+    ],
+    "note": "Screening was used only for survivor selection and was not treated as confirmation evidence."
+  },
+  "validation": {
+    "seeds": "10000-10039",
+    "games_per_candidate": 80,
+    "results": [
+      {"b2b_charge_value": 1.5, "surge_bank_value": 0.0, "candidate_wins": 47, "incumbent_wins": 33},
+      {"b2b_charge_value": 0.25, "surge_bank_value": 0.0, "candidate_wins": 42, "incumbent_wins": 38},
+      {"b2b_charge_value": 0.0, "surge_bank_value": 0.5, "candidate_wins": 41, "incumbent_wins": 39},
+      {"b2b_charge_value": 0.0, "surge_bank_value": 0.25, "candidate_wins": 39, "incumbent_wins": 41}
+    ]
+  },
+  "finalist_decider": {
+    "comparison": "charge 1.5 vs charge 0.25, both surge_bank 0",
+    "seeds": "11000-11199",
+    "paired_seeds": 200,
+    "games": 400,
+    "charge_1_5_wins": 207,
+    "charge_0_25_wins": 193,
+    "charge_1_5_sweeps": 54,
+    "charge_0_25_sweeps": 47,
+    "split_pairs": 99,
+    "paired_two_sided_sign_p": 0.551,
+    "interpretation": "No reliable evidence that charge 1.5 is stronger than charge 0.25."
+  },
+  "fixed_finalist_confirmation": {
+    "candidate": {"b2b_charge_value": 1.5, "surge_bank_value": 0.0},
+    "comparison": "fixed H3 finalist vs H2 incumbent",
+    "seeds": "12000-12199",
+    "paired_seeds": 200,
+    "games": 400,
+    "candidate_wins": 209,
+    "incumbent_wins": 191,
+    "candidate_sweeps": 60,
+    "incumbent_sweeps": 51,
+    "split_pairs": 89,
+    "paired_two_sided_sign_p": 0.44780613214374804,
+    "ko_reasons": {"no_legal_placement": 400},
+    "node_budget_integrity": true
+  },
+  "decision": {
+    "action": "REVERT / DO NOT PROMOTE",
+    "reason": "The fixed H3 finalist beat H2 only 209-191 in the independent 400-game confirmation, with paired sign p about 0.448. The effect was too small and statistically unstable to justify replacing H2.",
+    "current_incumbent": "H2: pending_safety=1.0, useful_attack_reward=1.0, cancellation_reward=0.0, H3 values=0.0",
+    "surge_bank_conclusion": "No stable evidence that explicit banked-Surge terminal value improves the incumbent in the tested range.",
+    "b2b_charge_conclusion": "There was a weak positive signal during screening/validation, but it did not survive independent confirmation strongly enough for promotion."
+  },
+  "major_limitations": [
+    "The arena remains a zero-gravity alternating-lock model rather than live simultaneous wall-clock TETR.IO.",
+    "Exact live TL S2 Surge timing/rules are not certified as official parity.",
+    "The tested H3 coefficients are not an exhaustive continuous optimization of charge value."
+  ]
+}
