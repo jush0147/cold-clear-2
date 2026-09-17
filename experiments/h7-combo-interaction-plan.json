@@ -1,0 +1,43 @@
+{
+  "experiment": "H7 combo-continuation interaction on H6C",
+  "status": "planned_after_original_checkpoint",
+  "purpose": "Preserve the next strategy hypothesis independently of chat/context state.",
+  "incumbent": {
+    "name": "H6C",
+    "pending_safety": 1.0,
+    "useful_attack_reward": 1.0,
+    "cancellation_reward": 0.0,
+    "row_transition_scale": 2.5,
+    "combo_scale": 1.0
+  },
+  "hypothesis": "H5 combo-continuation value may interact with the substantially stronger H6C row-transition policy. A flatter/less jagged board may make preserving combo state more valuable because future high-base clears can be realized more reliably.",
+  "why_revisit_h5": {
+    "h5_validation_combo_4x": "52-28 vs H2",
+    "h5_fixed_confirmation_combo_4x": "212-188 vs H2",
+    "h5_decision": "not promoted alone; positive but insufficiently stable",
+    "interaction_reason": "H6C changed board-shape incentives enough that the marginal value of combo continuation may no longer match the H2-era result."
+  },
+  "planned_single_dimension_screen": {
+    "variable": "legacy combo continuation scale only",
+    "candidate_scales": [0.0, 0.5, 1.0, 2.0, 3.0, 4.0, 5.0],
+    "fixed_pending_safety": 1.0,
+    "fixed_useful_attack_reward": 1.0,
+    "fixed_row_transition_scale": 2.5,
+    "incumbent_combo_scale": 1.0
+  },
+  "protocol": {
+    "node_budget_per_move": 10000,
+    "preview": "current + NEXT 5 only",
+    "randomizer": "SevenBag speculation beyond visible preview",
+    "garbage_scenarios_under_pressure": 10,
+    "gravity": 0,
+    "result": "KO only",
+    "side_swap": true,
+    "opponent_board_visible_to_bot": false,
+    "hidden_future_visible_to_bot": false,
+    "selection": "screen on shared seeds, validate survivors on fresh seeds, then fixed-finalist confirmation on new holdout seeds"
+  },
+  "promotion_rule": "Do not promote from screening or validation alone. A fixed H7 finalist must beat the H6C incumbent on fresh paired KO confirmation under the same standard used for H6C.",
+  "follow_up_if_positive": "Use surviving combo scale together with useful attack and row-transition scale as the first small joint-optimization set before search/exploration tuning.",
+  "follow_up_if_negative": "Keep combo scale at 1.0, retain H6C as incumbent, and move to the next interaction or joint-tuning dimension rather than rescuing H5 post hoc."
+}
