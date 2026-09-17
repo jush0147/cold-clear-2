@@ -1,0 +1,124 @@
+name: H6C vs original CC2 checkpoint
+on:
+  push:
+    branches: [s2-strategy-clean]
+    paths:
+      - 'scripts/wire-h6c-original-checkpoint.py'
+      - '.github/workflows/strategy-h6c-vs-original.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+defaults:
+  run:
+    shell: bash
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
+    outputs:
+      source_sha: ${{ steps.meta.outputs.source_sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: strategy-h6c-original-checkpoint
+      - name: Generate isolated checkpoint harness
+        run: python3 scripts/wire-h6c-original-checkpoint.py
+      - name: Check checkpoint harness and core regressions
+        run: cargo test --release --lib --bin strategy_checkpoint 2>&1 | tee regression.log
+      - name: Freeze exact generated source locally
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/bin/strategy_checkpoint.rs
+          git commit -m 'Freeze generated H6C vs original checkpoint harness'
+      - name: Build frozen executable
+        run: cargo build --release --bin strategy_checkpoint
+      - id: meta
+        name: Package exact tested source and binary
+        run: |
+          mkdir -p checkpoint-engine
+          cp target/release/strategy_checkpoint regression.log checkpoint-engine/
+          git rev-parse HEAD | tee checkpoint-engine/commit.txt
+          echo "source_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          sha256sum target/release/strategy_checkpoint | awk '{print $1 "  strategy_checkpoint"}' | tee checkpoint-engine/sha256.txt
+          git archive --format=tar.gz -o checkpoint-engine/source.tar.gz HEAD
+          cat > checkpoint-engine/profiles.txt <<'EOF'
+          candidate: pending_safety=1 useful_attack_reward=1 row_transition_scale=2.5
+          baseline: pending_safety=0 useful_attack_reward=0 row_transition_scale=1
+          shared: cancellation_reward=0 softdrop=0 h3=off h6b=1/1; same corrected S2 mechanics and information boundary
+          EOF
+      - uses: actions/upload-artifact@v4
+        with:
+          name: h6c-original-engine
+          path: checkpoint-engine/
+          if-no-files-found: error
+      - name: H6C/H6C A/A control
+        run: |
+          target/release/strategy_checkpoint \
+            --row-transition-scale 2.5 --pending-safety 1 --useful-attack-reward 1 \
+            --incumbent-row-transition-scale 2.5 --incumbent-pending-safety 1 --incumbent-useful-attack-reward 1 \
+            --start 29990 --seeds 2 --nodes 10000 | tee h6c-aa.jsonl
+      - name: Legacy/legacy A/A control
+        run: |
+          target/release/strategy_checkpoint \
+            --row-transition-scale 1 --pending-safety 0 --useful-attack-reward 0 \
+            --incumbent-row-transition-scale 1 --incumbent-pending-safety 0 --incumbent-useful-attack-reward 0 \
+            --start 29992 --seeds 2 --nodes 10000 | tee legacy-aa.jsonl
+      - uses: actions/upload-artifact@v4
+        with:
+          name: h6c-original-controls
+          path: |
+            h6c-aa.jsonl
+            legacy-aa.jsonl
+          if-no-files-found: error
+
+  checkpoint:
+    needs: build
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      max-parallel: 10
+      matrix:
+        include:
+          - { id: b00, start: 30000 }
+          - { id: b01, start: 30050 }
+          - { id: b02, start: 30100 }
+          - { id: b03, start: 30150 }
+          - { id: b04, start: 30200 }
+          - { id: b05, start: 30250 }
+          - { id: b06, start: 30300 }
+          - { id: b07, start: 30350 }
+          - { id: b08, start: 30400 }
+          - { id: b09, start: 30450 }
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: h6c-original-engine
+          path: engine
+      - name: Verify frozen engine
+        env:
+          EXPECTED: ${{ needs.build.outputs.source_sha }}
+        run: |
+          test "$(cat engine/commit.txt)" = "$EXPECTED"
+          (cd engine && sha256sum -c sha256.txt)
+          chmod +x engine/strategy_checkpoint
+      - name: Run 50 fresh shared seeds, both sides, KO only
+        env:
+          START: ${{ matrix.start }}
+        run: |
+          mkdir -p results
+          engine/strategy_checkpoint \
+            --row-transition-scale 2.5 --pending-safety 1 --useful-attack-reward 1 \
+            --incumbent-row-transition-scale 1 --incumbent-pending-safety 0 --incumbent-useful-attack-reward 0 \
+            --start "$START" --seeds 50 --nodes 10000 | tee results/ko.jsonl
+          cp engine/commit.txt engine/sha256.txt engine/profiles.txt results/
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: h6c-vs-original-${{ matrix.id }}
+          path: results/
+          if-no-files-found: error
