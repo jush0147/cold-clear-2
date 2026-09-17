@@ -1,0 +1,106 @@
+name: H6C row-transition shaping screening
+on:
+  push:
+    branches: [s2-strategy-clean]
+    paths:
+      - 'scripts/wire-h6c.py'
+      - '.github/workflows/strategy-h6c.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+defaults:
+  run:
+    shell: bash
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    outputs:
+      source_sha: ${{ steps.meta.outputs.source_sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: strategy-h6c-native
+      - name: Apply isolated H6C wiring
+        run: python3 scripts/wire-h6c.py
+      - name: Regression tests
+        run: cargo test --release --lib --bins --tests 2>&1 | tee regression.log
+      - name: Commit tested H6C source
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm scripts/wire-h6c.py
+          git add src/bin/strategy_h6c.rs
+          git commit -m 'Add isolated H6C row-transition shaping harness'
+          git push origin HEAD:s2-strategy-clean
+      - name: Build frozen executable
+        run: cargo build --release --bin strategy_h6c
+      - id: meta
+        name: Package exact tested source and binary
+        run: |
+          mkdir -p h6c-engine
+          cp target/release/strategy_h6c regression.log h6c-engine/
+          git rev-parse HEAD | tee h6c-engine/commit.txt
+          echo "source_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          sha256sum target/release/strategy_h6c | awk '{print $1 "  strategy_h6c"}' | tee h6c-engine/sha256.txt
+          git archive --format=tar.gz -o h6c-engine/source.tar.gz HEAD
+      - uses: actions/upload-artifact@v4
+        with:
+          name: h6c-engine
+          path: h6c-engine/
+          if-no-files-found: error
+      - name: H2/H2 A/A control
+        run: target/release/strategy_h6c --row-transition-scale 1 --incumbent-row-transition-scale 1 --start 25000 --seeds 2 --nodes 10000 | tee h6c-control.jsonl
+      - uses: actions/upload-artifact@v4
+        with:
+          name: h6c-control
+          path: h6c-control.jsonl
+          if-no-files-found: error
+
+  screen:
+    needs: build
+    runs-on: ubuntu-22.04
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      max-parallel: 10
+      matrix:
+        include:
+          - { id: r000, scale: 0.00 }
+          - { id: r025, scale: 0.25 }
+          - { id: r050, scale: 0.50 }
+          - { id: r075, scale: 0.75 }
+          - { id: r125, scale: 1.25 }
+          - { id: r150, scale: 1.50 }
+          - { id: r200, scale: 2.00 }
+          - { id: r250, scale: 2.50 }
+          - { id: r300, scale: 3.00 }
+          - { id: r400, scale: 4.00 }
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: h6c-engine
+          path: engine
+      - name: Verify frozen engine
+        env:
+          EXPECTED: ${{ needs.build.outputs.source_sha }}
+        run: |
+          test "$(cat engine/commit.txt)" = "$EXPECTED"
+          (cd engine && sha256sum -c sha256.txt)
+          chmod +x engine/strategy_h6c
+      - name: Run 20 shared seeds, both sides, KO only
+        env:
+          SCALE: ${{ matrix.scale }}
+        run: |
+          mkdir -p results
+          engine/strategy_h6c --row-transition-scale "$SCALE" --incumbent-row-transition-scale 1 --start 25100 --seeds 20 --nodes 10000 | tee results/ko.jsonl
+          cp engine/commit.txt engine/sha256.txt results/
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: h6c-screen-${{ matrix.id }}
+          path: results/
+          if-no-files-found: error
