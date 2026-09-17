@@ -1,6 +1,10 @@
 # S2 correctness audit
 
-Status: **experimental, NOT TETR.IO-conformant or strength-certified**.
+> **Historical snapshot.** This document predates later pending-aware search and KO strategy experiments. It is retained for rule-conformance cautions and audit history, but it is **not the current strategy roadmap**.
+>
+> For current bot-strength work, scope, information boundaries, KO protocol, H1 evidence, and the next proposed hypothesis, read [`docs/strategy-experiments.md`](strategy-experiments.md) first.
+
+Status at the time of this audit: **experimental, NOT TETR.IO-conformant or strength-certified**.
 
 This branch is intended for retrospective analysis of a player's own position.
 It does not read an opponent board or connect an automated player to TETR.IO.
