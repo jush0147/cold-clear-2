@@ -1,0 +1,58 @@
+name: H6C fixed-finalist confirmation
+on:
+  push:
+    branches: [s2-strategy-clean]
+    paths: ['.github/workflows/strategy-h6c-confirm.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+defaults:
+  run:
+    shell: bash
+jobs:
+  confirm:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      max-parallel: 10
+      matrix:
+        include:
+          - { id: b00, start: 28000 }
+          - { id: b01, start: 28020 }
+          - { id: b02, start: 28040 }
+          - { id: b03, start: 28060 }
+          - { id: b04, start: 28080 }
+          - { id: b05, start: 28100 }
+          - { id: b06, start: 28120 }
+          - { id: b07, start: 28140 }
+          - { id: b08, start: 28160 }
+          - { id: b09, start: 28180 }
+    steps:
+      - name: Download frozen H6C engine from screening run
+        uses: actions/download-artifact@v4
+        with:
+          name: h6c-engine
+          path: engine
+          github-token: ${{ github.token }}
+          run-id: 35214925328
+      - name: Verify frozen source and executable
+        run: |
+          test "$(cat engine/commit.txt)" = 'd9131dbb125af812f7943da644715d5893cb1a66'
+          echo 'af3adbcc54bb6524688a723fdab988bdc4bca0c64501bb96ed3944f9893b120e  engine/strategy_h6c' | sha256sum -c -
+          chmod +x engine/strategy_h6c
+      - name: Run 20 fresh shared seeds, both sides, KO only
+        env:
+          START: ${{ matrix.start }}
+        run: |
+          mkdir -p results
+          # Fixed finalist: validation winner 2.5x. Direct 2.5x-vs-4.0x decider was inconclusive (194-206; paired sweeps 42-48; p~0.598), so the predeclared validation winner proceeds.
+          engine/strategy_h6c --row-transition-scale 2.5 --incumbent-row-transition-scale 1.0 --start "$START" --seeds 20 --nodes 10000 | tee results/ko.jsonl
+          cp engine/commit.txt engine/sha256.txt results/
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: h6c-confirm-${{ matrix.id }}
+          path: results/
+          if-no-files-found: error
