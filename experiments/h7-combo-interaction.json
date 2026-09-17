@@ -1,0 +1,82 @@
+{
+  "experiment": "H7 combo-continuation interaction on H6C",
+  "status": "do_not_promote",
+  "incumbent_before_experiment": {
+    "name": "H6C",
+    "pending_safety": 1.0,
+    "useful_attack_reward": 1.0,
+    "cancellation_reward": 0.0,
+    "row_transition_scale": 2.5,
+    "combo_scale": 1.0
+  },
+  "hypothesis": "The positive but unstable H5 combo-continuation signal may become more reliable on the stronger H6C row-transition policy.",
+  "protocol": {
+    "node_budget_per_move": 10000,
+    "preview": "current + NEXT 5 only",
+    "randomizer": "SevenBag speculation beyond visible preview",
+    "garbage_scenarios_under_pressure": 10,
+    "gravity": 0,
+    "result": "KO only",
+    "side_swap": true,
+    "opponent_board_visible_to_bot": false,
+    "hidden_future_visible_to_bot": false
+  },
+  "screening": {
+    "run_id": 35225928420,
+    "seeds": "31000-31019",
+    "games_per_config": 40,
+    "results": [
+      {"combo_scale":0.0,"candidate_wins":19,"incumbent_wins":21},
+      {"combo_scale":0.5,"candidate_wins":18,"incumbent_wins":22},
+      {"combo_scale":2.0,"candidate_wins":20,"incumbent_wins":20},
+      {"combo_scale":3.0,"candidate_wins":22,"incumbent_wins":18},
+      {"combo_scale":4.0,"candidate_wins":24,"incumbent_wins":16},
+      {"combo_scale":5.0,"candidate_wins":24,"incumbent_wins":16}
+    ],
+    "advanced": [3.0,4.0,5.0]
+  },
+  "validation": {
+    "run_id": 35227491043,
+    "seeds": "32000-32039",
+    "games_per_config": 80,
+    "results": [
+      {"combo_scale":3.0,"candidate_wins":51,"incumbent_wins":29,"candidate_sweeps":16,"incumbent_sweeps":5,"splits":19,"paired_two_sided_sign_p":0.02660369873046875},
+      {"combo_scale":4.0,"candidate_wins":45,"incumbent_wins":35,"candidate_sweeps":12,"incumbent_sweeps":7,"splits":21,"paired_two_sided_sign_p":0.359283447265625},
+      {"combo_scale":5.0,"candidate_wins":44,"incumbent_wins":36,"candidate_sweeps":13,"incumbent_sweeps":9,"splits":18,"paired_two_sided_sign_p":0.5234670639038086}
+    ],
+    "fixed_finalist_combo_scale": 3.0
+  },
+  "fixed_finalist_confirmation": {
+    "run_id": 35229422956,
+    "seeds": "33000-33199",
+    "games": 400,
+    "candidate_combo_scale": 3.0,
+    "incumbent_combo_scale": 1.0,
+    "candidate_wins": 211,
+    "incumbent_wins": 189,
+    "candidate_win_rate": 0.5275,
+    "candidate_sweeps": 53,
+    "incumbent_sweeps": 42,
+    "splits": 105,
+    "paired_two_sided_sign_p": 0.3048851907022759,
+    "all_games_complete": true,
+    "all_reasons": "no_legal_placement",
+    "node_budget": 10000,
+    "seed_pairs_complete": true,
+    "frozen_screening_commit": "652a7989963365d251d4f7e67c4c3e8afcc76647",
+    "frozen_source_sha256": "170a58734822a92f348e4ac13d19890fd7481019073113e8989312b3c3763813",
+    "frozen_executable_sha256": "05e69628b5482261efe1f58cfff6aea99458b7c203c0fdfa17c5fd91ad9d4ae1"
+  },
+  "decision": {
+    "keep": false,
+    "promote": false,
+    "incumbent_after_experiment": "H6C",
+    "reason": "Combo scale 3.0 survived fresh validation strongly (51-29) but fell to 211-189 in the pre-fixed 400-game confirmation, with paired sweep-only p ~= 0.305. Under the same promotion standard used for H3-H6 and H6C, this is insufficient evidence to replace H6C."
+  },
+  "interpretation": [
+    "Higher combo-continuation values repeatedly show a positive direction on both H2-era H5 and H6C-era H7, so the interaction remains plausible.",
+    "The effect is not stable enough to promote as a fixed scalar change.",
+    "Keep combo scale 1.0 in the incumbent and avoid another isolated scalar sweep; revisit combo only as part of a principled joint or context-dependent evaluator change."
+  ],
+  "metadata_note": "The frozen H7 binary inherited stale H5/H2 protocol-label strings from the H5 harness. This was metadata only; generated source invariants and frozen-source verification confirmed pending_safety=1.0, useful_attack_reward=1.0, row_transitions*=2.5, and combo_attack scaled only by the tested H7 parameter."
+}
