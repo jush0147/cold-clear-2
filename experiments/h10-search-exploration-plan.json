@@ -1,6 +1,6 @@
 {
   "experiment": "H10 search exploitation/exploration",
-  "status": "planned",
+  "status": "fresh_validation_started",
   "incumbent": {
     "name": "H9",
     "pending_safety": 1.0,
@@ -18,22 +18,40 @@
     "finite_list_note": "modulo wrap means the exact finite-list probabilities are not the infinite geometric distribution"
   },
   "screen": {
+    "run": 35284463845,
+    "engine_commit": "327b45964fb60a30a40f9137c0d0e07e4667a0a6",
     "incumbent_exploitation": 0.6931471805599453,
-    "candidate_grid": [
-      {"approx_rank0_share": 0.25, "exploitation": 0.2876820724517809},
-      {"approx_rank0_share": 0.35, "exploitation": 0.4307829160924542},
-      {"approx_rank0_share": 0.40, "exploitation": 0.5108256237659907},
-      {"approx_rank0_share": 0.45, "exploitation": 0.5978370007556204},
-      {"approx_rank0_share": 0.55, "exploitation": 0.7985076962177716},
-      {"approx_rank0_share": 0.60, "exploitation": 0.916290731874155},
-      {"approx_rank0_share": 0.65, "exploitation": 1.0498221244986778},
-      {"approx_rank0_share": 0.75, "exploitation": 1.3862943611198906}
-    ],
     "paired_seeds_per_config": 20,
     "games_per_config": 40,
     "total_games": 320,
     "seed_start": 40000,
-    "nodes_per_move": 10000
+    "nodes_per_move": 10000,
+    "results": {
+      "0.25": {"exploitation": 0.2876820724517809, "candidate": 14, "incumbent": 26, "candidate_sweeps": 2, "incumbent_sweeps": 8, "split": 10, "paired_p": 0.109375},
+      "0.35": {"exploitation": 0.4307829160924542, "candidate": 18, "incumbent": 22, "candidate_sweeps": 4, "incumbent_sweeps": 6, "split": 10, "paired_p": 0.75390625},
+      "0.40": {"exploitation": 0.5108256237659907, "candidate": 25, "incumbent": 15, "candidate_sweeps": 6, "incumbent_sweeps": 1, "split": 13, "paired_p": 0.125},
+      "0.45": {"exploitation": 0.5978370007556204, "candidate": 17, "incumbent": 23, "candidate_sweeps": 5, "incumbent_sweeps": 8, "split": 7, "paired_p": 0.5810546875},
+      "0.55": {"exploitation": 0.7985076962177716, "candidate": 25, "incumbent": 15, "candidate_sweeps": 7, "incumbent_sweeps": 2, "split": 11, "paired_p": 0.1796875},
+      "0.60": {"exploitation": 0.916290731874155, "candidate": 19, "incumbent": 21, "candidate_sweeps": 4, "incumbent_sweeps": 5, "split": 11, "paired_p": 1.0},
+      "0.65": {"exploitation": 1.0498221244986778, "candidate": 10, "incumbent": 30, "candidate_sweeps": 1, "incumbent_sweeps": 11, "split": 8, "paired_p": 0.00634765625},
+      "0.75": {"exploitation": 1.3862943611198906, "candidate": 12, "incumbent": 28, "candidate_sweeps": 1, "incumbent_sweeps": 9, "split": 10, "paired_p": 0.021484375}
+    },
+    "interpretation": "Both extremes were harmful: very broad exploration at 25% lost 14:26, while greedy 65% and 75% were strongly harmful. The tied screening leaders were 40% and 55%, but nearby 45% and 60% did not reproduce the advantage, so the screen does not show a stable monotonic direction and may contain substantial noise."
+  },
+  "validation": {
+    "survivors": [
+      {"approx_rank0_share": 0.40, "exploitation": 0.5108256237659907},
+      {"approx_rank0_share": 0.55, "exploitation": 0.7985076962177716}
+    ],
+    "paired_seeds_per_config": 40,
+    "games_per_config": 80,
+    "total_games": 160,
+    "seed_start": 41000,
+    "nodes_per_move": 10000,
+    "run": 35286628892,
+    "workflow_commit": "5360b8b15c0cd8373c43b489061b4c9b054533fc",
+    "engine_source_run": 35284463845,
+    "engine_commit": "327b45964fb60a30a40f9137c0d0e07e4667a0a6"
   },
   "protocol": {
     "preview": "current + NEXT5",
