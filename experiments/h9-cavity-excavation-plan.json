@@ -1,6 +1,6 @@
 {
   "experiment": "H9 sealed-cavity excavation cost",
-  "status": "screening_started",
+  "status": "fresh_validation_started",
   "incumbent": {
     "name": "H6C",
     "pending_safety": 1.0,
@@ -25,7 +25,27 @@
     "paired_seeds_per_config": 20,
     "games_per_config": 40,
     "seed_start": 37000,
-    "nodes_per_move": 10000
+    "nodes_per_move": 10000,
+    "results": {
+      "-0.25": {"candidate": 21, "incumbent": 19, "candidate_sweeps": 5, "incumbent_sweeps": 4, "split": 11, "paired_p": 1.0},
+      "-0.5": {"candidate": 24, "incumbent": 16, "candidate_sweeps": 5, "incumbent_sweeps": 1, "split": 14, "paired_p": 0.21875},
+      "-0.75": {"candidate": 24, "incumbent": 16, "candidate_sweeps": 5, "incumbent_sweeps": 1, "split": 14, "paired_p": 0.21875},
+      "-1.0": {"candidate": 19, "incumbent": 21, "candidate_sweeps": 6, "incumbent_sweeps": 7, "split": 7, "paired_p": 1.0},
+      "-1.5": {"candidate": 20, "incumbent": 20, "candidate_sweeps": 4, "incumbent_sweeps": 4, "split": 12, "paired_p": 1.0},
+      "-2.0": {"candidate": 13, "incumbent": 27, "candidate_sweeps": 4, "incumbent_sweeps": 11, "split": 5, "paired_p": 0.11846923828125},
+      "-3.0": {"candidate": 12, "incumbent": 28, "candidate_sweeps": 2, "incumbent_sweeps": 10, "split": 8, "paired_p": 0.03857421875}
+    },
+    "interpretation": "Light excavation penalties (-0.5 and -0.75) were the tied screening leaders. Heavy penalties became clearly harmful, consistent with over-penalizing temporary structural debt. Screening alone does not promote H9."
+  },
+  "validation": {
+    "survivors": [-0.5, -0.75],
+    "paired_seeds_per_config": 40,
+    "games_per_config": 80,
+    "seed_start": 38000,
+    "nodes_per_move": 10000,
+    "run": 35266198506,
+    "engine_source_run": 35263555245,
+    "engine_commit": "097ccda01192594416b7d1b3b47bf5211e8d9589"
   },
   "protocol": {
     "preview": "current + NEXT5",
