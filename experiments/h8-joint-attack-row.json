@@ -1,0 +1,101 @@
+{
+  "experiment": "H8 joint useful-attack x row-transition tuning",
+  "status": "complete_do_not_promote",
+  "hypothesis": "The useful-attack reward selected in H2 and row-transition scale selected in H6C may interact, so jointly retuning them on top of the H6C incumbent may outperform the independently selected values.",
+  "incumbent": {
+    "name": "H6C",
+    "pending_safety": 1.0,
+    "useful_attack_reward": 1.0,
+    "row_transition_scale": 2.5,
+    "combo_scale": 1.0,
+    "cancellation_reward": 0.0,
+    "softdrop": 0.0
+  },
+  "frozen_engine": {
+    "source_commit": "8d33ce0ebcfe1d7d5e06ab69fbbcf14eefd4b3c0",
+    "source_sha256": "b10841d7c67af3af3c81dc57011523b291e82fbd9d653c63d9666ceb6ab74107",
+    "executable_sha256": "516605d87181820fb98da3073995f34fc70f92aed3a9747a77a8293aafa2d827"
+  },
+  "protocol": {
+    "nodes_per_move": 10000,
+    "information": "own current/hold/next5/board/b2b/combo/observable incoming/history only; SevenBag speculation after visible preview",
+    "gravity": 0,
+    "garbage_scenarios_under_pressure": 10,
+    "result_rule": "KO only; errors/timeouts incomplete and never wins or draws",
+    "pairing": "same authority seed, both sides swapped",
+    "opponent_board_visible_to_bot": false,
+    "hidden_future_visible_to_bot": false
+  },
+  "excluded_runs": [
+    {
+      "run": 35233851101,
+      "reason": "Generated H8 parser unit test still initialized the old one-field Strategy struct and failed compilation with E0063 before build or games.",
+      "games": 0
+    }
+  ],
+  "screening": {
+    "run": 35234339252,
+    "shared_seed_games_per_config": 40,
+    "paired_seeds_per_config": 20,
+    "total_ko_games": 760,
+    "configs": [
+      {"attack":0.5,"row":2.0,"candidate":13,"incumbent":27},
+      {"attack":0.5,"row":2.5,"candidate":22,"incumbent":18},
+      {"attack":0.5,"row":3.0,"candidate":16,"incumbent":24},
+      {"attack":0.5,"row":4.0,"candidate":16,"incumbent":24},
+      {"attack":0.75,"row":2.0,"candidate":20,"incumbent":20},
+      {"attack":0.75,"row":2.5,"candidate":24,"incumbent":16},
+      {"attack":0.75,"row":3.0,"candidate":25,"incumbent":15},
+      {"attack":0.75,"row":4.0,"candidate":26,"incumbent":14},
+      {"attack":1.0,"row":2.0,"candidate":19,"incumbent":21},
+      {"attack":1.0,"row":3.0,"candidate":20,"incumbent":20},
+      {"attack":1.0,"row":4.0,"candidate":24,"incumbent":16},
+      {"attack":1.25,"row":2.0,"candidate":23,"incumbent":17},
+      {"attack":1.25,"row":2.5,"candidate":16,"incumbent":24},
+      {"attack":1.25,"row":3.0,"candidate":21,"incumbent":19},
+      {"attack":1.25,"row":4.0,"candidate":25,"incumbent":15},
+      {"attack":1.5,"row":2.0,"candidate":13,"incumbent":27,"candidate_sweeps":0,"incumbent_sweeps":7,"paired_sign_p":0.015625},
+      {"attack":1.5,"row":2.5,"candidate":19,"incumbent":21},
+      {"attack":1.5,"row":3.0,"candidate":23,"incumbent":17},
+      {"attack":1.5,"row":4.0,"candidate":23,"incumbent":17}
+    ],
+    "interpretation": "Screening suggested a broad positive ridge around stronger row-transition penalty, especially attack 0.75 with row 2.5-4.0 and row 4.0 across attack 0.75-1.5. The strongly negative attack 1.5,row 2.0 point also suggested interaction rather than independent scalar effects. Screening alone was not used for promotion."
+  },
+  "fresh_validation": {
+    "run": 35258452962,
+    "seeds": "35000-35039",
+    "paired_seeds_per_config": 40,
+    "ko_games_per_config": 80,
+    "configs": [
+      {"attack":0.75,"row":2.5,"candidate":28,"incumbent":52,"candidate_sweeps":3,"incumbent_sweeps":15,"splits":22,"paired_sign_p":0.007537841796875},
+      {"attack":0.75,"row":3.0,"candidate":44,"incumbent":36,"candidate_sweeps":13,"incumbent_sweeps":9,"splits":18,"paired_sign_p":0.5234670639038086},
+      {"attack":0.75,"row":4.0,"candidate":43,"incumbent":37,"candidate_sweeps":12,"incumbent_sweeps":9,"splits":19,"paired_sign_p":0.6636238098144531},
+      {"attack":1.0,"row":4.0,"candidate":39,"incumbent":41,"candidate_sweeps":11,"incumbent_sweeps":12,"splits":17,"paired_sign_p":1.0},
+      {"attack":1.25,"row":4.0,"candidate":40,"incumbent":40,"candidate_sweeps":11,"incumbent_sweeps":11,"splits":18,"paired_sign_p":1.0}
+    ],
+    "fixed_finalist": {"useful_attack_reward":0.75,"row_transition_scale":3.0},
+    "selection_rule": "Use the fresh-validation winner as the sole finalist; do not post-hoc switch after confirmation."
+  },
+  "fixed_finalist_confirmation": {
+    "run": 35260247077,
+    "workflow_commit": "e80fc8e47777efb2a77a070cf55c23a9f854914d",
+    "candidate": {"useful_attack_reward":0.75,"row_transition_scale":3.0},
+    "incumbent": {"useful_attack_reward":1.0,"row_transition_scale":2.5},
+    "seeds": "36000-36199",
+    "paired_seeds": 200,
+    "ko_games": 400,
+    "candidate_wins": 190,
+    "incumbent_wins": 210,
+    "candidate_win_rate": 0.475,
+    "candidate_sweeps": 49,
+    "incumbent_sweeps": 59,
+    "splits": 92,
+    "paired_exact_two_sided_sign_p": 0.38657260898826085,
+    "completed_games": 400,
+    "all_pairs_complete": true,
+    "ko_reasons": {"no_legal_placement":400},
+    "malformed_pairs": 0,
+    "max_search_depth_observed": 11
+  },
+  "decision": "DO NOT PROMOTE H8. Keep H6C as incumbent: pending_safety=1.0, useful_attack_reward=1.0, row_transition_scale=2.5, combo_scale=1.0. The experiment provides evidence that useful-attack and board-shape weights interact, but the selected joint configuration did not beat H6C on the predeclared fixed-finalist confirmation. Stop scalar retuning of this pair and move to a new evaluator concept."
+}
