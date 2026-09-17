@@ -1,0 +1,106 @@
+name: H9 cavity excavation screening
+on:
+  push:
+    branches: [s2-strategy-clean]
+    paths:
+      - 'scripts/wire-h9.py'
+      - '.github/workflows/strategy-h9.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+defaults:
+  run:
+    shell: bash
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: strategy-h9-native
+      - name: Generate isolated H9 core and harness
+        run: python3 scripts/wire-h9.py
+      - name: Check H9 feature, harness and core regressions
+        run: |
+          cargo test --release --lib --bin strategy_h9 2>&1 | tee h9-regression.log
+      - name: Build frozen executable
+        run: cargo build --release --bin strategy_h9
+      - name: Package exact tested core, harness and binary
+        run: |
+          mkdir -p h9-engine
+          cp target/release/strategy_h9 h9-engine/
+          cp src/bin/strategy_h9.rs h9-engine/
+          cp src/bot/freestyle.rs h9-engine/
+          cp h9-regression.log h9-engine/
+          git rev-parse HEAD | tee h9-engine/commit.txt
+          sha256sum src/bin/strategy_h9.rs | awk '{print $1 "  strategy_h9.rs"}' | tee h9-engine/harness.sha256
+          sha256sum src/bot/freestyle.rs | awk '{print $1 "  freestyle.rs"}' | tee h9-engine/core.sha256
+          sha256sum target/release/strategy_h9 | awk '{print $1 "  strategy_h9"}' | tee h9-engine/executable.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: h9-engine
+          path: h9-engine/
+          if-no-files-found: error
+      - name: H6C/H6C A/A control through H9 engine
+        run: |
+          target/release/strategy_h9 \
+            --cavity-excavation 0 \
+            --incumbent-cavity-excavation 0 \
+            --start 36990 --seeds 2 --nodes 10000 | tee h9-control.jsonl
+      - uses: actions/upload-artifact@v4
+        with:
+          name: h9-control
+          path: h9-control.jsonl
+          if-no-files-found: error
+
+  screen:
+    needs: build
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      max-parallel: 7
+      matrix:
+        include:
+          - { id: n025, cavity: -0.25 }
+          - { id: n050, cavity: -0.50 }
+          - { id: n075, cavity: -0.75 }
+          - { id: n100, cavity: -1.00 }
+          - { id: n150, cavity: -1.50 }
+          - { id: n200, cavity: -2.00 }
+          - { id: n300, cavity: -3.00 }
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: h9-engine
+          path: engine
+      - name: Verify frozen H9 engine
+        run: |
+          (cd engine && sha256sum -c harness.sha256 && sha256sum -c core.sha256 && sha256sum -c executable.sha256)
+          grep -F 'config.freestyle_weights.pending_safety = 1.0;' engine/strategy_h9.rs
+          grep -F 'config.freestyle_weights.useful_attack_reward = 1.0;' engine/strategy_h9.rs
+          grep -F 'config.freestyle_weights.row_transitions *= 2.5;' engine/strategy_h9.rs
+          grep -F 'config.freestyle_weights.h9_cavity_excavation = strategy.cavity_excavation;' engine/strategy_h9.rs
+          grep -F 'fn cavity_excavation_cost(board: &Board) -> u32' engine/freestyle.rs
+          chmod +x engine/strategy_h9
+      - name: Run 20 shared seeds, both sides, KO only
+        env:
+          CAVITY: ${{ matrix.cavity }}
+        run: |
+          mkdir -p results
+          engine/strategy_h9 \
+            --cavity-excavation "$CAVITY" \
+            --incumbent-cavity-excavation 0 \
+            --start 37000 --seeds 20 --nodes 10000 | tee results/ko.jsonl
+          printf '%s\n' "$CAVITY" > results/cavity-weight.txt
+          cp engine/commit.txt engine/harness.sha256 engine/core.sha256 engine/executable.sha256 results/
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: h9-screen-${{ matrix.id }}
+          path: results/
+          if-no-files-found: error
