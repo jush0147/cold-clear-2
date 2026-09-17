@@ -1,0 +1,72 @@
+{
+  "experiment": "H5 legacy combo-continuation shaping",
+  "status": "do_not_promote",
+  "hypothesis": "On top of the H2 incumbent, CC2 may under- or over-value preserving combo state after real TL S2 attack is already rewarded separately.",
+  "incumbent_before_experiment": "H2",
+  "tested_source_commit": "3970fbee15a94f19970cc3b4b9c915ccce0e3565",
+  "frozen_executable_sha256": "2f45c6a132d2c559223716bd39ad71452a96c92e9a100105d06409fe14028365",
+  "protocol": {
+    "node_budget_per_move": 10000,
+    "preview": "current + NEXT 5 only",
+    "randomizer": "SevenBag with only visible information used to derive current bag remainder",
+    "garbage_scenarios_under_pressure": 10,
+    "gravity": 0,
+    "result": "KO only",
+    "side_swap": true
+  },
+  "screening": {
+    "run_id": 35203592286,
+    "seeds": "18100-18119",
+    "games_per_config": 40,
+    "incumbent_combo_scale": 1.0,
+    "configs": [
+      {"combo_scale":0.0,"candidate":19,"incumbent":21,"candidate_sweeps":4,"incumbent_sweeps":5,"splits":11},
+      {"combo_scale":0.25,"candidate":17,"incumbent":23,"candidate_sweeps":3,"incumbent_sweeps":6,"splits":11},
+      {"combo_scale":0.5,"candidate":24,"incumbent":16,"candidate_sweeps":9,"incumbent_sweeps":5,"splits":6},
+      {"combo_scale":0.75,"candidate":18,"incumbent":22,"candidate_sweeps":5,"incumbent_sweeps":7,"splits":8},
+      {"combo_scale":1.25,"candidate":20,"incumbent":20,"candidate_sweeps":3,"incumbent_sweeps":3,"splits":14},
+      {"combo_scale":1.5,"candidate":19,"incumbent":21,"candidate_sweeps":3,"incumbent_sweeps":4,"splits":13},
+      {"combo_scale":2.0,"candidate":27,"incumbent":13,"candidate_sweeps":10,"incumbent_sweeps":3,"splits":7},
+      {"combo_scale":2.5,"candidate":21,"incumbent":19,"candidate_sweeps":5,"incumbent_sweeps":4,"splits":11},
+      {"combo_scale":3.0,"candidate":14,"incumbent":26,"candidate_sweeps":2,"incumbent_sweeps":8,"splits":10},
+      {"combo_scale":4.0,"candidate":23,"incumbent":17,"candidate_sweeps":5,"incumbent_sweeps":2,"splits":13}
+    ]
+  },
+  "validation": {
+    "run_id": 35204897059,
+    "seeds": "19000-19039",
+    "games_per_config": 80,
+    "configs": [
+      {"combo_scale":0.5,"candidate":38,"incumbent":42,"candidate_sweeps":4,"incumbent_sweeps":6,"splits":30},
+      {"combo_scale":2.0,"candidate":40,"incumbent":40,"candidate_sweeps":9,"incumbent_sweeps":9,"splits":22},
+      {"combo_scale":4.0,"candidate":52,"incumbent":28,"candidate_sweeps":16,"incumbent_sweeps":4,"splits":20,"paired_two_sided_sign_p":0.01181793212890625}
+    ],
+    "selected_finalist_combo_scale": 4.0
+  },
+  "fixed_finalist_confirmation": {
+    "run_id": 35206485702,
+    "seeds": "20000-20199",
+    "games": 400,
+    "candidate_combo_scale": 4.0,
+    "incumbent_combo_scale": 1.0,
+    "candidate_wins": 212,
+    "incumbent_wins": 188,
+    "candidate_sweeps": 58,
+    "incumbent_sweeps": 46,
+    "splits": 96,
+    "paired_two_sided_sign_p": 0.28069032903417923,
+    "all_games_complete": true,
+    "all_reasons": "no_legal_placement"
+  },
+  "decision": {
+    "keep": false,
+    "promote": false,
+    "incumbent_after_experiment": "H2",
+    "reason": "Combo scale 4.0 produced a strong fresh validation result (52-28, paired p ~= 0.0118) but only 212-188 in the pre-fixed 400-game confirmation, paired p ~= 0.281. Positive direction is insufficient for promotion under the same standard used for prior rounds."
+  },
+  "interpretation": [
+    "The H5 knob is a legacy continuation heuristic, not the TL S2 combo attack formula itself.",
+    "A higher continuation value may capture future option value of carrying combo into later high-base clears, but the effect was not stable enough to promote.",
+    "Keep combo scale 1.0 in the incumbent; retain combo scale as a candidate dimension for later joint optimization rather than treating 4.0 as established."
+  ]
+}
