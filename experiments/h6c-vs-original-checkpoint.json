@@ -1,0 +1,87 @@
+{
+  "experiment": "H6C current incumbent versus original CC2 evaluator checkpoint",
+  "status": "completed",
+  "purpose": "Measure cumulative strategy improvement directly against the legacy CC2 evaluator baseline after promoting H6C; this is a checkpoint, not a new parameter-selection round.",
+  "run_id": 35222427103,
+  "tested_source_commit": "ef95f7ef4018e1e393766d30a49643083fecf636",
+  "frozen_executable_sha256": "f6e781cede12b8ae0606f15bdc9f9e4b789357f04e67ad3fe997892243c77652",
+  "candidate": {
+    "name": "H6C incumbent",
+    "pending_safety": 1.0,
+    "useful_attack_reward": 1.0,
+    "cancellation_reward": 0.0,
+    "row_transition_scale": 2.5
+  },
+  "baseline": {
+    "name": "legacy CC2 evaluator under shared corrected mechanics",
+    "pending_safety": 0.0,
+    "useful_attack_reward": 0.0,
+    "cancellation_reward": 0.0,
+    "row_transition_scale": 1.0,
+    "definition": "Legacy Cold Clear 2 strategy/evaluator values under the same corrected S2 mechanics, information boundary, zero-gravity policy and KO arena; not a byte-for-byte upstream CC2 binary."
+  },
+  "shared_protocol": {
+    "nodes_per_move": 10000,
+    "paired_side_swap": true,
+    "result": "KO only",
+    "gravity": 0,
+    "preview": "current + exactly NEXT 5; seven-bag speculation beyond visible preview",
+    "opponent_board_visible_to_bot": false,
+    "hidden_future_visible_to_bot": false,
+    "h3_b2b_charge_value": 0.0,
+    "h3_surge_bank_value": 0.0,
+    "h6_base_holes_scale": 1.0,
+    "h6_base_coveredness_scale": 1.0,
+    "softdrop": 0.0
+  },
+  "controls": {
+    "candidate_candidate_aa": "passed",
+    "legacy_legacy_aa": "passed",
+    "build_and_regressions": "passed"
+  },
+  "holdout": {
+    "seed_range": "30000-30499",
+    "paired_seeds": 500,
+    "games": 1000,
+    "candidate_wins": 789,
+    "baseline_wins": 211,
+    "candidate_win_rate": 0.789,
+    "candidate_sweeps": 316,
+    "baseline_sweeps": 27,
+    "split_pairs": 157,
+    "decisive_pairs": 343,
+    "paired_two_sided_sign_p": 1.1114220496375763e-63,
+    "all_games_complete": true,
+    "all_reasons": "no_legal_placement",
+    "all_node_budgets": 10000,
+    "all_pair_sizes": 2,
+    "batch_scores": [
+      "74-26",
+      "77-23",
+      "78-22",
+      "83-17",
+      "76-24",
+      "78-22",
+      "82-18",
+      "80-20",
+      "80-20",
+      "81-19"
+    ]
+  },
+  "decision": {
+    "promote": false,
+    "incumbent_after_checkpoint": "H6C",
+    "reason": "H6C was already promoted in its fixed-finalist confirmation. This checkpoint independently establishes a large cumulative advantage over the legacy evaluator baseline under the shared corrected S2 experiment policy."
+  },
+  "interpretation": [
+    "The sequential H1 -> H2 -> H6C gains do not merely form an incumbent ancestry chain; the current H6C policy also defeats the legacy evaluator directly on a large untouched holdout.",
+    "All ten 100-game batches favored H6C, with candidate wins ranging from 74 to 83 per batch.",
+    "This result validates the current incumbent as the base for H7 combo-interaction work; it does not imply that pending_safety=1, useful_attack_reward=1, or row_transition_scale=2.5 are individually globally optimal."
+  ],
+  "limitations": [
+    "Arena is a zero-gravity alternating-lock S2 simplification rather than a wall-clock multiplayer simulator.",
+    "Outgoing garbage activates on receipt in this experiment authority.",
+    "Hidden garbage-hole treatment uses scenario search and remains an approximation.",
+    "Full official TETR.IO S2 parity is not certified."
+  ]
+}
