@@ -1,0 +1,63 @@
+name: H8 fresh-seed joint validation
+on:
+  push:
+    branches: [s2-strategy-clean]
+    paths: ['.github/workflows/strategy-h8-validate.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+defaults:
+  run:
+    shell: bash
+jobs:
+  validate:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 75
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        include:
+          - { id: a075r250, attack: 0.75, row: 2.5, screen: '24-16' }
+          - { id: a075r300, attack: 0.75, row: 3.0, screen: '25-15' }
+          - { id: a075r400, attack: 0.75, row: 4.0, screen: '26-14' }
+          - { id: a100r400, attack: 1.00, row: 4.0, screen: '24-16' }
+          - { id: a125r400, attack: 1.25, row: 4.0, screen: '25-15' }
+    steps:
+      - name: Download frozen H8 engine from screening run
+        uses: actions/download-artifact@v4
+        with:
+          name: h8-engine
+          path: engine
+          github-token: ${{ github.token }}
+          run-id: 35234339252
+      - name: Verify frozen H8 source and executable
+        run: |
+          test "$(cat engine/commit.txt)" = '8d33ce0ebcfe1d7d5e06ab69fbbcf14eefd4b3c0'
+          echo 'b10841d7c67af3af3c81dc57011523b291e82fbd9d653c63d9666ceb6ab74107  engine/strategy_h8.rs' | sha256sum -c -
+          echo '516605d87181820fb98da3073995f34fc70f92aed3a9747a77a8293aafa2d827  engine/strategy_h8' | sha256sum -c -
+          grep -F 'config.freestyle_weights.pending_safety = 1.0;' engine/strategy_h8.rs
+          grep -F 'config.freestyle_weights.useful_attack_reward = strategy.useful_attack_reward;' engine/strategy_h8.rs
+          grep -F 'config.freestyle_weights.row_transitions *= strategy.row_transition_scale;' engine/strategy_h8.rs
+          chmod +x engine/strategy_h8
+      - name: Run 40 fresh paired seeds, KO only
+        env:
+          ATTACK: ${{ matrix.attack }}
+          ROW: ${{ matrix.row }}
+        run: |
+          mkdir -p results
+          printf '%s\n' '${{ matrix.screen }}' > results/screening-record.txt
+          cp engine/commit.txt engine/source.sha256 engine/executable.sha256 results/
+          engine/strategy_h8 \
+            --useful-attack-reward "$ATTACK" \
+            --row-transition-scale "$ROW" \
+            --incumbent-useful-attack-reward 1.0 \
+            --incumbent-row-transition-scale 2.5 \
+            --start 35000 --seeds 40 --nodes 10000 | tee results/ko.jsonl
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: h8-validate-${{ matrix.id }}
+          path: results/
+          if-no-files-found: error
