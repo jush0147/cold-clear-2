@@ -1,0 +1,106 @@
+name: H10 search exploitation screening
+on:
+  push:
+    branches: [s2-strategy-clean]
+    paths:
+      - 'scripts/wire-h10.py'
+      - '.github/workflows/strategy-h10.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+defaults:
+  run:
+    shell: bash
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: strategy-h10-native
+      - name: Generate promoted H9 core and isolated H10 harness
+        run: |
+          python3 scripts/wire-h9.py
+          python3 scripts/wire-h10.py
+      - name: Check H10 harness and core regressions
+        run: |
+          cargo test --release --bin strategy_h10 2>&1 | tee h10-regression.log
+          cargo test --release --lib
+      - name: Build frozen executable
+        run: cargo build --release --bin strategy_h10
+      - name: Package exact tested core, harness and binary
+        run: |
+          mkdir -p h10-engine
+          cp src/bot/freestyle.rs h10-engine/
+          cp src/bin/strategy_h10.rs h10-engine/
+          cp target/release/strategy_h10 h10-engine/
+          cp h10-regression.log h10-engine/
+          git rev-parse HEAD | tee h10-engine/commit.txt
+          sha256sum src/bot/freestyle.rs | awk '{print $1 "  freestyle.rs"}' | tee h10-engine/core.sha256
+          sha256sum src/bin/strategy_h10.rs | awk '{print $1 "  strategy_h10.rs"}' | tee h10-engine/harness.sha256
+          sha256sum target/release/strategy_h10 | awk '{print $1 "  strategy_h10"}' | tee h10-engine/executable.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: h10-engine
+          path: h10-engine/
+          if-no-files-found: error
+      - name: H9/H9 A/A control
+        run: |
+          target/release/strategy_h10 \
+            --exploitation 0.6931471805599453 \
+            --incumbent-exploitation 0.6931471805599453 \
+            --start 39990 --seeds 2 --nodes 10000 | tee h10-control.jsonl
+      - uses: actions/upload-artifact@v4
+        with:
+          name: h10-control
+          path: h10-control.jsonl
+          if-no-files-found: error
+
+  screen:
+    needs: build
+    runs-on: ubuntu-22.04
+    timeout-minutes: 50
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix:
+        include:
+          - { id: p25, exploitation: 0.2876820724517809, share: 0.25 }
+          - { id: p35, exploitation: 0.4307829160924542, share: 0.35 }
+          - { id: p40, exploitation: 0.5108256237659907, share: 0.40 }
+          - { id: p45, exploitation: 0.5978370007556204, share: 0.45 }
+          - { id: p55, exploitation: 0.7985076962177716, share: 0.55 }
+          - { id: p60, exploitation: 0.9162907318741550, share: 0.60 }
+          - { id: p65, exploitation: 1.0498221244986778, share: 0.65 }
+          - { id: p75, exploitation: 1.3862943611198906, share: 0.75 }
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: h10-engine
+          path: engine
+      - name: Verify frozen H10 engine
+        run: |
+          (cd engine && sha256sum -c core.sha256 && sha256sum -c harness.sha256 && sha256sum -c executable.sha256)
+          chmod +x engine/strategy_h10
+      - name: Run 20 shared seeds, both sides, KO only
+        env:
+          EXPLOIT: ${{ matrix.exploitation }}
+          SHARE: ${{ matrix.share }}
+        run: |
+          mkdir -p results
+          printf '%s\n' "$SHARE" > results/approx-rank0-share.txt
+          engine/strategy_h10 \
+            --exploitation "$EXPLOIT" \
+            --incumbent-exploitation 0.6931471805599453 \
+            --start 40000 --seeds 20 --nodes 10000 | tee results/ko.jsonl
+          cp engine/commit.txt engine/core.sha256 engine/harness.sha256 engine/executable.sha256 results/
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: h10-screen-${{ matrix.id }}
+          path: results/
+          if-no-files-found: error
