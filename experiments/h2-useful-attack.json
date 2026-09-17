@@ -1,0 +1,90 @@
+{
+  "experiment": "H2 useful outgoing attack and cancellation",
+  "status": "keep",
+  "incumbent": {
+    "name": "H1 pending safety",
+    "pending_safety": 1.0,
+    "useful_attack_reward": 0.0,
+    "cancellation_reward": 0.0
+  },
+  "winner": {
+    "pending_safety": 1.0,
+    "useful_attack_reward": 1.0,
+    "cancellation_reward": 0.0
+  },
+  "hypothesis": "Under the frozen H1 board-safety policy, explicitly reward garbage that remains after cancellation and is actually sent. Test cancellation reward independently rather than assuming it is beneficial.",
+  "protocol": {
+    "nodes_per_move": 10000,
+    "paired_side_swap": true,
+    "result": "KO only",
+    "gravity_strategy_cost": 0,
+    "preview": "current + exactly NEXT 5; seven-bag speculation beyond visible preview",
+    "opponent_board_visible_to_bot": false,
+    "hidden_future_visible_to_bot": false
+  },
+  "runs": {
+    "screening": {
+      "run_id": 35179488664,
+      "candidates": 16,
+      "seeds_per_candidate": 10,
+      "games_per_candidate": 20,
+      "total_games": 320,
+      "note": "shared screening seeds; not final confirmation"
+    },
+    "validation": {
+      "run_id": 35184344834,
+      "candidates": 7,
+      "fresh_seeds_per_candidate": 40,
+      "games_per_candidate": 80,
+      "results": [
+        {"attack": 1.0, "cancel": 0.0, "candidate_wins": 57, "incumbent_wins": 23},
+        {"attack": 0.5, "cancel": 0.0, "candidate_wins": 56, "incumbent_wins": 24},
+        {"attack": 1.5, "cancel": 0.75, "candidate_wins": 54, "incumbent_wins": 26},
+        {"attack": 1.0, "cancel": 1.0, "candidate_wins": 53, "incumbent_wins": 27},
+        {"attack": 0.5, "cancel": 1.0, "candidate_wins": 48, "incumbent_wins": 32},
+        {"attack": 0.25, "cancel": 0.0, "candidate_wins": 47, "incumbent_wins": 33},
+        {"attack": 0.25, "cancel": 0.25, "candidate_wins": 43, "incumbent_wins": 37}
+      ]
+    },
+    "finalist_decider": {
+      "run_id": 35186497116,
+      "comparison": "attack=1.0,cancel=0 vs attack=0.5,cancel=0",
+      "fresh_paired_seeds": 200,
+      "games": 400,
+      "attack_1_0_wins": 240,
+      "attack_0_5_wins": 160,
+      "candidate_sweeps": 72,
+      "incumbent_sweeps": 32,
+      "split_pairs": 96,
+      "paired_two_sided_sign_p_approx": 0.00011
+    },
+    "fixed_winner_confirmation": {
+      "run_id": 35187131083,
+      "comparison": "H2 attack=1.0,cancel=0 vs H1",
+      "fresh_paired_seeds": 200,
+      "games": 400,
+      "h2_wins": 282,
+      "h1_wins": 118,
+      "h2_win_rate": 0.705,
+      "candidate_sweeps": 101,
+      "incumbent_sweeps": 19,
+      "split_pairs": 80,
+      "paired_two_sided_sign_p_approx": 1.08e-14,
+      "batch_scores": ["27-13", "30-10", "30-10", "32-8", "26-14", "27-13", "26-14", "31-9", "25-15", "28-12"]
+    }
+  },
+  "invalid_or_unscored_runs": [
+    {
+      "run_id": 35186280203,
+      "scored_games": 0,
+      "reason": "artifact checksum verification path error; duel jobs never started"
+    }
+  ],
+  "decision": "Keep H1 and useful_attack_reward=1.0 as the new candidate incumbent. Do not add an explicit cancellation reward; tested cancellation-reward variants did not improve over the corresponding attack-only candidates.",
+  "limitations": [
+    "Arena is a zero-gravity alternating-lock simplification rather than a wall-clock multiplayer simulator.",
+    "Outgoing garbage activates on receipt in this experiment authority.",
+    "Hidden garbage-hole treatment uses scenario search and remains an approximation.",
+    "Full official TETR.IO S2 parity is not certified."
+  ]
+}
