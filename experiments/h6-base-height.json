@@ -1,0 +1,61 @@
+{
+  "experiment": "H6 legacy base-height aversion scale",
+  "status": "rejected_after_validation",
+  "hypothesis": "The always-on legacy maximum-height penalty may be miscalibrated for zero-gravity TL S2 KO play even with H1 pressure safety and H2 useful attack frozen.",
+  "incumbent_before_experiment": "H2",
+  "tested_source_commit": "dd882d0d048979008a88dbd1e0bed51cca7a23ef",
+  "frozen_executable_sha256": "147c7a0c4e3ba91201c05b23cd6e0ccd28f0afd50344e541d8be3d4ddd19c464",
+  "protocol": {
+    "node_budget_per_move": 10000,
+    "preview": "current + NEXT 5 only",
+    "randomizer": "SevenBag with only visible information used to derive current bag remainder",
+    "garbage_scenarios_under_pressure": 10,
+    "gravity": 0,
+    "result": "KO only",
+    "side_swap": true,
+    "frozen_terms": ["H1 pending_safety=1.0", "H2 useful_attack_reward=1.0", "H2 cancellation_reward=0.0", "H3 off", "H4 legacy scales", "H5 combo scale 1.0"]
+  },
+  "screening": {
+    "run_id": 35208164709,
+    "seeds": "21000-21019",
+    "games_per_config": 40,
+    "incumbent_height_scale": 1.0,
+    "configs": [
+      {"height_scale":0.0,"candidate":23,"incumbent":17,"candidate_sweeps":7,"incumbent_sweeps":4,"splits":9},
+      {"height_scale":0.25,"candidate":16,"incumbent":24,"candidate_sweeps":2,"incumbent_sweeps":6,"splits":12},
+      {"height_scale":0.5,"candidate":14,"incumbent":26,"candidate_sweeps":1,"incumbent_sweeps":7,"splits":12},
+      {"height_scale":0.75,"candidate":24,"incumbent":16,"candidate_sweeps":6,"incumbent_sweeps":2,"splits":12},
+      {"height_scale":1.25,"candidate":15,"incumbent":25,"candidate_sweeps":1,"incumbent_sweeps":6,"splits":13},
+      {"height_scale":1.5,"candidate":22,"incumbent":18,"candidate_sweeps":7,"incumbent_sweeps":5,"splits":8},
+      {"height_scale":2.0,"candidate":20,"incumbent":20,"candidate_sweeps":4,"incumbent_sweeps":4,"splits":12},
+      {"height_scale":2.5,"candidate":19,"incumbent":21,"candidate_sweeps":4,"incumbent_sweeps":5,"splits":11},
+      {"height_scale":3.0,"candidate":24,"incumbent":16,"candidate_sweeps":6,"incumbent_sweeps":2,"splits":12},
+      {"height_scale":4.0,"candidate":18,"incumbent":22,"candidate_sweeps":4,"incumbent_sweeps":6,"splits":10}
+    ],
+    "advanced": [0.0, 0.75, 3.0]
+  },
+  "validation": {
+    "run_id": 35209276286,
+    "seeds": "22000-22039",
+    "games_per_config": 80,
+    "configs": [
+      {"height_scale":0.0,"candidate":36,"incumbent":44,"candidate_sweeps":10,"incumbent_sweeps":14,"splits":16,"paired_two_sided_sign_p":0.5412561893463135},
+      {"height_scale":0.75,"candidate":36,"incumbent":44,"candidate_sweeps":8,"incumbent_sweeps":12,"splits":20,"paired_two_sided_sign_p":0.5034446716308594},
+      {"height_scale":3.0,"candidate":34,"incumbent":46,"candidate_sweeps":8,"incumbent_sweeps":14,"splits":18,"paired_two_sided_sign_p":0.28627872467041016}
+    ],
+    "all_games_complete": true,
+    "all_reasons": "no_legal_placement"
+  },
+  "decision": {
+    "keep": false,
+    "promote": false,
+    "run_final_confirmation": false,
+    "incumbent_after_experiment": "H2",
+    "reason": "All three screening survivors lost on fresh validation seeds, so there is no fixed finalist to confirm. Base maximum-height aversion alone does not show a stable improvement over H2."
+  },
+  "interpretation": [
+    "The irregular screening curve did not replicate on fresh seeds.",
+    "Do not infer a preferred base-height multiplier from H6.",
+    "Continue general shape work with base-only hole and coveredness controls that leave H1 pending-pressure safety untouched."
+  ]
+}
