@@ -128,6 +128,12 @@ pub struct Weights {
     /// H2: independently reward visible incoming garbage actually cancelled.
     #[serde(default)]
     pub cancellation_reward: f32,
+    /// H3: terminal value of B2B count progress toward the Surge threshold.
+    #[serde(default)]
+    pub h3_b2b_charge_value: f32,
+    /// H3: terminal value per line of currently banked Surge once charged.
+    #[serde(default)]
+    pub h3_surge_bank_value: f32,
     pub cell_coveredness: f32,
     pub max_cell_covered_height: u32,
     pub holes: f32,
@@ -259,6 +265,14 @@ fn evaluate(
     reward += weights.useful_attack_reward * useful_outgoing as f32;
     reward += weights.cancellation_reward * cancelled as f32;
 
+    // H3 values unrealized B2B/Surge inventory only at the search leaf. H2
+    // already rewards Surge when it is actually released and sent, so release
+    // attack is deliberately not rewarded a second time here. Legacy CC2
+    // already rewards merely having B2B, therefore charge starts at count x1.
+    let (charge_progress, surge_bank) = h3_inventory(state.back_to_back, state.b2b_count);
+    eval += weights.h3_b2b_charge_value * charge_progress as f32;
+    eval += weights.h3_surge_bank_value * surge_bank as f32;
+
     if info.placement.location.piece == Piece::T
         && (info.lines_cleared < 2 || !matches!(info.placement.spin, Spin::Full))
     {
@@ -364,6 +378,14 @@ fn evaluate(
     )
 }
 
+fn h3_inventory(back_to_back: bool, b2b_count: u16) -> (u32, u32) {
+    if !back_to_back {
+        return (0, 0);
+    }
+    let count = b2b_count as u32;
+    (count.min(4), tetrio::surge_size(count))
+}
+
 fn useful_attack_delta(
     forecast_enabled: bool,
     lines_cleared: u32,
@@ -388,7 +410,17 @@ fn useful_attack_delta(
 
 #[cfg(test)]
 mod h2_tests {
-    use super::useful_attack_delta;
+    use super::{h3_inventory, useful_attack_delta};
+
+    #[test]
+    fn h3_values_only_live_charge_and_banked_surge() {
+        assert_eq!(h3_inventory(false, 12), (0, 0));
+        assert_eq!(h3_inventory(true, 0), (0, 0));
+        assert_eq!(h3_inventory(true, 1), (1, 0));
+        assert_eq!(h3_inventory(true, 3), (3, 0));
+        assert_eq!(h3_inventory(true, 4), (4, 4));
+        assert_eq!(h3_inventory(true, 9), (4, 9));
+    }
 
     #[test]
     fn h2_separates_outgoing_from_cancelled_lines() {
