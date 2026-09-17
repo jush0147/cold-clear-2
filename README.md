@@ -4,23 +4,29 @@ Cold Clear 2 is a rewrite of [Cold Clear](https://github.com/MinusKelvin/cold-cl
 using column-major bitboards, a transposition-aware search graph and native
 worker threads. It implements the [Tetris Bot Protocol](https://github.com/tetris-bot-protocol/tbp-spec).
 
-## TETR.IO S2 experiment: correctness audit in progress
+## TETR.IO TL S2 strategy work
 
-**This branch is not yet a rule-exact TETR.IO S2 replay analyst.** Do not use its
-suggestions to label a player's move as a proven mistake. Strength sweeps are
-paused while observation handling, transitions and independent rule fixtures
-are being audited. See [the audit and remaining gaps](docs/s2-audit.md).
+**Strategy work on `s2-strategy-clean` is governed by
+[`docs/strategy-experiments.md`](docs/strategy-experiments.md). Read that first before changing evaluator/search behavior or running strength experiments.**
 
-The branch has a draft S2 evaluator, B2B/combo/Surge bookkeeping, normal garbage
-queue primitives, a checked browser API and native/WASM regression tests.
-Pending garbage is **not yet inside DAG search**. SRS+ I kicks, 180 rotation,
-Clutch Clears, exact topout/timing, garbage-special +1 and opening double-cancel
-are also not complete. Attack-table regressions are not independent proof of
-production-game behavior.
+The current goal is deliberately narrow: improve Cold Clear 2 for TETR.IO Tetra
+League Season 2 and validate each strategy change with direct, paired, KO-only
+bot-vs-bot matches under the same shared rules and information boundary.
 
-The target input is the player's own start-of-piece position: board, current,
-actual hold, five NEXT pieces and known counters/history. Opponent-board input
-is out of scope. Hidden future pieces and replay RNG state are not observations.
+The canonical strategy document defines:
+
+- what the bot may and may not observe
+- the KO-only Baseline vs Candidate protocol
+- scope limits that prevent review/product work from displacing bot tuning
+- how hypotheses, parameter sweeps, fresh seeds and holdout confirmation are used
+- the current H1 result and the proposed next H2 experiment
+
+Detailed machine-readable H1 evidence lives in
+[`experiments/h1-pending-safety.json`](experiments/h1-pending-safety.json).
+
+[`docs/s2-audit.md`](docs/s2-audit.md) is retained as an older correctness-audit
+snapshot. It contains historical implementation-status statements that predate
+later pending-aware/search work, so do not use it as the current strategy roadmap.
 
 ## WebAssembly
 
@@ -54,8 +60,6 @@ bot.think(100);
 const moves = JSON.parse(bot.suggest_json());
 const visibleState = JSON.parse(bot.player_state_json());
 const capabilities = JSON.parse(bot.capabilities_json());
-// capabilities.rules_parity_verified === false
-// capabilities.pending_garbage_in_search === false
 ```
 
 `think()` returns a JavaScript BigInt node count. `stats_json()` exposes search
@@ -84,24 +88,6 @@ an incomplete queue is rejected. `play_json()` remains a compatibility method
 that infers hold from type, but cannot distinguish identical-piece hold choices.
 Invalid inputs return errors instead of silently corrupting the board.
 
-### Pending garbage primitives, not pending-aware advice yet
-
-```js
-import { preview_garbage_one_to_one } from "./pkg/cold_clear_2.js";
-const result = JSON.parse(preview_garbage_one_to_one(
-  JSON.stringify([{ lines: 8, active: false }]),
-  3, // attack under the explicitly selected normal 1:1 cancellation policy
-  0, // lines cleared by the placement
-  8, // supplied rise cap
-));
-// cancelled: 3; risen: 0; remaining: [{ lines: 5, active: false }]
-```
-
-This diagnostic function does not forecast activation or insert garbage into
-search boards. It does not apply opening double-cancel. Unknown fields such as
-hidden hole coordinates are rejected. Passing `incoming` to `WasmBot.start()`
-currently returns an unsupported-field error; it must not be silently ignored.
-
 ## Correctness checks
 
 ```sh
@@ -112,31 +98,20 @@ cargo check --lib --target wasm32-unknown-unknown
 ```
 
 The `s2-correctness` Actions workflow retains native/release test output. The
-`wasm` workflow builds browser and Node packages, then executes WASM regressions
-for search, empty hold, first-hold refill, identical-piece hold decisions,
-input rejection and normal garbage-queue transitions. The browser artifact is
-`cold-clear-2-wasm`. Building it is not a real-browser performance benchmark.
+`wasm` workflow builds browser and Node packages, then executes WASM regressions.
 
-## Diagnostic simulators
+## Diagnostic simulators and KO experiments
 
-The solitaire health check has a chosen sample length, but awards no wins:
+The solitaire health check remains diagnostic only:
 
 ```sh
 cargo run --release --bin tl_s2_bench -- --seeds 10 --pieces 200 --nodes 2000
 ```
 
-The separate duel is **KO-only**, with no piece limit or attack tiebreak:
-
-```sh
-cargo run --release --bin tl_s2_duel -- --seeds 100 --nodes 500
-```
-
-Each seed is played with sides swapped. A failed search with supported legal
-moves remaining is an error, not a KO. External timeouts are incomplete runs,
-not manufactured wins/draws. The simplified simulator is NOT TETR.IO-conformant;
-its results must not be presented as TL win rates. `legacy` and `s2` use the same
-modified core with different evaluators. Only the piece stream is seeded; full
-search reproducibility has not been established.
+For current strategy comparisons, follow the protocol and reproduction commands
+recorded in [`docs/strategy-experiments.md`](docs/strategy-experiments.md) and the
+corresponding files under `experiments/`. Do not treat older duel metrics, capped
+runs, APP, total attack or other surrogate metrics as proof of strategy strength.
 
 ## License
 
