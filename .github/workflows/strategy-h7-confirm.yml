@@ -1,0 +1,62 @@
+name: H7 fixed-finalist confirmation
+on:
+  push:
+    branches: [s2-strategy-clean]
+    paths: ['.github/workflows/strategy-h7-confirm.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+defaults:
+  run:
+    shell: bash
+jobs:
+  confirm:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      max-parallel: 10
+      matrix:
+        include:
+          - { id: b00, start: 33000 }
+          - { id: b01, start: 33020 }
+          - { id: b02, start: 33040 }
+          - { id: b03, start: 33060 }
+          - { id: b04, start: 33080 }
+          - { id: b05, start: 33100 }
+          - { id: b06, start: 33120 }
+          - { id: b07, start: 33140 }
+          - { id: b08, start: 33160 }
+          - { id: b09, start: 33180 }
+    steps:
+      - name: Download frozen H7 engine from screening run
+        uses: actions/download-artifact@v4
+        with:
+          name: h7-engine
+          path: engine
+          github-token: ${{ github.token }}
+          run-id: 35225928420
+      - name: Verify frozen source and executable
+        run: |
+          test "$(cat engine/commit.txt)" = '652a7989963365d251d4f7e67c4c3e8afcc76647'
+          echo '170a58734822a92f348e4ac13d19890fd7481019073113e8989312b3c3763813  engine/strategy_h7.rs' | sha256sum -c -
+          echo '05e69628b5482261efe1f58cfff6aea99458b7c203c0fdfa17c5fd91ad9d4ae1  engine/strategy_h7' | sha256sum -c -
+          chmod +x engine/strategy_h7
+          grep -F 'config.freestyle_weights.pending_safety = 1.0;' engine/strategy_h7.rs
+          grep -F 'config.freestyle_weights.useful_attack_reward = 1.0;' engine/strategy_h7.rs
+          grep -F 'config.freestyle_weights.row_transitions *= 2.5;' engine/strategy_h7.rs
+          grep -F 'config.freestyle_weights.combo_attack *= strategy.combo_scale;' engine/strategy_h7.rs
+      - name: Run 20 fresh shared seeds, both sides, KO only
+        env:
+          START: ${{ matrix.start }}
+        run: |
+          mkdir -p results
+          engine/strategy_h7 --combo-scale 3.0 --incumbent-combo-scale 1.0 --start "$START" --seeds 20 --nodes 10000 | tee results/ko.jsonl
+          cp engine/commit.txt engine/source.sha256 engine/executable.sha256 results/
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: h7-confirm-${{ matrix.id }}
+          path: results/
+          if-no-files-found: error
