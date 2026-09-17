@@ -1,0 +1,114 @@
+name: H2 useful attack and cancellation screening
+on:
+  push:
+    branches: [s2-strategy-clean]
+    paths:
+      - 'scripts/wire-h2.py'
+      - '.github/workflows/strategy-h2.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+defaults:
+  run:
+    shell: bash
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    outputs:
+      source_sha: ${{ steps.meta.outputs.source_sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: strategy-h2-native
+      - name: Apply isolated H2 wiring
+        run: python3 scripts/wire-h2.py
+      - name: Regression tests
+        run: cargo test --release --lib --bins --tests 2>&1 | tee regression.log
+      - name: Commit tested H2 source
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm scripts/wire-h2.py
+          git add src/bot/freestyle.rs src/bin/strategy_h2.rs
+          git commit -m 'Add isolated H2 useful attack and cancellation rewards'
+          git push origin HEAD:s2-strategy-clean
+      - name: Build frozen executable
+        run: cargo build --release --bin strategy_h2
+      - id: meta
+        name: Package exact tested source and binary
+        run: |
+          mkdir -p h2-engine
+          cp target/release/strategy_h2 regression.log h2-engine/
+          git rev-parse HEAD | tee h2-engine/commit.txt
+          echo "source_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          git archive --format=tar.gz -o h2-engine/source.tar.gz HEAD
+          sha256sum h2-engine/strategy_h2 | tee h2-engine/sha256.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: h2-engine
+          path: h2-engine/
+          if-no-files-found: error
+      - name: H1/H1 control
+        run: target/release/strategy_h2 --attack 0 --cancel 0 --start 3000 --seeds 2 --nodes 10000 | tee h2-control.jsonl
+      - uses: actions/upload-artifact@v4
+        with:
+          name: h2-control
+          path: h2-control.jsonl
+          if-no-files-found: error
+
+  screen:
+    needs: build
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      max-parallel: 16
+      matrix:
+        include:
+          - { id: a00c025, attack: 0.0,  cancel: 0.25 }
+          - { id: a00c050, attack: 0.0,  cancel: 0.50 }
+          - { id: a00c100, attack: 0.0,  cancel: 1.00 }
+          - { id: a025c00, attack: 0.25, cancel: 0.0 }
+          - { id: a050c00, attack: 0.50, cancel: 0.0 }
+          - { id: a100c00, attack: 1.00, cancel: 0.0 }
+          - { id: a025c025, attack: 0.25, cancel: 0.25 }
+          - { id: a025c050, attack: 0.25, cancel: 0.50 }
+          - { id: a025c100, attack: 0.25, cancel: 1.00 }
+          - { id: a050c025, attack: 0.50, cancel: 0.25 }
+          - { id: a050c050, attack: 0.50, cancel: 0.50 }
+          - { id: a050c100, attack: 0.50, cancel: 1.00 }
+          - { id: a100c025, attack: 1.00, cancel: 0.25 }
+          - { id: a100c050, attack: 1.00, cancel: 0.50 }
+          - { id: a100c100, attack: 1.00, cancel: 1.00 }
+          - { id: a150c075, attack: 1.50, cancel: 0.75 }
+    steps:
+      - name: Download frozen H2 executable
+        uses: actions/download-artifact@v4
+        with:
+          name: h2-engine
+          path: engine
+      - name: Verify frozen source identity
+        env:
+          EXPECTED: ${{ needs.build.outputs.source_sha }}
+        run: |
+          test "$(cat engine/commit.txt)" = "$EXPECTED"
+          sha256sum -c engine/sha256.txt
+          chmod +x engine/strategy_h2
+      - name: Run 10 shared seeds, both sides, KO only
+        env:
+          ATTACK: ${{ matrix.attack }}
+          CANCEL: ${{ matrix.cancel }}
+        run: |
+          mkdir -p results
+          cp engine/commit.txt engine/sha256.txt results/
+          engine/strategy_h2 --attack "$ATTACK" --cancel "$CANCEL" --start 3100 --seeds 10 --nodes 10000 | tee results/ko.jsonl
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: h2-screen-${{ matrix.id }}
+          path: results/
+          if-no-files-found: error
