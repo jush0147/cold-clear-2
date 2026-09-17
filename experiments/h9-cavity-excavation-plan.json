@@ -1,6 +1,6 @@
 {
   "experiment": "H9 sealed-cavity excavation cost",
-  "status": "fresh_validation_started",
+  "status": "fixed_finalist_confirmation_started",
   "incumbent": {
     "name": "H6C",
     "pending_safety": 1.0,
@@ -45,7 +45,24 @@
     "nodes_per_move": 10000,
     "run": 35266198506,
     "engine_source_run": 35263555245,
-    "engine_commit": "097ccda01192594416b7d1b3b47bf5211e8d9589"
+    "engine_commit": "097ccda01192594416b7d1b3b47bf5211e8d9589",
+    "results": {
+      "-0.5": {"candidate": 48, "incumbent": 32, "candidate_sweeps": 14, "incumbent_sweeps": 6, "split": 20, "paired_p": 0.11531829833984375},
+      "-0.75": {"candidate": 33, "incumbent": 47, "candidate_sweeps": 5, "incumbent_sweeps": 12, "split": 23, "paired_p": 0.143463134765625}
+    },
+    "decision": "-0.75 rejected on fresh seeds. -0.5 is the pre-fixed validation winner and sole confirmation finalist; validation itself is not sufficient for promotion."
+  },
+  "confirmation": {
+    "fixed_finalist": -0.5,
+    "incumbent_weight": 0.0,
+    "paired_seeds": 200,
+    "games": 400,
+    "seed_start": 39000,
+    "seed_end": 39199,
+    "nodes_per_move": 10000,
+    "run": 35269371051,
+    "workflow_commit": "2b02f429ae1a92499a08b77cd26e09e0dd5940f9",
+    "engine_source_run": 35263555245
   },
   "protocol": {
     "preview": "current + NEXT5",
