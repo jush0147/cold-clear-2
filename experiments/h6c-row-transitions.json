@@ -1,0 +1,89 @@
+{
+  "experiment": "H6C row-transition shaping scale",
+  "status": "promoted",
+  "hypothesis": "On top of the H2 incumbent, legacy CC2 under-penalizes horizontal row transitions / surface irregularity, causing overly jagged structures in zero-gravity TL S2 KO play.",
+  "incumbent_before_experiment": "H2",
+  "tested_source_commit": "d9131dbb125af812f7943da644715d5893cb1a66",
+  "frozen_executable_sha256": "af3adbcc54bb6524688a723fdab988bdc4bca0c64501bb96ed3944f9893b120e",
+  "protocol": {
+    "node_budget_per_move": 10000,
+    "preview": "current + NEXT 5 only",
+    "randomizer": "SevenBag with only visible information used to derive current bag remainder",
+    "garbage_scenarios_under_pressure": 10,
+    "gravity": 0,
+    "result": "KO only",
+    "side_swap": true
+  },
+  "screening": {
+    "run_id": 35214925328,
+    "seeds": "25100-25119",
+    "games_per_config": 40,
+    "incumbent_row_transition_scale": 1.0,
+    "configs": [
+      {"row_transition_scale":0.0,"candidate":6,"incumbent":34},
+      {"row_transition_scale":0.25,"candidate":10,"incumbent":30},
+      {"row_transition_scale":0.5,"candidate":17,"incumbent":23},
+      {"row_transition_scale":0.75,"candidate":17,"incumbent":23},
+      {"row_transition_scale":1.25,"candidate":16,"incumbent":24},
+      {"row_transition_scale":1.5,"candidate":25,"incumbent":15},
+      {"row_transition_scale":2.0,"candidate":22,"incumbent":18},
+      {"row_transition_scale":2.5,"candidate":24,"incumbent":16},
+      {"row_transition_scale":3.0,"candidate":28,"incumbent":12,"candidate_sweeps":11,"incumbent_sweeps":3,"splits":6},
+      {"row_transition_scale":4.0,"candidate":27,"incumbent":13,"candidate_sweeps":7,"incumbent_sweeps":0,"splits":13}
+    ]
+  },
+  "validation": {
+    "run_id": 35216090643,
+    "seeds": "26000-26039",
+    "games_per_config": 80,
+    "configs": [
+      {"row_transition_scale":1.5,"candidate":44,"incumbent":36,"candidate_sweeps":11,"incumbent_sweeps":7,"splits":22,"paired_two_sided_sign_p":0.480682373046875},
+      {"row_transition_scale":2.5,"candidate":58,"incumbent":22,"candidate_sweeps":21,"incumbent_sweeps":3,"splits":16,"paired_two_sided_sign_p":0.0002771615982055664},
+      {"row_transition_scale":3.0,"candidate":51,"incumbent":29,"candidate_sweeps":18,"incumbent_sweeps":7,"splits":15,"paired_two_sided_sign_p":0.043285250663757324},
+      {"row_transition_scale":4.0,"candidate":53,"incumbent":27,"candidate_sweeps":19,"incumbent_sweeps":6,"splits":15,"paired_two_sided_sign_p":0.01463329792022705}
+    ],
+    "selected_validation_winner_row_transition_scale": 2.5
+  },
+  "direct_finalist_decider": {
+    "run_id": 35217547346,
+    "seeds": "27000-27199",
+    "games": 400,
+    "candidate_row_transition_scale": 2.5,
+    "incumbent_row_transition_scale": 4.0,
+    "candidate_wins": 194,
+    "incumbent_wins": 206,
+    "candidate_sweeps": 42,
+    "incumbent_sweeps": 48,
+    "splits": 110,
+    "paired_two_sided_sign_p": 0.5984117182335187,
+    "decision": "inconclusive; predeclared validation winner 2.5 proceeds to fixed confirmation"
+  },
+  "fixed_finalist_confirmation": {
+    "run_id": 35220000249,
+    "seeds": "28000-28199",
+    "games": 400,
+    "candidate_row_transition_scale": 2.5,
+    "incumbent_row_transition_scale": 1.0,
+    "candidate_wins": 229,
+    "incumbent_wins": 171,
+    "candidate_win_rate": 0.5725,
+    "candidate_sweeps": 66,
+    "incumbent_sweeps": 37,
+    "splits": 97,
+    "paired_two_sided_sign_p": 0.005535899104192398,
+    "all_games_complete": true,
+    "all_reasons": "no_legal_placement"
+  },
+  "decision": {
+    "keep": true,
+    "promote": true,
+    "incumbent_after_experiment": "H6C",
+    "promoted_row_transition_scale": 2.5,
+    "reason": "The high row-transition penalty region replicated on fresh seeds, and the predeclared 2.5x finalist defeated H2 229-171 over 400 fresh KO games with 66 versus 37 paired sweeps (two-sided exact sign p ~= 0.00554)."
+  },
+  "interpretation": [
+    "The useful signal is directional rather than a precisely identified optimum: 2.5x, 3x and 4x all performed strongly in fresh validation, while 2.5x versus 4x was inconclusive.",
+    "The promoted incumbent therefore uses 2.5x because it was the predeclared validation winner, not because 2.5 was proven globally optimal.",
+    "Row-transition shaping should remain a high-priority dimension for later joint optimization and potential nonlinear redesign."
+  ]
+}
