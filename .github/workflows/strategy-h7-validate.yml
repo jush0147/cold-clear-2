@@ -1,0 +1,55 @@
+name: H7 fresh-seed validation
+on:
+  push:
+    branches: [s2-strategy-clean]
+    paths: ['.github/workflows/strategy-h7-validate.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+defaults:
+  run:
+    shell: bash
+jobs:
+  validate:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        include:
+          - { id: c300, combo: 3.0, screen: '22-18' }
+          - { id: c400, combo: 4.0, screen: '24-16' }
+          - { id: c500, combo: 5.0, screen: '24-16' }
+    steps:
+      - name: Download frozen H7 engine from screening run
+        uses: actions/download-artifact@v4
+        with:
+          name: h7-engine
+          path: engine
+          github-token: ${{ github.token }}
+          run-id: 35225928420
+      - name: Verify frozen source and executable
+        run: |
+          test "$(cat engine/commit.txt)" = '652a7989963365d251d4f7e67c4c3e8afcc76647'
+          echo '170a58734822a92f348e4ac13d19890fd7481019073113e8989312b3c3763813  engine/strategy_h7.rs' | sha256sum -c -
+          echo '05e69628b5482261efe1f58cfff6aea99458b7c203c0fdfa17c5fd91ad9d4ae1  engine/strategy_h7' | sha256sum -c -
+          grep -F 'config.freestyle_weights.pending_safety = 1.0;' engine/strategy_h7.rs
+          grep -F 'config.freestyle_weights.useful_attack_reward = 1.0;' engine/strategy_h7.rs
+          grep -F 'config.freestyle_weights.row_transitions *= 2.5;' engine/strategy_h7.rs
+          chmod +x engine/strategy_h7
+      - name: Run 40 fresh seeds, both sides, KO only
+        env:
+          COMBO: ${{ matrix.combo }}
+        run: |
+          mkdir -p results
+          printf '%s\n' '${{ matrix.screen }}' > results/screening-record.txt
+          cp engine/commit.txt engine/source.sha256 engine/executable.sha256 results/
+          engine/strategy_h7 --combo-scale "$COMBO" --incumbent-combo-scale 1 --start 32000 --seeds 40 --nodes 10000 | tee results/ko.jsonl
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: h7-validate-${{ matrix.id }}
+          path: results/
+          if-no-files-found: error
