@@ -24,18 +24,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: strategy-h2-decider
-      - name: Apply direct H2-vs-H2 wiring
-        run: python3 scripts/wire-h2-decider.py
       - name: Regression tests
         run: cargo test --release --lib --bins --tests 2>&1 | tee regression.log
-      - name: Commit tested decider source
-        run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git rm scripts/wire-h2-decider.py
-          git add src/bin/strategy_h2.rs
-          git commit -m 'Support direct H2 finalist comparison'
-          git push origin HEAD:s2-strategy-clean
       - name: Build frozen executable
         run: cargo build --release --bin strategy_h2
       - id: meta
@@ -78,7 +68,7 @@ jobs:
           EXPECTED: ${{ needs.build.outputs.source_sha }}
         run: |
           test "$(cat engine/commit.txt)" = "$EXPECTED"
-          (cd engine && sha256sum -c sha256.txt)
+          sha256sum -c engine/sha256.txt
           chmod +x engine/strategy_h2
       - name: Run 20 fresh seeds per batch, both sides
         env:
