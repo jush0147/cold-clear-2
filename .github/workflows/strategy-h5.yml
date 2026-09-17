@@ -1,0 +1,106 @@
+name: H5 combo shaping screening
+on:
+  push:
+    branches: [s2-strategy-clean]
+    paths:
+      - 'scripts/wire-h5.py'
+      - '.github/workflows/strategy-h5.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+defaults:
+  run:
+    shell: bash
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    outputs:
+      source_sha: ${{ steps.meta.outputs.source_sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: strategy-h5-native
+      - name: Apply isolated H5 wiring
+        run: python3 scripts/wire-h5.py
+      - name: Regression tests
+        run: cargo test --release --lib --bins --tests 2>&1 | tee regression.log
+      - name: Commit tested H5 source
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm scripts/wire-h5.py
+          git add src/bin/strategy_h5.rs
+          git commit -m 'Add isolated H5 combo shaping harness'
+          git push origin HEAD:s2-strategy-clean
+      - name: Build frozen executable
+        run: cargo build --release --bin strategy_h5
+      - id: meta
+        name: Package exact tested source and binary
+        run: |
+          mkdir -p h5-engine
+          cp target/release/strategy_h5 regression.log h5-engine/
+          git rev-parse HEAD | tee h5-engine/commit.txt
+          echo "source_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          sha256sum target/release/strategy_h5 | awk '{print $1 "  strategy_h5"}' | tee h5-engine/sha256.txt
+          git archive --format=tar.gz -o h5-engine/source.tar.gz HEAD
+      - uses: actions/upload-artifact@v4
+        with:
+          name: h5-engine
+          path: h5-engine/
+          if-no-files-found: error
+      - name: H2/H2 A/A control
+        run: target/release/strategy_h5 --combo-scale 1 --incumbent-combo-scale 1 --start 18000 --seeds 2 --nodes 10000 | tee h5-control.jsonl
+      - uses: actions/upload-artifact@v4
+        with:
+          name: h5-control
+          path: h5-control.jsonl
+          if-no-files-found: error
+
+  screen:
+    needs: build
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      max-parallel: 12
+      matrix:
+        include:
+          - { id: c000, combo: 0.00 }
+          - { id: c025, combo: 0.25 }
+          - { id: c050, combo: 0.50 }
+          - { id: c075, combo: 0.75 }
+          - { id: c125, combo: 1.25 }
+          - { id: c150, combo: 1.50 }
+          - { id: c200, combo: 2.00 }
+          - { id: c250, combo: 2.50 }
+          - { id: c300, combo: 3.00 }
+          - { id: c400, combo: 4.00 }
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: h5-engine
+          path: engine
+      - name: Verify frozen engine
+        env:
+          EXPECTED: ${{ needs.build.outputs.source_sha }}
+        run: |
+          test "$(cat engine/commit.txt)" = "$EXPECTED"
+          (cd engine && sha256sum -c sha256.txt)
+          chmod +x engine/strategy_h5
+      - name: Run 20 shared seeds, both sides, KO only
+        env:
+          COMBO: ${{ matrix.combo }}
+        run: |
+          mkdir -p results
+          engine/strategy_h5 --combo-scale "$COMBO" --incumbent-combo-scale 1 --start 18100 --seeds 20 --nodes 10000 | tee results/ko.jsonl
+          cp engine/commit.txt engine/sha256.txt results/
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: h5-screen-${{ matrix.id }}
+          path: results/
+          if-no-files-found: error
