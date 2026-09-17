@@ -1,0 +1,91 @@
+name: H7 combo interaction screening
+on:
+  push:
+    branches: [s2-strategy-clean]
+    paths:
+      - 'scripts/wire-h7.py'
+      - '.github/workflows/strategy-h7.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+defaults:
+  run:
+    shell: bash
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: strategy-h7-native
+      - name: Generate isolated H7 harness
+        run: python3 scripts/wire-h7.py
+      - name: Check H7 harness and core regressions
+        run: |
+          cargo test --release --bin strategy_h7 2>&1 | tee h7-regression.log
+          cargo test --release --lib
+      - name: Build frozen executable
+        run: cargo build --release --bin strategy_h7
+      - name: Package exact tested source and binary
+        run: |
+          mkdir -p h7-engine
+          cp target/release/strategy_h7 h7-engine/
+          cp src/bin/strategy_h7.rs h7-engine/
+          cp h7-regression.log h7-engine/
+          git rev-parse HEAD | tee h7-engine/commit.txt
+          sha256sum src/bin/strategy_h7.rs | awk '{print $1 "  strategy_h7.rs"}' | tee h7-engine/source.sha256
+          sha256sum target/release/strategy_h7 | awk '{print $1 "  strategy_h7"}' | tee h7-engine/executable.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: h7-engine
+          path: h7-engine/
+          if-no-files-found: error
+      - name: H6C/H6C A/A control
+        run: target/release/strategy_h7 --combo-scale 1 --incumbent-combo-scale 1 --start 30990 --seeds 2 --nodes 10000 | tee h7-control.jsonl
+      - uses: actions/upload-artifact@v4
+        with:
+          name: h7-control
+          path: h7-control.jsonl
+          if-no-files-found: error
+
+  screen:
+    needs: build
+    runs-on: ubuntu-22.04
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix:
+        include:
+          - { id: c000, combo: 0.0 }
+          - { id: c050, combo: 0.5 }
+          - { id: c200, combo: 2.0 }
+          - { id: c300, combo: 3.0 }
+          - { id: c400, combo: 4.0 }
+          - { id: c500, combo: 5.0 }
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: h7-engine
+          path: engine
+      - name: Verify frozen H7 engine
+        run: |
+          (cd engine && sha256sum -c source.sha256 && sha256sum -c executable.sha256)
+          chmod +x engine/strategy_h7
+      - name: Run 20 shared seeds, both sides, KO only
+        env:
+          COMBO: ${{ matrix.combo }}
+        run: |
+          mkdir -p results
+          engine/strategy_h7 --combo-scale "$COMBO" --incumbent-combo-scale 1 --start 31000 --seeds 20 --nodes 10000 | tee results/ko.jsonl
+          cp engine/commit.txt engine/source.sha256 engine/executable.sha256 results/
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: h7-screen-${{ matrix.id }}
+          path: results/
+          if-no-files-found: error
