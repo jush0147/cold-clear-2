@@ -85,7 +85,21 @@ for old, new in replacements:
         raise SystemExit(f'missing expected H6B source fragment:\n{old}')
     s = s.replace(old, new, 1)
 
-if 'holes_scale' in s or 'covered_scale' in s:
-    raise SystemExit('stale H6B strategy fields remain in generated H6C harness')
+# The generated H6C harness intentionally references the H6B base-only
+# config fields to reset them to 1.0. Guard only against stale H6B strategy/CLI
+# references, not those reset field names.
+stale = [
+    'strategy.holes_scale',
+    'strategy.covered_scale',
+    'incumbent.holes_scale',
+    'incumbent.covered_scale',
+    '"--holes-scale"',
+    '"--covered-scale"',
+    '"--incumbent-holes-scale"',
+    '"--incumbent-covered-scale"',
+]
+for needle in stale:
+    if needle in s:
+        raise SystemExit(f'stale H6B strategy reference remains in generated H6C harness: {needle}')
 
 Path('src/bin/strategy_h6c.rs').write_text(s)
