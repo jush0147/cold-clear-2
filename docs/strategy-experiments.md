@@ -4,6 +4,28 @@
 >
 > This is the canonical document for the current Cold Clear 2 strategy-optimization work. The goal is not to build a replay product. The goal is to make the bot stronger for TETR.IO Tetra League Season 2 and prove or reject strategy changes with direct KO-only bot-vs-bot matches.
 
+## Continuation checkpoint: compute regime and current lineage
+
+> **Important update:** the historical strategy experiments below were primarily run at a 10k evaluator-node budget. H14 later demonstrated that 10k is compute-starved for the review-style search harness. Therefore strategy promotions discovered under 10k should be read as **10k-regime results**, not automatically as compute-invariant global rankings.
+
+Current scored lineage entering H14 is **H9 + H12**:
+
+- H6C promoted a 2.5x row-transition scale under the historical 10k regime.
+- H9 promoted a light sealed-cavity excavation penalty under that regime.
+- H12 is a correctness fix for stale best-child demotion/backprop and is enabled in the corrected core.
+- H13 fixes despeculation/backprop when a speculative layer becomes a known NEXT piece. Its targeted regression is valid, but the current snapshot KO harness rebuilds the DAG via `set_forecast()` before each scored search, so H13 is not observable as a KO strength change there.
+
+H14 changed only per-move compute while freezing H9 + H12. Important results:
+
+- 25k vs 10k fresh validation: 29-11 games; paired sweeps 9-0 with 11 splits; exact paired sign p = 0.00390625.
+- 100k vs 25k fresh headroom: 30-10 games; paired sweeps 11-1 with 8 splits; exact paired sign p = 0.00634765625.
+
+Thus both 10k and 25k remain below the observed native strength ceiling. The active bridge maps 25k -> 50k -> 100k before any final review budget is chosen.
+
+This discovery does **not** invalidate earlier fair A/B comparisons at 10k; it limits their scope. After a practical final review compute regime is selected, revalidate the promoted strategy lineage at that regime before treating H1/H2/H6C/H9 ordering as final.
+
+For intended replay-review/WASM behavior, persistent sessions, H13 product relevance, config parity, and browser performance rules, read [review-bot-design.md](review-bot-design.md).
+
 ## Objective
 
 Compare two strategies on the same shared TL S2 rules implementation:
