@@ -116,6 +116,30 @@ Config/budget parity does **not** mean every review path is now byte-for-byte th
 
 Do not compare browser timings to H14 strength unless the tested workload reports the H9+H12 profile, hard node budget, and the intended randomizer/speculation mode.
 
+## Initial WASM performance baseline
+
+WASM CI run `35334313492` completed the first hard-node baseline using the
+canonical `h9+h12-review` profile. The workload was a fresh empty-board
+snapshot with SevenBag speculation enabled and no pending garbage.
+
+| Node budget | Median Node-WASM time | Median nodes/s |
+|---:|---:|---:|
+| 25k | 26.45 ms | 0.95M |
+| 50k | 48.40 ms | 1.03M |
+| 100k | 97.33 ms | 1.03M |
+
+The 1003-node smoke test also returned exactly 1003 evaluated nodes, confirming
+the hard-budget boundary through the built WASM package.
+
+These are **GitHub runner Node-WASM measurements**, not desktop Chrome, laptop,
+or mobile numbers. They are useful mainly because they show that 100k is not
+obviously too expensive: after warmup this workload is close to linear at about
+one million evaluator nodes per second. Browser/device measurements remain the
+product decision evidence.
+
+Machine-readable details live in
+[`experiments/wasm-review-benchmark.json`](../experiments/wasm-review-benchmark.json).
+
 ## Performance decision model
 
 The final product budget should be chosen using two curves:
