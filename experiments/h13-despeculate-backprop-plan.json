@@ -1,6 +1,6 @@
 {
   "experiment": "H13 revealed-piece despeculation backprop correctness",
-  "status": "screening_running",
+  "status": "completed_unobservable_in_current_harness",
   "incumbent": {
     "name": "H9 + H12 corrected DAG",
     "pending_safety": 1,
@@ -20,7 +20,23 @@
     "seed_start": 46000,
     "nodes_per_move": 10000,
     "run": 35310736516,
-    "workflow_commit": "b583bdc8637a90bcbf7671a20f4f8e4645e9a8c7"
+    "workflow_commit": "b583bdc8637a90bcbf7671a20f4f8e4645e9a8c7",
+    "result": {
+      "candidate_wins": 40,
+      "incumbent_wins": 40,
+      "candidate_sweeps": 0,
+      "incumbent_sweeps": 0,
+      "split_pairs": 40,
+      "paired_sign_p": 1,
+      "all_games_complete": true,
+      "all_reason_no_legal_placement": true,
+      "malformed_pairs": 0,
+      "max_search_depth_observed": [
+        9,
+        11
+      ]
+    },
+    "interpretation": "All 40 paired seeds split exactly. This is structural, not evidence of equal strength: the KO choose() path calls Bot::set_forecast() before every scenario/search, and set_forecast() rebuilds Freestyle/Dag from current state + visible queue. H13 runs in Bot::new_piece() after the previous lock, so its corrected persistent-DAG boundary values are discarded before the next move is searched."
   },
   "protocol": {
     "preview": "current + NEXT5, refreshed after every lock",
@@ -56,5 +72,19 @@
       "known-layer piece filter matches legacy indexed backprop semantics",
       "H12 best-child demotion behavior remains enabled on both H13 sides"
     ]
-  }
+  },
+  "harness_observability": {
+    "finding": "H13 cannot affect a scored move in the current KO/review-style snapshot harness.",
+    "call_order": [
+      "lock move via try_advance()",
+      "refill visible preview via new_piece() (H13 would update persistent DAG here)",
+      "next decision calls choose()",
+      "choose() calls set_forecast()",
+      "set_forecast() rebuilds Freestyle/Dag before search, discarding the H13-updated tree"
+    ],
+    "applies_without_incoming": true,
+    "reason": "choose() still runs one forecast scenario when incoming is empty, so set_forecast() rebuilds the DAG on every decision."
+  },
+  "decision": "DO_NOT_RUN_FRESH_KO_VALIDATION_UNDER_THIS_HARNESS",
+  "conclusion": "The targeted H13 unit tests validate the local despeculation/backprop logic, but the current KO/review snapshot harness necessarily discards that persistent-tree correction before every scored search. Therefore the 40:40 / 0-sweep screen is expected and cannot support either a strength claim or a regression claim. Keep H13 documented as a latent persistent-DAG correctness fix; do not spend more KO samples on it unless a future integration preserves the DAG across decisions instead of rebuilding it through set_forecast(). H9 + H12 remains the scored incumbent."
 }
