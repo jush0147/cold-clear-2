@@ -61,6 +61,18 @@ freestyle_path.write_text(freestyle)
 
 dag = dag_path.read_text()
 
+# Initial queue despeculation happens before any speculative search values exist,
+# so it only marks the provided current+preview pieces as known.
+old = '''            layer.kind.despeculate(piece);
+            layer = &mut layer.next_layer;
+'''
+new = '''            let _ = layer.kind.despeculate(piece, false);
+            layer = &mut layer.next_layer;
+'''
+if old not in dag:
+    raise SystemExit('Dag::new initial despeculate caller not found')
+dag = dag.replace(old, new, 1)
+
 old = '''struct BackpropUpdate {
     parent: u64,
     speculation_piece: Piece,
