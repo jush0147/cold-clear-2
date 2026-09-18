@@ -90,11 +90,12 @@ Before using browser timing to choose a production budget, native H14 and the WA
 
 Current branch state:
 
-- `BotConfig::review_h9_h12()` is now the canonical H9+H12 review configuration.
-- the H14 generator uses that shared config rather than duplicating evaluator constants.
-- `WasmBot` uses the same review config by default.
+- `BotConfig::review_h9_h12()` is the canonical scored H14 H9+H12 configuration.
+- `BotConfig::interactive_review()` adds H13 persistent-DAG correctness without changing the scored profile.
+- the H14 generator uses `review_h9_h12()` rather than duplicating evaluator constants.
+- persistent `WasmBot` uses `interactive_review()`.
 - `WasmBot::think_nodes()` uses the same hard evaluator-node budget unit as H14.
-- pending `analysis.rs` also uses the same review config and hard total node budget.
+- pending `analysis.rs` intentionally stays on `review_h9_h12()` because scenario DAGs are rebuilt and H13 persistence is not observable there.
 - the browser/Node benchmark workload uses SevenBag speculation rather than `Randomizer::Unknown`.
 
 H14's scored configuration includes:
@@ -114,7 +115,7 @@ Config/budget parity does **not** mean every review path is now byte-for-byte th
 - replay integration must reconstruct `bag_state` only from already-observed piece history. Supplying hidden future randomizer state would violate the information boundary.
 - pending analysis still rebuilds separate scenario bots; the no-pending persistent `WasmBot` path is the relevant baseline for measuring DAG reuse.
 
-Do not compare browser timings to H14 strength unless the tested workload reports the H9+H12 profile, hard node budget, and the intended randomizer/speculation mode.
+Do not compare browser timings to H14 strength unless the tested workload reports its exact profile, hard node budget, and randomizer/speculation mode. Fresh first-move timing under the H13 interactive profile is comparable as a compute-cost measurement because H13 has not fired yet; persistent continuation timing is a separate product-path measurement.
 
 ## Initial WASM performance baseline
 
