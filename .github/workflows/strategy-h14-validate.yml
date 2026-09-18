@@ -1,9 +1,5 @@
 name: H14 fresh validation
 on:
-  push:
-    branches: [s2-strategy-clean]
-    paths:
-      - '.github/workflows/strategy-h14-validate.yml'
   workflow_dispatch:
 permissions:
   contents: read
