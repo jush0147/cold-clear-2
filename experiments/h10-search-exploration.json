@@ -1,0 +1,89 @@
+{
+  "experiment": "H10 search exploitation/exploration",
+  "status": "completed",
+  "decision": "DO_NOT_PROMOTE",
+  "incumbent_after_experiment": {
+    "name": "H9",
+    "pending_safety": 1.0,
+    "useful_attack_reward": 1.0,
+    "row_transition_scale": 2.5,
+    "combo_scale": 1.0,
+    "h9_cavity_excavation": -0.5,
+    "freestyle_exploitation": 0.6931471805599453
+  },
+  "hypothesis": "Changing only DAG child-selection exploitation may improve KO performance by allocating the fixed 10k-node budget better across short-term high-ranked and delayed-payoff branches.",
+  "screening": {
+    "run": 35284463845,
+    "engine_commit": "327b45964fb60a30a40f9137c0d0e07e4667a0a6",
+    "seed_start": 40000,
+    "paired_seeds_per_config": 20,
+    "games_per_config": 40,
+    "nodes_per_move": 10000,
+    "results": {
+      "0.25": {"candidate": 14, "incumbent": 26, "candidate_sweeps": 2, "incumbent_sweeps": 8, "split": 10, "paired_p": 0.109375},
+      "0.35": {"candidate": 18, "incumbent": 22, "candidate_sweeps": 4, "incumbent_sweeps": 6, "split": 10, "paired_p": 0.75390625},
+      "0.40": {"candidate": 25, "incumbent": 15, "candidate_sweeps": 6, "incumbent_sweeps": 1, "split": 13, "paired_p": 0.125},
+      "0.45": {"candidate": 17, "incumbent": 23, "candidate_sweeps": 5, "incumbent_sweeps": 8, "split": 7, "paired_p": 0.5810546875},
+      "0.55": {"candidate": 25, "incumbent": 15, "candidate_sweeps": 7, "incumbent_sweeps": 2, "split": 11, "paired_p": 0.1796875},
+      "0.60": {"candidate": 19, "incumbent": 21, "candidate_sweeps": 4, "incumbent_sweeps": 5, "split": 11, "paired_p": 1.0},
+      "0.65": {"candidate": 10, "incumbent": 30, "candidate_sweeps": 1, "incumbent_sweeps": 11, "split": 8, "paired_p": 0.00634765625},
+      "0.75": {"candidate": 12, "incumbent": 28, "candidate_sweeps": 1, "incumbent_sweeps": 9, "split": 10, "paired_p": 0.021484375}
+    },
+    "interpretation": "Both extremes were harmful. 40% and 55% tied as screen winners, but nearby points were inconsistent, so screening did not establish a monotonic direction."
+  },
+  "validation": {
+    "run": 35286628892,
+    "seed_start": 41000,
+    "paired_seeds_per_config": 40,
+    "games_per_config": 80,
+    "nodes_per_move": 10000,
+    "results": {
+      "0.40": {"candidate": 40, "incumbent": 40, "candidate_sweeps": 10, "incumbent_sweeps": 10, "split": 20, "paired_p": 1.0},
+      "0.55": {"candidate": 46, "incumbent": 34, "candidate_sweeps": 12, "incumbent_sweeps": 6, "split": 22, "paired_p": 0.237884521484375}
+    },
+    "fixed_finalist": {
+      "approx_rank0_share": 0.55,
+      "exploitation": 0.7985076962177716,
+      "selection_reason": "fresh validation winner, fixed before confirmation"
+    }
+  },
+  "confirmation": {
+    "run": 35289471277,
+    "workflow_commit": "fc77d0e8e9758c65c3d577e40508b366532aa028",
+    "engine_source_run": 35284463845,
+    "engine_commit": "327b45964fb60a30a40f9137c0d0e07e4667a0a6",
+    "candidate_exploitation": 0.7985076962177716,
+    "incumbent_exploitation": 0.6931471805599453,
+    "seed_start": 42000,
+    "seed_end": 42199,
+    "paired_seeds": 200,
+    "games": 400,
+    "candidate_wins": 197,
+    "incumbent_wins": 203,
+    "candidate_win_rate": 0.4925,
+    "candidate_sweeps": 45,
+    "incumbent_sweeps": 48,
+    "split_pairs": 107,
+    "paired_sign_p": 0.8358461346314852,
+    "batch_candidate_incumbent": [
+      [21,19],[23,17],[21,19],[18,22],[19,21],
+      [16,24],[19,21],[21,19],[22,18],[17,23]
+    ],
+    "invariants": {
+      "all_games_complete": true,
+      "all_reason_no_legal_placement": true,
+      "all_node_budget_10000": true,
+      "exactly_two_games_per_seed_with_side_swap": true,
+      "malformed_pairs": 0,
+      "max_search_depth_observed": [9,12],
+      "all_profiles_candidate_vs_incumbent": true,
+      "all_frozen_hashes_identical": true
+    },
+    "frozen_hashes": {
+      "core_sha256": "ff871957179fab3c1a025d0dd443ecd9d0c05f62ab07d040bc2c70183ce69544",
+      "harness_sha256": "2f9a0dfe40b1553b4c71e36d42cb856ed5dd2c232601bcdbde98e432e6821865",
+      "executable_sha256": "4dd9bae9a6c4d85f520fa1d5f586c792cea46a9f1185ecc66a1b6c12d30d8624"
+    }
+  },
+  "conclusion": "The 55% finalist regressed to 197:203 in the fixed 400-KO confirmation. Do not promote H10. Keep H9 with the legacy default exploitation ln(2). Do not continue scalar exploitation tuning post hoc."
+}
