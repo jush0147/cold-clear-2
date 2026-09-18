@@ -1,0 +1,66 @@
+{
+  "experiment": "H14 review compute scaling",
+  "status": "screening_planned",
+  "question": "With evaluator, rules, visible information and hidden-garbage treatment frozen, does giving the review bot more evaluator-node compute per move improve KO strength?",
+  "incumbent": {
+    "name": "H9 + H12 corrected core",
+    "nodes_per_move": 10000,
+    "pending_safety": 1,
+    "useful_attack_reward": 1,
+    "row_transition_scale": 2.5,
+    "h9_cavity_excavation": -0.5,
+    "dag_backprop_best_demotion": true
+  },
+  "candidates": [
+    {
+      "id": "25k",
+      "nodes_per_move": 25000
+    },
+    {
+      "id": "50k",
+      "nodes_per_move": 50000
+    },
+    {
+      "id": "100k",
+      "nodes_per_move": 100000
+    }
+  ],
+  "frozen_protocol": {
+    "preview": "current + NEXT5",
+    "speculation": "SevenBag only beyond visible preview",
+    "gravity": 0,
+    "result": "KO only",
+    "side_swap": true,
+    "opponent_board_visible_to_bot": false,
+    "hidden_future_visible_to_bot": false,
+    "incoming_garbage": "same observable packets and 10 hypothetical hole scenarios when pressure exists",
+    "scenario_aggregation": "sum root move evaluations across scenarios, then choose highest aggregate",
+    "search_rng": "deterministic and separate from arena RNG; candidate extra compute continues the same search-RNG stream",
+    "evaluator": "H9 promoted evaluator",
+    "dag": "H12 corrected best-child demotion enabled on both sides"
+  },
+  "screen": {
+    "seed_start": 47000,
+    "paired_seeds_per_candidate": 10,
+    "games_per_candidate": 20,
+    "incumbent_nodes_per_move": 10000,
+    "candidate_nodes_per_move": [
+      25000,
+      50000,
+      100000
+    ],
+    "total_games": 60,
+    "purpose": "diagnostic compute-scaling screen only",
+    "promotion_eligible": false
+  },
+  "control": {
+    "candidate_nodes_per_move": 10000,
+    "incumbent_nodes_per_move": 10000,
+    "seed_start": 46990,
+    "paired_seeds": 2,
+    "purpose": "verify the unequal-budget harness preserves deterministic A/A side swapping when budgets are equal"
+  },
+  "decision_rule": "Do not promote any budget from this screen. Use the screen only to determine whether additional compute has a credible positive direction and whether gains appear to saturate. Any candidate considered for production/review use must be retested on fresh seeds in a separately recorded validation.",
+  "rationale": "Review is not constrained by live-player placement latency. Before inventing another evaluator feature, measure whether the existing H9+H12 engine is simply compute-limited, especially because visible incoming garbage splits the total budget across ten hole scenarios.",
+  "h13_context": "H13 remains a persistent-DAG correctness fix but is unobservable in the current snapshot/forecast harness because choose() rebuilds the DAG via set_forecast() before each scored search. H14 therefore freezes the scored H9+H12 core rather than changing persistence semantics."
+}
