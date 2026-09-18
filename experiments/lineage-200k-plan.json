@@ -1,6 +1,6 @@
 {
   "experiment": "200k promoted strategy lineage revalidation",
-  "status": "h9_vs_h6c_prepared",
+  "status": "h9_vs_h6c_running",
   "compute_regime": {
     "nodes_per_move": 200000,
     "reason": "provisional product default after H14 200k-vs-100k"
@@ -21,7 +21,7 @@
   "sequence": [
     {
       "id": "H9-vs-H6C",
-      "status": "prepared",
+      "status": "running",
       "candidate": {
         "pending_safety": 1,
         "useful_attack_reward": 1,
@@ -45,7 +45,8 @@
         "games": 40,
         "batches": 4
       },
-      "decision": "If H9 retains a credible positive direction at 200k, continue to H6C-vs-H2. If it reverses materially, stop and reconsider the promoted chain before testing lower links."
+      "decision": "If H9 retains a credible positive direction at 200k, continue to H6C-vs-H2. If it reverses materially, stop and reconsider the promoted chain before testing lower links.",
+      "run": 35357634194
     },
     {
       "id": "H6C-vs-H2",
@@ -103,5 +104,11 @@
     "Do not pool old 10k results with 200k samples as independent evidence.",
     "Do not run lower lineage links until the upper link result is known.",
     "Do not revive rejected H3-H11 hypotheses unless the promoted chain changes."
-  ]
+  ],
+  "active_run": {
+    "id": "H9-vs-H6C",
+    "run": 35357634194,
+    "workflow_commit": "89587066334591959ead73dcd846a284d580b122",
+    "status": "running"
+  }
 }
