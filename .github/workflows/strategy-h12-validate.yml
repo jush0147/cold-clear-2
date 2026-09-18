@@ -1,0 +1,54 @@
+name: H12 fresh validation
+on:
+  push:
+    branches: [s2-strategy-clean]
+    paths:
+      - '.github/workflows/strategy-h12-validate.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  validate:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: h12-engine
+          path: engine
+          github-token: ${{ github.token }}
+          run-id: 35305597766
+
+      - name: Verify frozen H12 engine
+        run: |
+          test "$(cat engine/commit.txt)" = '6c3195a5ec2d666efbc5aac12d12ca6ef2018a00'
+          echo '1c23b6258657f34bef1ae210de7108656f1845ba1c48a1302c5eedfa60359fdd  engine/bot.rs' | sha256sum -c -
+          echo '2e97e29510921be9e1661ca9a7162e7a125a87d18317f98e1159d76b46ef226a  engine/freestyle.rs' | sha256sum -c -
+          echo '4b49b75030d940dc7f448b59e5f325a7c0430c969bf2a3315c1f6f10eb121eb5  engine/dag.rs' | sha256sum -c -
+          echo '874dd8bfe5fb196249a87d54269b32e585edd526c66f89dcf259da8ea0fe5c11  engine/known.rs' | sha256sum -c -
+          echo 'f2cee3a9c1de4015558a6d790a6efa5b2a9036c0ccad6bbde71c111ff4d793b8  engine/speculated.rs' | sha256sum -c -
+          echo '91dea233cc51a5d2ed2c974c324d176192513640a5f7812ca96b93c8f32bbfc5  engine/strategy_h12.rs' | sha256sum -c -
+          echo '7bd24d5abd8e57b0728de6915c63e004b7aef203c520986d6711bffac03e057c  engine/strategy_h12' | sha256sum -c -
+          chmod +x engine/strategy_h12
+
+      - name: Run 40 fresh paired seeds, KO only
+        run: |
+          mkdir -p results
+          printf '%s\n' 'screen 46-34; sweeps 15-9; split 16; paired p=0.30745625495910645' > results/screening-record.txt
+          engine/strategy_h12 \
+            --backprop-best-demotion true \
+            --incumbent-backprop-best-demotion false \
+            --start 45000 --seeds 40 --nodes 10000 | tee results/ko.jsonl
+          cp engine/commit.txt engine/bot.sha256 engine/core.sha256 engine/dag.sha256 engine/known.sha256 engine/speculated.sha256 engine/harness.sha256 engine/executable.sha256 results/
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: h12-validate
+          path: results/
+          if-no-files-found: error
