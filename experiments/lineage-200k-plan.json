@@ -21,7 +21,7 @@
   "sequence": [
     {
       "id": "H9-vs-H6C",
-      "status": "completed_directionally_retained_uncertain",
+      "status": "reconfirmed_at_200k_positive_replication_next",
       "candidate": {
         "pending_safety": 1,
         "useful_attack_reward": 1,
@@ -60,7 +60,22 @@
         "malformed_pairs": 0,
         "all_reason_no_legal_placement": true
       },
-      "interpretation": "At 200k, H9 retains a positive direction (24-16 games; 8-4 paired sweeps) but the 20-pair fresh sample is statistically uncertain. This does not establish H9 as compute-invariant; it also does not show a reversal. Continue to the independent lower lineage link H6C-vs-H2 while keeping H9's 200k status explicitly uncertain."
+      "interpretation": "At 200k, H9 retains a positive direction (24-16 games; 8-4 paired sweeps) but the 20-pair fresh sample is statistically uncertain. This does not establish H9 as compute-invariant; it also does not show a reversal. Continue to the independent lower lineage link H6C-vs-H2 while keeping H9's 200k status explicitly uncertain.",
+      "confirmation": {
+        "run": 35381400762,
+        "seed_range": "48000-48099",
+        "paired_seeds": 100,
+        "games": 200,
+        "candidate_wins": 117,
+        "incumbent_wins": 83,
+        "candidate_sweeps": 37,
+        "incumbent_sweeps": 20,
+        "split_pairs": 43,
+        "effective_sign_pairs": 57,
+        "paired_exact_sign_p": 0.033143967787505446,
+        "malformed_pairs": 0,
+        "all_reason_no_legal_placement": true
+      }
     },
     {
       "id": "H6C-vs-H2",
@@ -215,10 +230,25 @@
         "screen_result": "24-16 games, 8-4 sweeps, 8 splits, p=0.3876953125",
         "confirmation_needed": true,
         "confirmation_run": 35381400762,
-        "confirmation_status": "running",
+        "confirmation_status": "completed",
         "confirmation_seed_range": "48000-48099",
         "confirmation_paired_seeds": 100,
-        "confirmation_games": 200
+        "confirmation_games": 200,
+        "confirmation_result": {
+          "paired_seeds": 100,
+          "games": 200,
+          "candidate_wins": 117,
+          "incumbent_wins": 83,
+          "candidate_sweeps": 37,
+          "incumbent_sweeps": 20,
+          "split_pairs": 43,
+          "effective_sign_pairs": 57,
+          "paired_exact_sign_p": 0.033143967787505446,
+          "malformed_pairs": 0,
+          "all_reason_no_legal_placement": true
+        },
+        "confirmation_interpretation": "Fresh 100-pair confirmation retains H9 at 200k: 117-83 games, 37-20 paired sweeps, exact paired sign p=0.033143967787505446. Direction matches the earlier 20-pair 200k screen and the historical 10k promotion. Evidence is positive and conventionally significant, but still not overwhelming because 43/100 pairs split and the top-line product evaluator depends on this link.",
+        "extension_decision": "Run an independent fresh 100-pair replication under the predeclared borderline-extension rule; interpret separately before any descriptive pooling."
       },
       {
         "id": "H6C-vs-H2",
