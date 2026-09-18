@@ -235,6 +235,22 @@ feature is more visible.
    - H2 vs H1 / legacy
    Do not automatically resurrect every rejected H3-H11 hypothesis.
 
+### 200k lineage revalidation checkpoint
+
+The first high-compute lineage link is complete:
+
+- H9 (-0.5 cavity excavation) vs H6C (0 cavity), both with H12 and 200k nodes
+- fresh seeds 47600-47619
+- 24-16 games for H9
+- paired sweeps 8-4, 8 split pairs
+- paired exact sign p = 0.3876953125
+- no malformed pairs; all 40 games ended normally by no legal placement
+
+Interpretation: H9 keeps a positive direction at 200k but the 20-pair sample is
+uncertain and does not independently reconfirm the strong 10k-era promotion.
+There is no evidence of reversal, so continue to the independent lower link
+H6C-vs-H2 while keeping H9's high-compute status explicitly uncertain.
+
 3. **Unify pending garbage with the persistent interactive review session.**
    Today these capabilities are split:
    - persistent `WasmBot`: H9+H12+H13 with preserved DAG, but no pending
