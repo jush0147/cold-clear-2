@@ -251,6 +251,20 @@ uncertain and does not independently reconfirm the strong 10k-era promotion.
 There is no evidence of reversal, so continue to the independent lower link
 H6C-vs-H2 while keeping H9's high-compute status explicitly uncertain.
 
+The second link is now also complete:
+
+- H6C (row-transition scale 2.5) vs H2 (scale 1.0), both with H12 and 200k nodes
+- fresh seeds 47700-47719
+- 27-13 games for H6C
+- paired sweeps 9-2, 9 split pairs
+- paired exact sign p = 0.0654296875
+- no malformed pairs; all 40 games ended normally by no legal placement
+
+Interpretation: H6C shows a strong positive high-compute direction but the
+20-pair sample is not independently conclusive at the conventional 0.05 level.
+Continue to H2-vs-H1 while retaining H6C directionally rather than overstating
+the result.
+
 3. **Unify pending garbage with the persistent interactive review session.**
    Today these capabilities are split:
    - persistent `WasmBot`: H9+H12+H13 with preserved DAG, but no pending
