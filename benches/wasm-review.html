@@ -1,0 +1,92 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cold Clear 2 WASM review benchmark</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 900px; margin: 32px auto; padding: 0 16px; }
+  button { font: inherit; padding: 10px 16px; }
+  pre { white-space: pre-wrap; overflow-wrap: anywhere; background: #111; color: #eee; padding: 16px; border-radius: 8px; }
+  .muted { opacity: .75; }
+</style>
+<h1>Cold Clear 2 WASM review benchmark</h1>
+<p>This measures the actual browser WASM path using the H9+H12 review config and hard evaluator-node budgets.</p>
+<p class="muted">Build the web package into <code>pkg/</code>, serve the repository over HTTP, then open this page. Results are intentionally device/browser-specific.</p>
+<button id="run">Run 25k / 50k / 100k</button>
+<pre id="out">Idle.</pre>
+<script type="module">
+import init, { WasmBot } from "../pkg/cold_clear_2.js";
+
+const out = document.querySelector("#out");
+const button = document.querySelector("#run");
+
+const start = () => ({
+  board: Array.from({ length: 20 }, () => Array(10).fill(null)),
+  queue: ["O", "I", "T", "L", "J", "S"],
+  hold: null,
+  combo: 0,
+  back_to_back: false,
+  b2b_count: 0,
+  randomizer: { type: "seven_bag", bag_state: ["Z"] },
+});
+
+function median(xs) {
+  const s = [...xs].sort((a, b) => a - b);
+  return s[Math.floor(s.length / 2)];
+}
+
+function sample(nodeBudget) {
+  const bot = new WasmBot();
+  bot.start(JSON.stringify(start()));
+  const t0 = performance.now();
+  const nodes = bot.think_nodes(nodeBudget);
+  const elapsed = performance.now() - t0;
+  const stats = JSON.parse(bot.stats_json());
+  const suggestions = JSON.parse(bot.suggest_json());
+  bot.free();
+  if (nodes > BigInt(nodeBudget)) throw new Error("hard node budget exceeded");
+  if (!suggestions.length) throw new Error("no suggestion");
+  return {
+    elapsed_ms: elapsed,
+    nodes: Number(nodes),
+    nodes_per_second: elapsed ? Number(nodes) * 1000 / elapsed : null,
+    max_depth: stats.max_depth,
+    speculative_expansions: stats.speculative_expansions,
+  };
+}
+
+await init();
+
+button.addEventListener("click", async () => {
+  button.disabled = true;
+  out.textContent = "Running...";
+  await new Promise(requestAnimationFrame);
+  try {
+    sample(5000);
+    const results = [];
+    for (const nodeBudget of [25000, 50000, 100000]) {
+      const samples = [];
+      for (let i = 0; i < 3; i++) {
+        samples.push(sample(nodeBudget));
+        await new Promise(requestAnimationFrame);
+      }
+      results.push({
+        node_budget: nodeBudget,
+        median_ms: median(samples.map(x => x.elapsed_ms)),
+        median_nodes_per_second: median(samples.map(x => x.nodes_per_second)),
+        samples,
+      });
+    }
+    out.textContent = JSON.stringify({
+      user_agent: navigator.userAgent,
+      hardware_concurrency: navigator.hardwareConcurrency,
+      config_profile: "h9+h12-review",
+      workload: "fresh empty-board snapshot; SevenBag speculation enabled; no pending garbage",
+      results,
+    }, null, 2);
+  } catch (error) {
+    out.textContent = String(error?.stack || error);
+  } finally {
+    button.disabled = false;
+  }
+});
+</script>
