@@ -200,6 +200,102 @@ Because 200k remains interactive for the intended click-to-advance review flow,
 a fresh paired native strength probe is now justified: 200k vs 100k on seeds
 47500-47519 using the frozen H14 H9+H12 engine. Workflow run: `35344873507`.
 
+## Canonical product roadmap after compute testing
+
+After the current compute experiments finish, follow this order unless new
+evidence justifies changing it. Do not skip ahead merely because a later UI
+feature is more visible.
+
+1. **Finalize the review compute regime.**
+   - Finish the fresh 200k-vs-100k headroom probe.
+   - Combine native KO strength with real-browser latency evidence.
+   - Stop escalating compute once the marginal strength gain no longer justifies
+     the extra latency/CPU cost.
+   - Record the chosen default/deep-analysis budget explicitly.
+
+2. **Revalidate the promoted strategy lineage at the chosen high-compute regime.**
+   The existing H1/H2/H6C/H9 promotions were selected primarily under the old
+   10k-node regime, which is now known to be compute-starved.
+   Recheck only the promoted chain first:
+   - H9 vs H6C
+   - H6C vs H2
+   - H2 vs H1 / legacy
+   Do not automatically resurrect every rejected H3-H11 hypothesis.
+
+3. **Unify pending garbage with the persistent interactive review session.**
+   Today these capabilities are split:
+   - persistent `WasmBot`: H9+H12+H13 with preserved DAG, but no pending
+     garbage integrated into that DAG search;
+   - `analyze_pending_json()`: pending-aware ten-scenario H9+H12 snapshot
+     analysis, but it rebuilds scenario bots.
+   The product path must support observable pending garbage while retaining the
+   interactive session semantics where technically sound.
+
+4. **Build a product-flow correctness harness.**
+   Exercise the actual continuation path:
+   ```text
+   replay snapshot
+     -> search
+     -> play chosen move
+     -> reveal only newly visible NEXT
+     -> H13 despeculate/backprop
+     -> advance observable garbage state
+     -> search again
+     -> repeat
+   ```
+   Validate at least board, current/hold/NEXT5, SevenBag state, B2B, combo,
+   Surge-related state, observable incoming garbage, information-boundary
+   compliance, persistent DAG continuity and deterministic replay of the same
+   input/action sequence.
+
+5. **Validate real TETR.IO replay state reconstruction.**
+   Use real `.ttrm` fixtures and verify that arbitrary replay snapshots rebuild
+   the exact bot-visible state required by review:
+   - board
+   - current
+   - hold
+   - NEXT 5
+   - SevenBag state derivable from visible history
+   - B2B / combo / relevant Surge state
+   - observable incoming garbage
+   Compare reconstructed transitions against replay locks rather than assuming
+   adapter correctness.
+
+6. **Move heavy search into a Web Worker.**
+   Review latency of a few hundred milliseconds is acceptable, but it must not
+   block the browser main thread. Define cancellation/stale-result semantics so
+   seeking to another replay snapshot cannot let an older search overwrite the
+   new state.
+
+7. **Integrate the review session into Tetrp UI.**
+   Intended interaction:
+   ```text
+   replay -> pause at snapshot -> start bot line -> show one recommendation
+          -> user advances -> same session continues -> repeat
+   ```
+   Preserve the one-piece-per-user-action design rather than turning this into a
+   mandatory whole-replay autograder.
+
+8. **Add branch/share/export features after the core review path is correct.**
+   Lower-priority product features include:
+   - compare original replay and bot branch
+   - rewind to branch point / maintain multiple branches
+   - choose N-piece continuation
+   - fumen import/export
+   - native Tetrp share/playback links
+   - GIF export
+
+### Roadmap guardrails
+
+- Correctness and replay-state fidelity take priority over UI polish.
+- Do not let mobile performance cap desktop analysis quality without measurement.
+- Do not use hidden future pieces, hidden opponent state or replay knowledge that
+  would violate the documented information boundary.
+- Keep snapshot KO strength experiments separate from persistent product-flow
+  correctness tests; they answer different questions.
+- Before starting a new stage, inspect the relevant experiment JSON and latest
+  GitHub Actions state so completed work is not accidentally repeated.
+
 ## Performance decision model
 
 The final product budget should be chosen using two curves:
