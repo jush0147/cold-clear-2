@@ -53,17 +53,32 @@ bot.start(JSON.stringify({
   combo: 0, // consecutive clears BEFORE this placement, not previous UI combo
   back_to_back: false,
   b2b_count: 0,
-  randomizer: { type: "unknown" },
+  // This opening example has seen six distinct pieces, so Z is the only
+  // deducible remainder of the current SevenBag. In replay code derive this
+  // state only from already-visible history, never hidden future pieces.
+  randomizer: { type: "seven_bag", bag_state: ["Z"] },
 }));
 
-bot.think(100);
+bot.think_nodes(50000);
 const moves = JSON.parse(bot.suggest_json());
 const visibleState = JSON.parse(bot.player_state_json());
 const capabilities = JSON.parse(bot.capabilities_json());
 ```
 
-`think()` returns a JavaScript BigInt node count. `stats_json()` exposes search
-statistics. An empty suggestion is not, by itself, proof of topout.
+`WasmBot` on this branch uses the canonical H9+H12 review configuration. `think_nodes()` applies the same hard evaluator-node budget unit used by H14 and returns the actual searched node count as a JavaScript BigInt. `think()` remains only as a compatibility API for legacy work-iteration callers. `stats_json()` exposes search statistics. An empty suggestion is not, by itself, proof of topout.
+
+### Browser performance benchmark
+
+After building `pkg/`, serve the repository over HTTP and open
+`benches/wasm-review.html`. The page measures fresh-snapshot 25k, 50k and
+100k hard-node searches in the actual browser WASM path and reports wall time,
+nodes/sec, search depth and speculative expansions. The GitHub `wasm` workflow
+also uploads a ready-to-serve `cold-clear-2-browser-bench` artifact and a rough
+Node-WASM benchmark JSON.
+
+Treat Node/GitHub-runner timings only as CI evidence. Product budget decisions
+should use the browser page on representative desktop hardware and, secondarily,
+mobile devices.
 
 ### Correct hold and preview accounting
 
