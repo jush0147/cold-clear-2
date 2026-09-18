@@ -292,6 +292,23 @@ This reconfirms H6C over H2 at 200k. The direction matches both the earlier
 below 0.05 and nearly half the seed pairs split, so the result should be treated
 as positive but borderline rather than as overwhelming evidence.
 
+Because that first 100-pair confirmation was borderline, an independent fresh
+100-pair replication was run on seeds 48300-48399:
+
+- H6C won 112-88 games
+- paired sweeps 29-17, with 54 split pairs
+- effective sign-test pairs: 46
+- paired exact sign p = 0.10380535550410741
+- no malformed pairs; all 200 games ended normally by no legal placement
+
+The replication is not independently significant at 0.05, but it reproduces
+the same positive direction rather than reversing it. The correct interpretation
+is therefore consistency across two independent 100-pair samples, not "two
+significant tests." As a secondary descriptive summary only, the two fresh
+samples together are 227-173 games and 62-35 sweeps over 200 paired seeds
+(pooled sign p ≈ 0.00796). H6C is retained at 200k; no third replication is
+planned.
+
 The third promoted-chain link is now complete:
 
 - H2 (useful attack reward 1.0) vs H1 (0.0), both with H12 and 200k nodes
