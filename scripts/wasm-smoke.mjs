@@ -39,6 +39,16 @@ assert.equal(hardStats.nodes, 1003);
 assert.ok(hardStats.max_depth > 0);
 budgeted.free();
 
+const deterministicA = new WasmBot();
+const deterministicB = new WasmBot();
+deterministicA.start(JSON.stringify(reviewInitial()));
+deterministicB.start(JSON.stringify(reviewInitial()));
+assert.equal(deterministicA.think_nodes(5000), 5000n);
+assert.equal(deterministicB.think_nodes(5000), 5000n);
+assert.equal(deterministicA.suggest_json(), deterministicB.suggest_json());
+deterministicA.free();
+deterministicB.free();
+
 const pendingReport = JSON.parse(analyze_pending_json(JSON.stringify({
   start: reviewInitial(),
   incoming: [{ lines: 8, active: true }],
@@ -112,6 +122,7 @@ assert.equal(capabilities.rules_parity_verified, false);
 assert.equal(capabilities.pending_garbage_in_search, false);
 assert.equal(capabilities.config_profile, "h9+h12+h13-interactive");
 assert.equal(capabilities.hard_node_budget, true);
+assert.equal(capabilities.deterministic_hard_node_search, true);
 assert.equal(capabilities.persistent_dag, true);
 same.free();
 
@@ -132,6 +143,7 @@ console.log(JSON.stringify({
   checks: [
     "search",
     "hard-node-budget",
+    "deterministic-hard-node-search",
     "pending-hard-node-budget",
     "persistent-h13-continuation",
     "h9+h12+h13-interactive-config",
