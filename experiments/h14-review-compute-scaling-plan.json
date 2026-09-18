@@ -1,6 +1,6 @@
 {
   "experiment": "H14 review compute scaling",
-  "status": "screening_planned",
+  "status": "screen_completed_validation_planned",
   "question": "With evaluator, rules, visible information and hidden-garbage treatment frozen, does giving the review bot more evaluator-node compute per move improve KO strength?",
   "incumbent": {
     "name": "H9 + H12 corrected core",
@@ -51,7 +51,43 @@
     ],
     "total_games": 60,
     "purpose": "diagnostic compute-scaling screen only",
-    "promotion_eligible": false
+    "promotion_eligible": false,
+    "run": 35315507874,
+    "workflow_commit": "074e8c3be2db249ca313fa74b229008f47e2ea8d",
+    "result": {
+      "25000_vs_10000": {
+        "candidate_wins": 19,
+        "incumbent_wins": 1,
+        "candidate_sweeps": 9,
+        "incumbent_sweeps": 0,
+        "split_pairs": 1,
+        "paired_exact_sign_p": 0.00390625
+      },
+      "50000_vs_10000": {
+        "candidate_wins": 18,
+        "incumbent_wins": 2,
+        "candidate_sweeps": 8,
+        "incumbent_sweeps": 0,
+        "split_pairs": 2,
+        "paired_exact_sign_p": 0.0078125
+      },
+      "100000_vs_10000": {
+        "candidate_wins": 19,
+        "incumbent_wins": 1,
+        "candidate_sweeps": 9,
+        "incumbent_sweeps": 0,
+        "split_pairs": 1,
+        "paired_exact_sign_p": 0.00390625
+      }
+    },
+    "invariants": {
+      "all_games_complete": true,
+      "all_reason_no_legal_placement": true,
+      "malformed_pairs": 0,
+      "aa_control": "10k vs 10k passed with identical trace_hash after side swap",
+      "shared_seed_warning": "All three candidate budgets used the same 47000-47009 paired seeds; results across candidate budgets are correlated and must not be pooled as independent evidence."
+    },
+    "interpretation": "All three larger budgets showed a large positive direction versus 10k, with zero incumbent sweeps. This is strong evidence that the 10k review search is compute-limited on this seed set. The screen does not rank 25k, 50k and 100k against each other; 25k already matched the 100k aggregate result (19:1) on these shared seeds, so marginal returns beyond 25k are unresolved."
   },
   "control": {
     "candidate_nodes_per_move": 10000,
@@ -62,5 +98,31 @@
   },
   "decision_rule": "Do not promote any budget from this screen. Use the screen only to determine whether additional compute has a credible positive direction and whether gains appear to saturate. Any candidate considered for production/review use must be retested on fresh seeds in a separately recorded validation.",
   "rationale": "Review is not constrained by live-player placement latency. Before inventing another evaluator feature, measure whether the existing H9+H12 engine is simply compute-limited, especially because visible incoming garbage splits the total budget across ten hole scenarios.",
-  "h13_context": "H13 remains a persistent-DAG correctness fix but is unobservable in the current snapshot/forecast harness because choose() rebuilds the DAG via set_forecast() before each scored search. H14 therefore freezes the scored H9+H12 core rather than changing persistence semantics."
+  "h13_context": "H13 remains a persistent-DAG correctness fix but is unobservable in the current snapshot/forecast harness because choose() rebuilds the DAG via set_forecast() before each scored search. H14 therefore freezes the scored H9+H12 core rather than changing persistence semantics.",
+  "validation": {
+    "status": "planned",
+    "frozen_engine_run": 35315507874,
+    "frozen_engine_commit": "074e8c3be2db249ca313fa74b229008f47e2ea8d",
+    "comparisons": [
+      {
+        "id": "confirm-25k-vs-10k",
+        "candidate_nodes": 25000,
+        "incumbent_nodes": 10000,
+        "seed_start": 47100,
+        "paired_seeds": 20,
+        "games": 40,
+        "purpose": "fresh-seed confirmation that the minimum screened compute increase reproduces the 10k advantage"
+      },
+      {
+        "id": "headroom-100k-vs-25k",
+        "candidate_nodes": 100000,
+        "incumbent_nodes": 25000,
+        "seed_start": 47200,
+        "paired_seeds": 20,
+        "games": 40,
+        "purpose": "fresh-seed test of whether substantial quality headroom remains above 25k"
+      }
+    ],
+    "decision_rule": "Treat the 25k-vs-10k batch as the confirmatory compute-scaling test. Treat 100k-vs-25k as a marginal-compute/headroom test, not as a substitute confirmation. Do not infer 50k placement from transitivity. If 25k confirms and 100k does not clearly beat 25k, prefer 25k as the provisional review budget. If 100k clearly beats 25k, run a later 50k bridge test before choosing a review budget."
+  }
 }
