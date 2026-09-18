@@ -1,0 +1,33 @@
+{
+  "experiment": "H12 best-child demotion backprop correctness",
+  "status": "planned",
+  "incumbent": {
+    "name": "H9",
+    "pending_safety": 1.0,
+    "useful_attack_reward": 1.0,
+    "row_transition_scale": 2.5,
+    "h9_cavity_excavation": -0.5,
+    "dag_backprop_best_demotion": false
+  },
+  "bug": "update_child reorders a child whose evaluation changed, but returns true only if that updated child finishes at index 0. If the old best child becomes worse and is demoted below another child, the parent's best value changes but parent.eval is not recomputed or propagated.",
+  "fix": "Track whether the updated child was best before reordering. With the H12 flag enabled, request parent recomputation when the child either was best before or is best after the update. Flag off preserves legacy behavior exactly.",
+  "screen": {
+    "candidate_flag": true,
+    "incumbent_flag": false,
+    "paired_seeds": 40,
+    "games": 80,
+    "seed_start": 44000,
+    "nodes_per_move": 10000
+  },
+  "protocol": {
+    "preview": "current + NEXT5",
+    "speculation": "SevenBag after visible preview, never true hidden future",
+    "gravity": 0,
+    "result": "KO only",
+    "side_swap": true,
+    "same_h9_evaluator": true,
+    "same_search_exploitation": "ln(2)",
+    "opponent_board_visible_to_bot": false
+  },
+  "decision_rule": "H12 is a correctness fix, but KO effect is still measured. First require the regression test to reproduce legacy stale-parent behavior and corrected behavior. If screening is not catastrophically negative and invariants hold, validate on fresh seeds; promotion decision records both correctness and KO evidence rather than inventing parameter values."
+}
