@@ -1,6 +1,6 @@
 {
   "benchmark": "WASM review hard-node baseline",
-  "status": "node_wasm_fresh_and_pending_completed_browser_devices_pending",
+  "status": "node_wasm_200k_completed_real_device_200k_pending",
   "run": 35334313492,
   "commit": "e89b2e478f014078df58c06df61b977d428a0e9e",
   "config_profile": "h9+h12-review",
@@ -48,9 +48,9 @@
   },
   "interpretation": "After warmup the CI Node-WASM path is roughly linear near one million evaluator nodes per second. This makes 100k plausibly interactive on capable desktop hardware, but browser/device measurements are required before selecting a product budget.",
   "next": [
-    "run the standalone browser benchmark on representative desktop hardware",
-    "land H13 persistent-DAG correctness into a distinct interactive-review profile",
-    "measure persistent multi-step review after H13 landing"
+    "Run the downloadable browser benchmark at 200k on representative real devices.",
+    "Upload the generated JSON result files directly.",
+    "If 200k latency remains acceptable, run one fresh paired 200k-vs-100k native KO probe before considering a higher product budget."
   ],
   "runs": [
     {
@@ -103,6 +103,88 @@
         "100000": 14.2
       },
       "interpretation": "With a fixed total hard-node budget, splitting active garbage across ten hidden-hole scenarios adds modest overhead on this CI Node-WASM run rather than multiplying latency by ten."
+    },
+    {
+      "run": 35343376761,
+      "commit": "776aa09f1ddec83b955b66a534f04b54eeb2dabd",
+      "runtime": "Node WASM on GitHub Actions ubuntu runner",
+      "profiles": {
+        "fresh_no_pending": "h9+h12+h13-interactive",
+        "pending_8_lines": "h9+h12-review",
+        "persistent_5_step": "h9+h12+h13-interactive"
+      },
+      "fresh_no_pending": [
+        {
+          "node_budget": 25000,
+          "median_ms": 45.882869
+        },
+        {
+          "node_budget": 50000,
+          "median_ms": 81.568835
+        },
+        {
+          "node_budget": 100000,
+          "median_ms": 174.918382
+        },
+        {
+          "node_budget": 200000,
+          "median_ms": 336.981396
+        }
+      ],
+      "pending_8_lines": [
+        {
+          "node_budget": 25000,
+          "median_ms": 52.885926
+        },
+        {
+          "node_budget": 50000,
+          "median_ms": 98.713502
+        },
+        {
+          "node_budget": 100000,
+          "median_ms": 193.0227
+        },
+        {
+          "node_budget": 200000,
+          "median_ms": 378.36067
+        }
+      ],
+      "persistent_5_step": [
+        {
+          "node_budget": 25000,
+          "median_total_search_ms": 220.375122,
+          "median_total_advance_refill_ms": 4.480625,
+          "median_total_interaction_ms": 224.034883
+        },
+        {
+          "node_budget": 50000,
+          "median_total_search_ms": 478.071422,
+          "median_total_advance_refill_ms": 6.284582,
+          "median_total_interaction_ms": 484.356004
+        },
+        {
+          "node_budget": 100000,
+          "median_total_search_ms": 911.976819,
+          "median_total_advance_refill_ms": 11.128394,
+          "median_total_interaction_ms": 923.338826
+        },
+        {
+          "node_budget": 200000,
+          "median_total_search_ms": 1955.740954,
+          "median_total_advance_refill_ms": 15.766502,
+          "median_total_interaction_ms": 1971.507456
+        }
+      ],
+      "browser_artifact": {
+        "name": "cold-clear-2-browser-bench",
+        "artifact_id": 10546057300,
+        "features": [
+          "25k/50k/100k/200k",
+          "optional device label",
+          "Download results.json"
+        ]
+      },
+      "interpretation": "200k remains roughly linear in CI Node-WASM cost. Product evidence now depends on 200k measurements from the real browser/device benchmark, not the GitHub runner."
     }
   ]
 }
