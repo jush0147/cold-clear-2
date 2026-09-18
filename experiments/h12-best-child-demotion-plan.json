@@ -1,10 +1,10 @@
 {
   "experiment": "H12 best-child demotion backprop correctness",
-  "status": "planned",
+  "status": "rerun_started_after_generator_fix",
   "incumbent": {
     "name": "H9",
-    "pending_safety": 1.0,
-    "useful_attack_reward": 1.0,
+    "pending_safety": 1,
+    "useful_attack_reward": 1,
     "row_transition_scale": 2.5,
     "h9_cavity_excavation": -0.5,
     "dag_backprop_best_demotion": false
@@ -17,7 +17,9 @@
     "paired_seeds": 40,
     "games": 80,
     "seed_start": 44000,
-    "nodes_per_move": 10000
+    "nodes_per_move": 10000,
+    "run": 35305597766,
+    "workflow_commit": "6c3195a5ec2d666efbc5aac12d12ca6ef2018a00"
   },
   "protocol": {
     "preview": "current + NEXT5",
@@ -29,5 +31,13 @@
     "same_search_exploitation": "ln(2)",
     "opponent_board_visible_to_bot": false
   },
-  "decision_rule": "H12 is a correctness fix, but KO effect is still measured. First require the regression test to reproduce legacy stale-parent behavior and corrected behavior. If screening is not catastrophically negative and invariants hold, validate on fresh seeds; promotion decision records both correctness and KO evidence rather than inventing parameter values."
+  "decision_rule": "H12 is a correctness fix, but KO effect is still measured. First require the regression test to reproduce legacy stale-parent behavior and corrected behavior. If screening is not catastrophically negative and invariants hold, validate on fresh seeds; promotion decision records both correctness and KO evidence rather than inventing parameter values.",
+  "failed_runs": [
+    {
+      "run": 35304837993,
+      "evidence_games": 0,
+      "reason": "generator emitted literal \\\\n sequences into generated Rust update_child calls; compile failed before regression or KO evidence"
+    }
+  ],
+  "generator_fix_commit": "32abadd8ccc23b2b3fbce9a39ae85077df92c706"
 }
