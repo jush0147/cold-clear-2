@@ -21,7 +21,7 @@
   "sequence": [
     {
       "id": "H9-vs-H6C",
-      "status": "running",
+      "status": "running_recovery",
       "candidate": {
         "pending_safety": 1,
         "useful_attack_reward": 1,
@@ -46,7 +46,7 @@
         "batches": 4
       },
       "decision": "If H9 retains a credible positive direction at 200k, continue to H6C-vs-H2. If it reverses materially, stop and reconsider the promoted chain before testing lower links.",
-      "run": 35357634194
+      "run": 35359700385
     },
     {
       "id": "H6C-vs-H2",
@@ -107,8 +107,19 @@
   ],
   "active_run": {
     "id": "H9-vs-H6C",
-    "run": 35357634194,
-    "workflow_commit": "89587066334591959ead73dcd846a284d580b122",
-    "status": "running"
-  }
+    "run": 35359700385,
+    "workflow_commit": "a015ca17f2bf20bce60d0171f2ab04a16fe1987a",
+    "status": "running_recovery",
+    "source_engine_run": 35357634194
+  },
+  "failed_runs": [
+    {
+      "run": 35357634194,
+      "stage": "H9-vs-H6C",
+      "scored_games": 0,
+      "aa_control": "passed",
+      "reason": "Batch jobs verified manifest from frozen/engine even though manifest entries were engine/... paths, causing frozen/engine/engine/... lookup failure before any KO games ran.",
+      "action": "Recovery run reuses the successfully built and A/A-checked frozen artifact; no build or A/A rerun."
+    }
+  ]
 }
