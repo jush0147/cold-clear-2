@@ -28,7 +28,7 @@ fn reconstructed_recorded_locks_match_movement_scoring_and_counters() {
 #[test]
 fn pending_packets_change_actual_search_scores() {
     let start=json!({"board":[],"queue":["I","O","T","L","J","S"],"hold":"Z","combo":0,"back_to_back":false,"b2b_count":0,"randomizer":{"type":"unknown"}});
-    let request=|incoming:Value|serde_json::from_value(json!({"start":start,"incoming":incoming,"pieces_placed":30,"garbage_sent":0,"frames_per_piece":12,"pending_delay_frames":20,"iterations":10})).unwrap();
+    let request=|incoming:Value|serde_json::from_value(json!({"start":start,"incoming":incoming,"pieces_placed":30,"garbage_sent":0,"frames_per_piece":12,"pending_delay_frames":20,"node_budget":5000})).unwrap();
     let clear=analysis::analyze(request(json!([]))).unwrap();
     let danger=analysis::analyze(request(json!([{"lines":8,"active":true}]))).unwrap();
     assert!(!clear.candidates.is_empty());assert!(!danger.candidates.is_empty());
