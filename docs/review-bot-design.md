@@ -197,8 +197,21 @@ between repeated device runs, so use these as product-latency measurements, not
 as a pure CPU benchmark.
 
 Because 200k remains interactive for the intended click-to-advance review flow,
-a fresh paired native strength probe is now justified: 200k vs 100k on seeds
-47500-47519 using the frozen H14 H9+H12 engine. Workflow run: `35344873507`.
+a fresh paired native strength probe was run on seeds 47500-47519 using the
+frozen H14 H9+H12 engine. Workflow run: `35344873507`.
+
+Result: **200k beat 100k by 29-11 games**, with paired sweeps **9-0**, 11 split
+pairs and paired exact sign **p = 0.00390625**. There were no malformed pairs,
+and all games ended normally by no legal placement. The KO step took about
+2h04m on the GitHub runner.
+
+This is clear fresh-seed evidence that strength still scales materially from
+100k to 200k. Combined with the real-browser latency results, **200k is now the
+provisional product-default compute regime**.
+
+Do not automatically escalate to 400k. The next research stage is high-compute
+strategy-lineage revalidation at 200k, then the product roadmap continues with
+persistent/pending integration and replay correctness.
 
 ## Canonical product roadmap after compute testing
 
@@ -206,12 +219,11 @@ After the current compute experiments finish, follow this order unless new
 evidence justifies changing it. Do not skip ahead merely because a later UI
 feature is more visible.
 
-1. **Finalize the review compute regime.**
-   - Finish the fresh 200k-vs-100k headroom probe.
-   - Combine native KO strength with real-browser latency evidence.
-   - Stop escalating compute once the marginal strength gain no longer justifies
-     the extra latency/CPU cost.
-   - Record the chosen default/deep-analysis budget explicitly.
+1. **Finalize the review compute regime.** ✅
+   - Fresh 200k-vs-100k headroom is complete and clearly favors 200k.
+   - Real-browser 200k latency remains acceptable for click-to-advance review.
+   - Provisional default: **200k hard evaluator nodes per move**.
+   - Generic compute escalation stops here for now; 400k is not an automatic next experiment.
 
 2. **Revalidate the promoted strategy lineage at the chosen high-compute regime.**
    The existing H1/H2/H6C/H9 promotions were selected primarily under the old
