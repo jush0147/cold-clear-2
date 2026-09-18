@@ -1,6 +1,6 @@
 {
   "experiment": "H14 review compute scaling",
-  "status": "fresh_validation_completed_bridge_planned",
+  "status": "bridge_completed_wasm_benchmark_next",
   "question": "With evaluator, rules, visible information and hidden-garbage treatment frozen, does giving the review bot more evaluator-node compute per move improve KO strength?",
   "incumbent": {
     "name": "H9 + H12 corrected core",
@@ -183,6 +183,44 @@
         "purpose": "measure the second half and locate the practical strength knee"
       }
     ],
-    "interpretation_rule": "Do not choose a browser/WASM production budget from native strength alone. Use these bridge tests to map the strength curve, then benchmark the exact same H9+H12 configuration and hard node budgets in browser WebAssembly on target devices."
+    "interpretation_rule": "Do not choose a browser/WASM production budget from native strength alone. Use these bridge tests to map the strength curve, then benchmark the exact same H9+H12 configuration and hard node budgets in browser WebAssembly on target devices.",
+    "results": {
+      "50k-vs-25k": {
+        "run": 35322969711,
+        "seeds": "47300-47319",
+        "paired_seeds": 20,
+        "games": 40,
+        "candidate_wins": 26,
+        "incumbent_wins": 14,
+        "candidate_sweeps": 8,
+        "incumbent_sweeps": 2,
+        "split_pairs": 10,
+        "paired_exact_sign_p": 0.109375
+      },
+      "100k-vs-50k": {
+        "run": 35322969711,
+        "seeds": "47400-47419",
+        "paired_seeds": 20,
+        "games": 40,
+        "candidate_wins": 24,
+        "incumbent_wins": 16,
+        "candidate_sweeps": 6,
+        "incumbent_sweeps": 2,
+        "split_pairs": 12,
+        "paired_exact_sign_p": 0.2890625
+      }
+    },
+    "interpretation": "Both adjacent fresh comparisons favor more compute, but neither reaches the preexisting two-sided paired threshold on 20 paired seeds. Together with the earlier significant 100k-vs-25k result, this is consistent with diminishing marginal strength returns somewhere in the 25k-100k range, but it does not prove that 50k is the exact knee or that adjacent budgets are equal.",
+    "runtime_observation": "On GitHub ubuntu-22.04 runners, the 50k-vs-25k 20-pair job ran about 63 minutes and the 100k-vs-50k job about 69 minutes. Additional native KO sampling is now relatively expensive compared with the product value of measuring exact browser/WASM cost."
+  },
+  "next_step": {
+    "priority": "WASM/native parity and browser performance",
+    "actions": [
+      "Create one canonical H9+H12 review config shared by native H14 and WASM analysis.",
+      "Replace/augment WASM analysis iterations with the same hard evaluator-node budget semantics used by H14.",
+      "Benchmark fresh-snapshot and persistent-session latency at 25k, 50k, 100k (and higher only if justified) in desktop browsers first, then representative mobile.",
+      "Do not call 50k the final production budget until strength and browser-latency curves are considered together."
+    ],
+    "native_sampling": "Pause additional large KO batches unless browser measurements show that a higher budget is practical and the remaining strength uncertainty matters for the product decision."
   }
 }
