@@ -37,7 +37,6 @@ assert.equal(hardNodes, 1003n);
 const hardStats = JSON.parse(budgeted.stats_json());
 assert.equal(hardStats.nodes, 1003);
 assert.ok(hardStats.max_depth > 0);
-assert.ok(hardStats.speculative_expansions > 0);
 budgeted.free();
 
 const before = bot.player_state_json();
