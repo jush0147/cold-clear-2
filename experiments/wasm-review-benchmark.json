@@ -1,0 +1,55 @@
+{
+  "benchmark": "WASM review hard-node baseline",
+  "status": "node_wasm_ci_completed_browser_devices_pending",
+  "run": 35334313492,
+  "commit": "e89b2e478f014078df58c06df61b977d428a0e9e",
+  "config_profile": "h9+h12-review",
+  "workload": "fresh empty-board snapshot; SevenBag speculation enabled; no pending garbage",
+  "runtime": "Node WASM on GitHub Actions ubuntu runner",
+  "caveat": "CI Node-WASM timing is implementation evidence only. Do not use it as desktop Chrome, laptop, or mobile performance.",
+  "warmup_nodes": 5000,
+  "repeats_per_budget": 3,
+  "results": [
+    {
+      "node_budget": 25000,
+      "median_ms": 26.452291,
+      "median_nodes_per_second": 945097.7233,
+      "samples_ms": [
+        42.424488,
+        26.452291,
+        23.941111
+      ]
+    },
+    {
+      "node_budget": 50000,
+      "median_ms": 48.404807,
+      "median_nodes_per_second": 1032955.26,
+      "samples_ms": [
+        50.063317,
+        47.08146,
+        48.404807
+      ]
+    },
+    {
+      "node_budget": 100000,
+      "median_ms": 97.331977,
+      "median_nodes_per_second": 1027411.5772,
+      "samples_ms": [
+        104.310233,
+        97.331977,
+        97.042453
+      ]
+    }
+  ],
+  "smoke": {
+    "hard_node_budget_requested": 1003,
+    "hard_node_budget_actual": 1003,
+    "result": "passed"
+  },
+  "interpretation": "After warmup the CI Node-WASM path is roughly linear near one million evaluator nodes per second. This makes 100k plausibly interactive on capable desktop hardware, but browser/device measurements are required before selecting a product budget.",
+  "next": [
+    "benchmark pending-garbage ten-scenario analysis at the same total node budgets",
+    "run the standalone browser benchmark on representative desktop hardware",
+    "measure persistent multi-step review after H13 is landed in the interactive core"
+  ]
+}
