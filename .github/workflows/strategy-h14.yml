@@ -1,11 +1,5 @@
 name: H14 review compute scaling
 on:
-  push:
-    branches: [s2-strategy-clean]
-    paths:
-      - 'scripts/wire-h14.py'
-      - 'experiments/h14-review-compute-scaling-plan.json'
-      - '.github/workflows/strategy-h14.yml'
   workflow_dispatch:
 permissions:
   contents: read
