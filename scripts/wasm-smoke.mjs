@@ -95,7 +95,7 @@ assert.equal(same.preview_refill_needed(), 2);
 const capabilities = JSON.parse(same.capabilities_json());
 assert.equal(capabilities.rules_parity_verified, false);
 assert.equal(capabilities.pending_garbage_in_search, false);
-assert.equal(capabilities.config_profile, "h9+h12-review");
+assert.equal(capabilities.config_profile, "h9+h12+h13-interactive");
 assert.equal(capabilities.hard_node_budget, true);
 assert.equal(capabilities.persistent_dag, true);
 same.free();
@@ -118,7 +118,7 @@ console.log(JSON.stringify({
     "search",
     "hard-node-budget",
     "pending-hard-node-budget",
-    "h9+h12-review-config",
+    "h9+h12+h13-interactive-config",
     "empty-hold",
     "first-hold-refill-two",
     "same-piece-explicit-hold",
