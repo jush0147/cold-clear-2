@@ -1,0 +1,99 @@
+name: H14 200k headroom
+
+on:
+  push:
+    branches: [s2-strategy-clean]
+    paths:
+      - '.github/workflows/strategy-h14-200k.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  probe:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 240
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: h14-engine
+          path: engine
+          github-token: ${{ github.token }}
+          run-id: 35315507874
+
+      - name: Verify frozen H14 engine
+        run: |
+          test "$(cat engine/commit.txt)" = '074e8c3be2db249ca313fa74b229008f47e2ea8d'
+          (cd engine && sha256sum -c manifest.sha256)
+          chmod +x engine/strategy_h14
+
+      - name: Run fresh paired 200k vs 100k KO probe
+        run: |
+          mkdir -p results
+          engine/strategy_h14 \
+            --nodes 200000 \
+            --incumbent-nodes 100000 \
+            --start 47500 \
+            --seeds 20 | tee results/ko.jsonl
+
+      - name: Summarize paired probe
+        run: |
+          python3 - <<'PY'
+          import json, math
+          from pathlib import Path
+          games=[]
+          for line in Path('results/ko.jsonl').read_text().splitlines():
+              obj=json.loads(line)
+              if obj.get('type')=='game':
+                  games.append(obj)
+          pairs={}
+          for g in games:
+              pairs.setdefault(g['seed'],[]).append(g)
+          cs=isw=split=malformed=0
+          for seed, gs in pairs.items():
+              if len(gs)!=2:
+                  malformed+=1
+                  continue
+              wins=sum(g['winner']=='candidate' for g in gs)
+              if wins==2:
+                  cs+=1
+              elif wins==0:
+                  isw+=1
+              else:
+                  split+=1
+          n=cs+isw
+          k=min(cs,isw)
+          tail=sum(math.comb(n,i) for i in range(k+1))/(2**n) if n else 0.5
+          p=min(1.0,2*tail) if n else 1.0
+          summary={
+              'id':'200k-vs-100k',
+              'candidate_nodes':200000,
+              'incumbent_nodes':100000,
+              'seed_start':47500,
+              'paired_seeds':len(pairs),
+              'games':len(games),
+              'candidate_wins':sum(g['winner']=='candidate' for g in games),
+              'incumbent_wins':sum(g['winner']=='incumbent' for g in games),
+              'candidate_sweeps':cs,
+              'incumbent_sweeps':isw,
+              'split_pairs':split,
+              'paired_exact_sign_p':p,
+              'malformed_pairs':malformed,
+              'all_reason_no_legal_placement':all(g.get('reason')=='no_legal_placement' for g in games),
+          }
+          Path('results/summary.json').write_text(json.dumps(summary,indent=2)+'\n')
+          print(json.dumps(summary,indent=2))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: h14-200k-vs-100k
+          path: results/
+          if-no-files-found: error
