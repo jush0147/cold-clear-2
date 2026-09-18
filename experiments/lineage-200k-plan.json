@@ -1,6 +1,6 @@
 {
   "experiment": "200k promoted strategy lineage revalidation",
-  "status": "h6c_retained_h2_decisive_h9_replication_running",
+  "status": "promoted_links_h2_h6c_h9_revalidated_at_200k_h1_vs_legacy_next",
   "compute_regime": {
     "nodes_per_move": 200000,
     "reason": "provisional product default after H14 200k-vs-100k"
@@ -21,7 +21,7 @@
   "sequence": [
     {
       "id": "H9-vs-H6C",
-      "status": "reconfirmed_at_200k_positive_replication_next",
+      "status": "retained_at_200k_after_consistent_independent_replication",
       "candidate": {
         "pending_safety": 1,
         "useful_attack_reward": 1,
@@ -75,7 +75,23 @@
         "paired_exact_sign_p": 0.033143967787505446,
         "malformed_pairs": 0,
         "all_reason_no_legal_placement": true
-      }
+      },
+      "replication": {
+        "run": 35392726671,
+        "seed_range": "48400-48499",
+        "paired_seeds": 100,
+        "games": 200,
+        "candidate_wins": 110,
+        "incumbent_wins": 90,
+        "candidate_sweeps": 32,
+        "incumbent_sweeps": 22,
+        "split_pairs": 46,
+        "effective_sign_pairs": 54,
+        "paired_exact_sign_p": 0.22032849417661104,
+        "malformed_pairs": 0,
+        "all_reason_no_legal_placement": true
+      },
+      "final_interpretation": "H9 is retained at 200k. The first 100-pair confirmation was 117-83 games, 37-20 sweeps, p=0.03314; an independent 100-pair replication was 110-90, 32-22 sweeps, p=0.22033. The replication did not independently cross 0.05, but it reproduced the same effect direction. Descriptively combining the two fresh samples gives 227-173 games and 69-42 sweeps over 200 paired seeds (pooled sign p≈0.01323), reported only as a secondary summary."
     },
     {
       "id": "H6C-vs-H2",
@@ -281,11 +297,26 @@
         "confirmation_interpretation": "Fresh 100-pair confirmation retains H9 at 200k: 117-83 games, 37-20 paired sweeps, exact paired sign p=0.033143967787505446. Direction matches the earlier 20-pair 200k screen and the historical 10k promotion. Evidence is positive and conventionally significant, but still not overwhelming because 43/100 pairs split and the top-line product evaluator depends on this link.",
         "extension_decision": "Run an independent fresh 100-pair replication under the predeclared borderline-extension rule; interpret separately before any descriptive pooling.",
         "extension_run": 35392726671,
-        "extension_status": "running_or_queued",
+        "extension_status": "completed",
         "extension_seed_range": "48400-48499",
         "extension_paired_seeds": 100,
         "extension_games": 200,
-        "extension_method": "Independent fresh-seed replication triggered by the predeclared borderline-extension rule. Interpret separately before any descriptive pooling with the first 100-pair confirmation."
+        "extension_method": "Independent fresh-seed replication triggered by the predeclared borderline-extension rule. Interpret separately before any descriptive pooling with the first 100-pair confirmation.",
+        "extension_result": {
+          "paired_seeds": 100,
+          "games": 200,
+          "candidate_wins": 110,
+          "incumbent_wins": 90,
+          "candidate_sweeps": 32,
+          "incumbent_sweeps": 22,
+          "split_pairs": 46,
+          "effective_sign_pairs": 54,
+          "paired_exact_sign_p": 0.22032849417661104,
+          "malformed_pairs": 0,
+          "all_reason_no_legal_placement": true
+        },
+        "extension_interpretation": "Independent replication is positive but not independently significant: 110-90 games, 32-22 paired sweeps, p=0.22032849417661104. Direction matches the first 100-pair confirmation rather than reversing.",
+        "final_decision": "Retain H9 at 200k. Two independent 100-pair fresh-seed samples both favor H9. Interpret separately; descriptively the two samples are 227-173 games and 69-42 sweeps across 200 pairs (pooled exact sign p≈0.01323). No third replication planned."
       },
       {
         "id": "H6C-vs-H2",
