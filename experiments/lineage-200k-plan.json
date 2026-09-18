@@ -1,6 +1,6 @@
 {
   "experiment": "200k promoted strategy lineage revalidation",
-  "status": "h2_vs_h1_running",
+  "status": "h2_screen_confirmed_direction_large_confirmations_running",
   "compute_regime": {
     "nodes_per_move": 200000,
     "reason": "provisional product default after H14 200k-vs-100k"
@@ -106,7 +106,7 @@
     },
     {
       "id": "H2-vs-H1",
-      "status": "running",
+      "status": "completed_clear_positive",
       "candidate": {
         "pending_safety": 1,
         "useful_attack_reward": 1,
@@ -132,7 +132,20 @@
         "games": 40,
         "batches": 4
       },
-      "decision": "Treat this as fresh 200k directional revalidation of H2 useful attack over H1. Strong positive evidence retains H2; a clear reversal requires revisiting the promoted chain; weak positive/neutral evidence remains explicitly uncertain."
+      "decision": "Treat this as fresh 200k directional revalidation of H2 useful attack over H1. Strong positive evidence retains H2; a clear reversal requires revisiting the promoted chain; weak positive/neutral evidence remains explicitly uncertain.",
+      "result": {
+        "paired_seeds": 20,
+        "games": 40,
+        "candidate_wins": 32,
+        "incumbent_wins": 8,
+        "candidate_sweeps": 14,
+        "incumbent_sweeps": 2,
+        "split_pairs": 4,
+        "paired_exact_sign_p": 0.004180908203125,
+        "malformed_pairs": 0,
+        "all_reason_no_legal_placement": true
+      },
+      "interpretation": "At 200k, H2 useful attack clearly beats H1 on the fresh 20-pair screen (32-8 games; 14-2 paired sweeps; p=0.004180908203125). This independently reconfirms the direction at high compute. Run the preplanned large fresh-seed confirmation for effect stability and consistency with the other lineage links."
     },
     {
       "id": "H1-vs-legacy",
@@ -159,12 +172,7 @@
     "Do not run lower lineage links until the upper link result is known.",
     "Do not revive rejected H3-H11 hypotheses unless the promoted chain changes."
   ],
-  "active_run": {
-    "id": "H2-vs-H1",
-    "run": 35380734276,
-    "workflow_commit": "a61ed2f50417b109862e007cfa529bb13ddfe699",
-    "status": "running"
-  },
+  "active_run": null,
   "failed_runs": [
     {
       "run": 35357634194,
@@ -209,8 +217,12 @@
       },
       {
         "id": "H2-vs-H1",
-        "screen_result": "pending",
-        "confirmation_needed": "decide_after_screen"
+        "screen_result": "32-8 games, 14-2 sweeps, 4 splits, p=0.004180908203125",
+        "confirmation_needed": true,
+        "confirmation_seed_range": "48200-48299",
+        "confirmation_paired_seeds": 100,
+        "confirmation_games": 200,
+        "confirmation_status": "prepared"
       }
     ],
     "execution_change": {
