@@ -1,0 +1,149 @@
+name: 200k confirm H6C vs H2
+
+on:
+  push:
+    branches: [s2-strategy-clean]
+    paths:
+      - '.github/workflows/strategy-confirm-200k-h6c.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  batch:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        include:
+          - { id: b00, start: 48100 }
+          - { id: b01, start: 48110 }
+          - { id: b02, start: 48120 }
+          - { id: b03, start: 48130 }
+          - { id: b04, start: 48140 }
+          - { id: b05, start: 48150 }
+          - { id: b06, start: 48160 }
+          - { id: b07, start: 48170 }
+          - { id: b08, start: 48180 }
+          - { id: b09, start: 48190 }
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: lineage-h6c-engine
+          path: frozen
+          github-token: ${{ github.token }}
+          run-id: 35377558943
+
+      - name: Verify frozen A/A-checked engine
+        run: |
+          (cd frozen && sha256sum -c engine/manifest.sha256)
+          chmod +x frozen/engine/strategy_lineage_h6c
+
+      - name: Run ten fresh paired seeds at 200k
+        env:
+          ID: ${{ matrix.id }}
+          START: ${{ matrix.start }}
+        run: |
+          mkdir -p results
+          frozen/engine/strategy_lineage_h6c \
+            --row-transition-scale 2.5 \
+            --incumbent-row-transition-scale 1.0 \
+            --nodes 200000 \
+            --start "$START" \
+            --seeds 10 | tee "results/${ID}.jsonl"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: confirm-200k-h6c-${{ matrix.id }}
+          path: results/
+          if-no-files-found: error
+          retention-days: 7
+
+  summarize:
+    needs: batch
+    if: always() && needs.batch.result == 'success'
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: confirm-200k-h6c-b*
+          path: combined
+          merge-multiple: true
+
+      - name: Summarize 100-pair confirmation
+        run: |
+          python3 - <<'PY'
+          import json, math
+          from pathlib import Path
+
+          games=[]
+          for path in sorted(Path('combined').glob('*.jsonl')):
+              for line in path.read_text().splitlines():
+                  obj=json.loads(line)
+                  if obj.get('type')=='game':
+                      games.append(obj)
+
+          pairs={}
+          for g in games:
+              pairs.setdefault(g['seed'], []).append(g)
+
+          cs=isw=split=malformed=0
+          depths=[]
+          for seed, gs in sorted(pairs.items()):
+              if len(gs)!=2:
+                  malformed+=1
+                  continue
+              wins=sum(g['winner']=='candidate' for g in gs)
+              if wins==2:
+                  cs+=1
+              elif wins==0:
+                  isw+=1
+              else:
+                  split+=1
+              for g in gs:
+                  depths.extend(g.get('max_search_depth', []))
+
+          n=cs+isw
+          k=min(cs,isw)
+          tail=sum(math.comb(n,i) for i in range(k+1))/(2**n) if n else 0.5
+          p=min(1.0,2*tail) if n else 1.0
+
+          summary={
+              'experiment':'200k confirm H6C vs H2',
+              'candidate':'H6C row-transition scale 2.5 + H2 + H12',
+              'incumbent':'H2 row-transition scale 1.0 + H12',
+              'nodes_per_move':200000,
+              'seed_start':48100,
+              'paired_seeds':len(pairs),
+              'games':len(games),
+              'candidate_wins':sum(g['winner']=='candidate' for g in games),
+              'incumbent_wins':sum(g['winner']=='incumbent' for g in games),
+              'candidate_sweeps':cs,
+              'incumbent_sweeps':isw,
+              'split_pairs':split,
+              'effective_sign_pairs':n,
+              'paired_exact_sign_p':p,
+              'malformed_pairs':malformed,
+              'all_reason_no_legal_placement':all(g.get('reason')=='no_legal_placement' for g in games),
+              'max_search_depth_range':[min(depths),max(depths)] if depths else None,
+              'source_engine_run':35377558943,
+          }
+          Path('summary.json').write_text(json.dumps(summary,indent=2)+'\n')
+          print(json.dumps(summary,indent=2))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: confirm-200k-h6c-summary
+          path: summary.json
+          if-no-files-found: error
+          retention-days: 30
