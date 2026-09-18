@@ -174,5 +174,34 @@
       "reason": "Batch jobs verified manifest from frozen/engine even though manifest entries were engine/... paths, causing frozen/engine/engine/... lookup failure before any KO games ran.",
       "action": "Recovery run reuses the successfully built and A/A-checked frozen artifact; no build or A/A rerun."
     }
-  ]
+  ],
+  "confirmation_policy": {
+    "purpose": "The initial 20-pair / 40-game runs are directional high-compute screens, not final re-promotions. Large fresh-seed confirmation follows after the full promoted chain has been screened.",
+    "trigger": "After H9-vs-H6C, H6C-vs-H2 and H2-vs-H1 screens complete, confirm every retained link whose 200k result is positive but still uncertain. Also confirm any link whose result would materially change the final product evaluator.",
+    "sample_plan": {
+      "preferred_paired_seeds": 100,
+      "preferred_games": 200,
+      "minimum_paired_seeds": 60,
+      "note": "Use fresh holdout seeds and side swapping. Increase toward 200 paired seeds / 400 games if the effect remains borderline and the product decision still depends on it."
+    },
+    "statistics": "Primary inference remains paired sweep sign testing. Split pairs do not contribute to that sign test, so nominal game count can substantially overstate effective paired sample size.",
+    "execution": "Parallelize fresh seed blocks to keep wall-clock time practical, while preserving one frozen engine/config per comparison. Do not pool screening seeds with confirmation as if they were one preregistered sample.",
+    "current_candidates": [
+      {
+        "id": "H9-vs-H6C",
+        "screen_result": "24-16 games, 8-4 sweeps, 8 splits, p=0.3876953125",
+        "confirmation_needed": true
+      },
+      {
+        "id": "H6C-vs-H2",
+        "screen_result": "27-13 games, 9-2 sweeps, 9 splits, p=0.0654296875",
+        "confirmation_needed": true
+      },
+      {
+        "id": "H2-vs-H1",
+        "screen_result": "pending",
+        "confirmation_needed": "decide_after_screen"
+      }
+    ]
+  }
 }
