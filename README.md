@@ -7,7 +7,7 @@ worker threads. It implements the [Tetris Bot Protocol](https://github.com/tetri
 ## TETR.IO TL S2 strategy work
 
 **Strategy work on `s2-strategy-clean` is governed by
-[`docs/strategy-experiments.md`](docs/strategy-experiments.md). Read that first before changing evaluator/search behavior or running strength experiments.**
+[`docs/strategy-experiments.md`](docs/strategy-experiments.md). Read that first before changing evaluator/search behavior or running strength experiments. For replay-review or WASM work, also read [`docs/review-bot-design.md`](docs/review-bot-design.md).**
 
 The current goal is deliberately narrow: improve Cold Clear 2 for TETR.IO Tetra
 League Season 2 and validate each strategy change with direct, paired, KO-only
