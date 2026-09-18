@@ -1,6 +1,6 @@
 {
   "experiment": "200k promoted strategy lineage revalidation",
-  "status": "h2_screen_confirmed_direction_large_confirmations_running",
+  "status": "three_large_confirmations_running",
   "compute_regime": {
     "nodes_per_move": 200000,
     "reason": "provisional product default after H14 200k-vs-100k"
@@ -222,7 +222,8 @@
         "confirmation_seed_range": "48200-48299",
         "confirmation_paired_seeds": 100,
         "confirmation_games": 200,
-        "confirmation_status": "prepared"
+        "confirmation_status": "running_or_queued",
+        "confirmation_run": 35385376960
       }
     ],
     "execution_change": {
