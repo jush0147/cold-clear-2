@@ -41,5 +41,20 @@
       "reason": "Dag::new initial queue caller still used the pre-H13 despeculate(piece) signature; compile failed before strategy evidence"
     }
   ],
-  "generator_fix_commit": "b583bdc8637a90bcbf7671a20f4f8e4645e9a8c7"
+  "generator_fix_commit": "b583bdc8637a90bcbf7671a20f4f8e4645e9a8c7",
+  "audit": {
+    "upstream_todo_confirmed": true,
+    "upstream_repository": "MinusKelvin/cold-clear-2",
+    "upstream_note": "Dag::add_piece contains TODO: backprop despeculated values",
+    "frozen_engine_run": 35310736516,
+    "frozen_engine_commit": "b583bdc8637a90bcbf7671a20f4f8e4645e9a8c7",
+    "checks": [
+      "initial queue despeculation explicitly uses false because no speculative search values exist yet",
+      "expanded boundary nodes replace bag-average eval with the revealed piece's best cached child",
+      "unexpanded boundary nodes preserve their existing static eval",
+      "DirectBackpropUpdate carries child eval without edge reward; known-layer update_child adds the stored edge reward exactly once",
+      "known-layer piece filter matches legacy indexed backprop semantics",
+      "H12 best-child demotion behavior remains enabled on both H13 sides"
+    ]
+  }
 }
