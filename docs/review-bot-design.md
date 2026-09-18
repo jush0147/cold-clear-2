@@ -265,6 +265,21 @@ significant, but not overwhelming: 43/100 pairs split and the final product
 evaluator directly depends on this top-line link. An independent fresh 100-pair
 replication is therefore justified by the predeclared borderline-extension rule.
 
+That independent replication on seeds 48400-48499 is now complete:
+
+- H9 won 110-90 games
+- paired sweeps 32-22, with 46 split pairs
+- effective sign-test pairs: 54
+- paired exact sign p = 0.22032849417661104
+- no malformed pairs; all 200 games ended normally by no legal placement
+
+The replication is not independently significant at 0.05, but it again favors
+H9 rather than reversing. Therefore H9 is retained at 200k based on consistency
+across two independent 100-pair samples, not on claiming that both individual
+tests are significant. As a secondary descriptive summary only, the two fresh
+samples total 227-173 games and 69-42 sweeps over 200 paired seeds (pooled sign
+p ≈ 0.01323). No third H9 replication is planned.
+
 The second link is now also complete:
 
 - H6C (row-transition scale 2.5) vs H2 (scale 1.0), both with H12 and 200k nodes
