@@ -1,6 +1,6 @@
 {
   "experiment": "200k promoted strategy lineage revalidation",
-  "status": "h2_decisive_h9_h6c_replications_running",
+  "status": "h6c_retained_h2_decisive_h9_replication_running",
   "compute_regime": {
     "nodes_per_move": 200000,
     "reason": "provisional product default after H14 200k-vs-100k"
@@ -79,7 +79,7 @@
     },
     {
       "id": "H6C-vs-H2",
-      "status": "reconfirmed_at_200k_borderline_significance",
+      "status": "retained_at_200k_after_consistent_independent_replication",
       "candidate": {
         "pending_safety": 1,
         "useful_attack_reward": 1,
@@ -132,7 +132,23 @@
         "paired_exact_sign_p": 0.04887389231827033,
         "malformed_pairs": 0,
         "all_reason_no_legal_placement": true
-      }
+      },
+      "replication": {
+        "run": 35387613300,
+        "seed_range": "48300-48399",
+        "paired_seeds": 100,
+        "games": 200,
+        "candidate_wins": 112,
+        "incumbent_wins": 88,
+        "candidate_sweeps": 29,
+        "incumbent_sweeps": 17,
+        "split_pairs": 54,
+        "effective_sign_pairs": 46,
+        "paired_exact_sign_p": 0.10380535550410741,
+        "malformed_pairs": 0,
+        "all_reason_no_legal_placement": true
+      },
+      "final_interpretation": "H6C is retained at 200k. The first 100-pair confirmation was 115-85 games, 33-18 sweeps, p=0.04887; an independent 100-pair replication was 112-88, 29-17 sweeps, p=0.10381. The replication did not independently cross 0.05, but it reproduced the same effect direction. Descriptively combining the two fresh samples gives 227-173 games and 62-35 sweeps over 200 paired seeds (pooled sign p≈0.00796), reported only as a secondary summary."
     },
     {
       "id": "H2-vs-H1",
@@ -296,11 +312,26 @@
         "confirmation_interpretation": "Fresh 100-pair confirmation retains H6C at 200k: 115-85 games, 33-18 paired sweeps, exact paired sign p=0.04887389231827033. Direction matches both the 20-pair 200k screen and the historical 10k promotion. Evidence is positive and conventionally significant, but the p-value is borderline and 49/100 pairs split.",
         "extension_decision": "Pending explicit decision on whether to extend to 200 total paired seeds. The predeclared policy permits extension when the effect remains borderline and the product decision materially depends on it.",
         "extension_run": 35387613300,
-        "extension_status": "running_or_queued",
+        "extension_status": "completed",
         "extension_seed_range": "48300-48399",
         "extension_paired_seeds": 100,
         "extension_games": 200,
-        "extension_method": "Independent fresh-seed replication triggered by predeclared borderline-extension rule. Interpret replication separately before any descriptive pooling with the first 100-pair confirmation."
+        "extension_method": "Independent fresh-seed replication triggered by predeclared borderline-extension rule. Interpret replication separately before any descriptive pooling with the first 100-pair confirmation.",
+        "extension_result": {
+          "paired_seeds": 100,
+          "games": 200,
+          "candidate_wins": 112,
+          "incumbent_wins": 88,
+          "candidate_sweeps": 29,
+          "incumbent_sweeps": 17,
+          "split_pairs": 54,
+          "effective_sign_pairs": 46,
+          "paired_exact_sign_p": 0.10380535550410741,
+          "malformed_pairs": 0,
+          "all_reason_no_legal_placement": true
+        },
+        "extension_interpretation": "Independent replication is positive but not independently significant: 112-88 games, 29-17 paired sweeps, p=0.10380535550410741. Crucially, the direction matches the first 100-pair confirmation rather than reversing.",
+        "final_decision": "Retain H6C at 200k. Two independent 100-pair fresh-seed samples both favor H6C. Treat them as separate confirmations; a descriptive pooled view is 227-173 games and 62-35 sweeps across 200 pairs (exact sign p≈0.00796), but this pooled statistic is secondary and not a substitute for the independent-replication interpretation. No third replication planned."
       },
       {
         "id": "H2-vs-H1",
