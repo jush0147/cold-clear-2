@@ -1,6 +1,6 @@
 {
   "experiment": "H11 known-vs-speculative search allocation",
-  "status": "screening_started",
+  "status": "completed",
   "incumbent": {
     "name": "H9",
     "pending_safety": 1,
@@ -57,7 +57,59 @@
     "seed_start": 43000,
     "nodes_per_move": 10000,
     "run": 35296747295,
-    "workflow_commit": "00d1ceea26d9ff6471c12e1dff757741402db63e"
+    "workflow_commit": "00d1ceea26d9ff6471c12e1dff757741402db63e",
+    "results": {
+      "k40s60": {
+        "role": "primary",
+        "candidate": 18,
+        "incumbent": 22,
+        "candidate_sweeps": 4,
+        "incumbent_sweeps": 6,
+        "split": 10,
+        "paired_p": 0.75390625
+      },
+      "k40s50": {
+        "role": "diagnostic-known-only",
+        "candidate": 22,
+        "incumbent": 18,
+        "candidate_sweeps": 6,
+        "incumbent_sweeps": 4,
+        "split": 10,
+        "paired_p": 0.75390625
+      },
+      "k50s60": {
+        "role": "diagnostic-spec-only",
+        "candidate": 20,
+        "incumbent": 20,
+        "candidate_sweeps": 3,
+        "incumbent_sweeps": 3,
+        "split": 14,
+        "paired_p": 1
+      },
+      "k60s40": {
+        "role": "diagnostic-reverse",
+        "candidate": 12,
+        "incumbent": 28,
+        "candidate_sweeps": 3,
+        "incumbent_sweeps": 11,
+        "split": 6,
+        "paired_p": 0.057373046875
+      }
+    },
+    "invariants": {
+      "games_per_config": 40,
+      "seeds_per_config": 20,
+      "seed_start": 43000,
+      "seed_end": 43019,
+      "all_reason_no_legal_placement": true,
+      "node_budget": 10000,
+      "malformed_pairs": 0,
+      "frozen_engine_identical": true,
+      "max_search_depth_observed": [
+        9,
+        12
+      ]
+    }
   },
   "protocol": {
     "preview": "current + NEXT5",
@@ -71,5 +123,7 @@
     "search_rng": "deterministic and separate from authority RNG"
   },
   "decision_rule": "The three diagnostic controls are explanatory only and cannot be promoted. Only k40s60 may advance to fresh validation. If k40s60 does not show a positive screening direction, H11 stops and H9 remains incumbent. If it does, validate k40s60 on fresh seeds, then require a pre-fixed 400-KO confirmation before promotion.",
-  "generator_commit": "d119a358fd0c1f947c30e35ce5fd9dd2fe32bc8b"
+  "generator_commit": "d119a358fd0c1f947c30e35ce5fd9dd2fe32bc8b",
+  "decision": "DO_NOT_PROMOTE",
+  "conclusion": "The predeclared primary k40s60 lost 18:22, so H11 stops by rule. Diagnostics are explanatory only and are not eligible for rescue or promotion. H9 remains incumbent."
 }
