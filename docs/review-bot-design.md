@@ -39,7 +39,7 @@ Do not rebuild from the replay snapshot after every bot move without a specific 
 
 This matters for correctness work such as H13. H13 fixes the case where a newly revealed NEXT piece replaces a speculative bag-average layer and the corrected value must backpropagate through the persistent DAG. The KO snapshot harness rebuilds the DAG through `set_forecast()` before each scored decision, so H13 is not observable there.
 
-**Repository-state warning:** the validated H13 patch currently exists in `scripts/wire-h13.py` / its experiment evidence, but the H13 core changes are not yet landed in the current `s2-strategy-clean` branch core. Persistent review therefore does not yet receive that correction. Land and regression-test H13 separately after the H9+H12 WASM parity/benchmark baseline is stable.
+**Repository state:** H13 was promoted into the branch core by run `35335097243` (commit `be0811c`) after both targeted regressions, full release library tests and a wasm32 check passed. The scored H9+H12 profile still leaves H13 disabled intentionally so H14 strength results remain historically comparable. The interactive product profile can enable it separately.
 
 See `experiments/h13-despeculate-backprop-plan.json` for the exact H13 evidence and limitation.
 
@@ -49,7 +49,7 @@ As of the H14 work:
 
 - scored strategy lineage currently used by the compute harness: **H9 + H12**
 - H12 is a correctness fix for stale best-child demotion/backprop
-- H13 is a latent persistent-DAG correctness fix, not a scored KO promotion; its patch is validated experimentally but not yet landed in the current branch core
+- H13 is a persistent-DAG correctness fix now present in branch core, but it remains separate from the scored H9+H12 H14 profile
 - the old 10k-node regime is now known to be compute-starved for review-style search
 
 H14 native results:
