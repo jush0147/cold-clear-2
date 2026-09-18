@@ -140,6 +140,10 @@ pub struct Weights {
     /// H6B: scale only the always-on base coveredness penalty; H1 pressure safety is untouched.
     #[serde(default = "one")]
     pub h6_base_coveredness_scale: f32,
+    /// H9: penalize the minimum blocker excavation needed to expose sealed empty components.
+    /// Zero preserves H6C exactly.
+    #[serde(default)]
+    pub h9_cavity_excavation: f32,
     pub cell_coveredness: f32,
     pub max_cell_covered_height: u32,
     pub holes: f32,
@@ -289,6 +293,14 @@ fn evaluate(
     }
     reward += weights.softdrop * softdrop as f32;
 
+    // H9 uses the real post-placement board before optimistic T-slot cutouts.
+    // Existing holes/coveredness count vertical emptiness; this adds only the
+    // lower-bound excavation needed to expose sealed empty components. A cave
+    // connected through empty cells to any sky-exposed column costs zero.
+    if weights.h9_cavity_excavation != 0.0 {
+        eval += weights.h9_cavity_excavation * cavity_excavation_cost(&state.board) as f32;
+    }
+
     let cutout_count = state.bag.contains(Piece::T) as usize
         + (state.reserve == Piece::T) as usize
         + (state.bag.len() <= 3) as usize;
@@ -384,6 +396,61 @@ fn evaluate(
     )
 }
 
+fn cavity_excavation_cost(board: &Board) -> u32 {
+    let top = board
+        .cols
+        .iter()
+        .map(|&c| 64 - c.leading_zeros())
+        .max()
+        .unwrap_or(0)
+        .min(40) as usize;
+    if top == 0 {
+        return 0;
+    }
+
+    // Flood empty cells below the global surface. For each connected empty
+    // component, find the cheapest vertical entry: the number of occupied
+    // cells above any cell in that component. If the component can reach a
+    // sky-exposed cell, that minimum is zero and no H9 penalty is added.
+    let mut seen = [false; 400];
+    let mut total = 0u32;
+    for start_y in 0..top {
+        for start_x in 0..10usize {
+            let start = start_y * 10 + start_x;
+            if seen[start] || (board.cols[start_x] & (1u64 << start_y)) != 0 {
+                continue;
+            }
+
+            seen[start] = true;
+            let mut stack = vec![start];
+            let mut min_blockers = u32::MAX;
+            while let Some(index) = stack.pop() {
+                let x = index % 10;
+                let y = index / 10;
+                let blockers = (board.cols[x] >> (y + 1)).count_ones();
+                min_blockers = min_blockers.min(blockers);
+
+                let neighbors = [
+                    if x > 0 { Some(index - 1) } else { None },
+                    if x < 9 { Some(index + 1) } else { None },
+                    if y > 0 { Some(index - 10) } else { None },
+                    if y + 1 < top { Some(index + 10) } else { None },
+                ];
+                for next in neighbors.into_iter().flatten() {
+                    let nx = next % 10;
+                    let ny = next / 10;
+                    if !seen[next] && (board.cols[nx] & (1u64 << ny)) == 0 {
+                        seen[next] = true;
+                        stack.push(next);
+                    }
+                }
+            }
+            total = total.saturating_add(min_blockers);
+        }
+    }
+    total
+}
+
 fn h3_inventory(back_to_back: bool, b2b_count: u16) -> (u32, u32) {
     if !back_to_back {
         return (0, 0);
@@ -416,7 +483,26 @@ fn useful_attack_delta(
 
 #[cfg(test)]
 mod h2_tests {
-    use super::{h3_inventory, useful_attack_delta};
+    use super::{cavity_excavation_cost, h3_inventory, useful_attack_delta};
+
+    #[test]
+    fn h9_side_open_cave_has_zero_excavation_cost() {
+        let mut board = crate::data::Board::default();
+        board.cols[1] = 0b10;
+        assert_eq!(cavity_excavation_cost(&board), 0);
+    }
+
+    #[test]
+    fn h9_sealed_component_counts_minimum_roof_blockers_once() {
+        let mut board = crate::data::Board::default();
+        board.cols[4] = 0b11;
+        board.cols[5] = 0b100;
+        board.cols[6] = 0b11;
+        assert_eq!(cavity_excavation_cost(&board), 1);
+
+        board.cols[5] = 0b1100;
+        assert_eq!(cavity_excavation_cost(&board), 2);
+    }
 
     #[test]
     fn h3_values_only_live_charge_and_banked_surge() {
