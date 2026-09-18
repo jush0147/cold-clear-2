@@ -265,6 +265,19 @@ Interpretation: H6C shows a strong positive high-compute direction but the
 Continue to H2-vs-H1 while retaining H6C directionally rather than overstating
 the result.
 
+A fresh 100-pair / 200-game confirmation on seeds 48100-48199 is now complete:
+
+- H6C won 115-85 games
+- paired sweeps 33-18, with 49 split pairs
+- effective sign-test pairs: 51
+- paired exact sign p = 0.04887389231827033
+- no malformed pairs; all 200 games ended normally by no legal placement
+
+This reconfirms H6C over H2 at 200k. The direction matches both the earlier
+200k screen and the historical 10k promotion. The exact p-value is only just
+below 0.05 and nearly half the seed pairs split, so the result should be treated
+as positive but borderline rather than as overwhelming evidence.
+
 The third promoted-chain link is now complete:
 
 - H2 (useful attack reward 1.0) vs H1 (0.0), both with H12 and 200k nodes
