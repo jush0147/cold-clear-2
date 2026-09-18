@@ -1,0 +1,56 @@
+name: Promote H12 corrected core
+on:
+  push:
+    branches: [s2-strategy-clean]
+    paths:
+      - '.github/workflows/promote-h12-core.yml'
+permissions:
+  contents: write
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  promote:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: s2-strategy-clean
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Generate exact H12 corrected core
+        run: |
+          python3 scripts/wire-h12.py
+          echo '1c23b6258657f34bef1ae210de7108656f1845ba1c48a1302c5eedfa60359fdd  src/bot.rs' | sha256sum -c -
+          echo '2e97e29510921be9e1661ca9a7162e7a125a87d18317f98e1159d76b46ef226a  src/bot/freestyle.rs' | sha256sum -c -
+          echo '4b49b75030d940dc7f448b59e5f325a7c0430c969bf2a3315c1f6f10eb121eb5  src/dag.rs' | sha256sum -c -
+          echo '874dd8bfe5fb196249a87d54269b32e585edd526c66f89dcf259da8ea0fe5c11  src/dag/known.rs' | sha256sum -c -
+          echo 'f2cee3a9c1de4015558a6d790a6efa5b2a9036c0ccad6bbde71c111ff4d793b8  src/dag/speculated.rs' | sha256sum -c -
+
+      - name: Enable corrected behavior by default
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('src/default.json')
+          obj=json.loads(p.read_text())
+          obj['dag_backprop_best_demotion']=True
+          p.write_text(json.dumps(obj, indent=2) + '\n')
+          PY
+
+      - name: Regression test promoted core
+        run: |
+          cargo test --release --lib
+          cargo test --release --bin strategy_h12
+
+      - name: Commit corrected core only
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/bot.rs src/bot/freestyle.rs src/dag.rs src/dag/known.rs src/dag/speculated.rs src/default.json
+          git diff --cached --quiet && exit 0
+          git commit -m 'Promote H12 corrected DAG backprop'
+          git push origin HEAD:s2-strategy-clean
