@@ -53,7 +53,13 @@ impl Mode for Freestyle {
             new_stats.max_depth = node.depth();
             let (state, next) = node.state();
             new_stats.speculative_expansions = u64::from(next.is_none());
-            if state.forecast.topped_out { node.expand(EnumMap::default()); return new_stats; }
+            if state.forecast.topped_out {
+                node.expand(
+                    EnumMap::default(),
+                    options.config.dag_backprop_best_demotion,
+                );
+                return new_stats;
+            }
             let next_possibilities = next.map(EnumSet::only).unwrap_or(state.bag);
 
             let mut moves = EnumMap::default();
@@ -110,7 +116,7 @@ impl Mode for Freestyle {
             }
 
             new_stats.expansions += 1;
-            node.expand(children);
+            node.expand(children, options.config.dag_backprop_best_demotion);
         }
 
         new_stats

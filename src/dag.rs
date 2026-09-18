@@ -163,7 +163,11 @@ impl<E: Evaluation> Selection<'_, E> {
         (self.game_state, self.layers.last().unwrap().kind.piece())
     }
 
-    pub fn expand(self, children: EnumMap<Piece, Vec<ChildData<E>>>) {
+    pub fn expand(
+        self,
+        children: EnumMap<Piece, Vec<ChildData<E>>>,
+        backprop_best_demotion: bool,
+    ) {
         puffin::profile_function!();
         let mut layers = self.layers;
         let start_layer = layers.pop().unwrap();
@@ -174,7 +178,9 @@ impl<E: Evaluation> Selection<'_, E> {
         puffin::profile_scope!("backprop");
         let mut next_layer = start_layer;
         while let Some(layer) = layers.pop() {
-            next = layer.kind.backprop(next, next_layer);
+            next = layer
+                .kind
+                .backprop(next, next_layer, backprop_best_demotion);
             next_layer = layer;
 
             if next.is_empty() {
@@ -184,12 +190,18 @@ impl<E: Evaluation> Selection<'_, E> {
     }
 }
 
-fn update_child<E: Evaluation>(list: &mut [Child<E>], placement: Placement, child_eval: E) -> bool {
+fn update_child<E: Evaluation>(
+    list: &mut [Child<E>],
+    placement: Placement,
+    child_eval: E,
+    backprop_best_demotion: bool,
+) -> bool {
     let mut index = list
         .iter()
         .enumerate()
         .find_map(|(i, c)| (c.mv == placement).then(|| i))
         .unwrap();
+    let was_best = index == 0;
 
     list[index].cached_eval = child_eval + list[index].reward;
 
@@ -211,7 +223,7 @@ fn update_child<E: Evaluation>(list: &mut [Child<E>], placement: Placement, chil
         list[index] = hole;
     }
 
-    index == 0
+    index == 0 || (backprop_best_demotion && was_best)
 }
 
 impl<E: Evaluation> WithBump<E> {
@@ -226,11 +238,16 @@ impl<E: Evaluation> WithBump<E> {
         &self,
         to_update: Vec<BackpropUpdate>,
         next_layer: &LayerCommon<E>,
+        backprop_best_demotion: bool,
     ) -> Vec<BackpropUpdate> {
         puffin::profile_function!();
         self.with(|this| match this.data {
-            LayerKind::Known(l) => l.backprop(to_update, next_layer),
-            LayerKind::Speculated(l) => l.backprop(to_update, next_layer),
+            LayerKind::Known(l) => {
+                l.backprop(to_update, next_layer, backprop_best_demotion)
+            }
+            LayerKind::Speculated(l) => {
+                l.backprop(to_update, next_layer, backprop_best_demotion)
+            }
         })
     }
 
@@ -330,5 +347,73 @@ impl<E: Evaluation> WithBump<E> {
 impl<E: Evaluation> Default for WithBump<E> {
     fn default() -> Self {
         WithBump::new(Herd::new(), |_| LayerKind::Speculated(Default::default()))
+    }
+}
+
+#[cfg(test)]
+mod h12_tests {
+    use super::*;
+    use crate::data::{PieceLocation, Rotation, Spin};
+
+    #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
+    struct TestEval(i32);
+
+    #[derive(Clone, Copy, Debug)]
+    struct TestReward(i32);
+
+    impl std::ops::Add<TestReward> for TestEval {
+        type Output = Self;
+        fn add(self, rhs: TestReward) -> Self { TestEval(self.0 + rhs.0) }
+    }
+
+    impl Evaluation for TestEval {
+        type Reward = TestReward;
+        fn scalar(self) -> f32 { self.0 as f32 }
+        fn average(of: impl Iterator<Item = Option<Self>>) -> Self {
+            let values: Vec<_> = of.collect();
+            let sum: i32 = values.iter().map(|v| v.unwrap_or(TestEval(-1_000_000)).0).sum();
+            TestEval(sum / values.len() as i32)
+        }
+    }
+
+    fn placement(x: i8) -> Placement {
+        Placement {
+            location: PieceLocation {
+                piece: Piece::T,
+                rotation: Rotation::North,
+                x,
+                y: 0,
+            },
+            spin: Spin::None,
+        }
+    }
+
+    #[test]
+    fn h12_demoted_best_requires_parent_recompute() {
+        let original = [
+            Child { mv: placement(0), reward: TestReward(0), cached_eval: TestEval(10) },
+            Child { mv: placement(1), reward: TestReward(0), cached_eval: TestEval(9) },
+        ];
+
+        let mut legacy = original;
+        assert!(!update_child(&mut legacy, placement(0), TestEval(8), false));
+        assert_eq!(legacy[0].cached_eval, TestEval(9));
+        assert_eq!(legacy[1].cached_eval, TestEval(8));
+
+        let mut fixed = original;
+        assert!(update_child(&mut fixed, placement(0), TestEval(8), true));
+        assert_eq!(fixed[0].cached_eval, TestEval(9));
+        assert_eq!(fixed[1].cached_eval, TestEval(8));
+    }
+
+    #[test]
+    fn h12_nonbest_change_that_stays_nonbest_needs_no_parent_recompute() {
+        let mut list = [
+            Child { mv: placement(0), reward: TestReward(0), cached_eval: TestEval(10) },
+            Child { mv: placement(1), reward: TestReward(0), cached_eval: TestEval(8) },
+        ];
+        assert!(!update_child(&mut list, placement(1), TestEval(9), true));
+        assert_eq!(list[0].cached_eval, TestEval(10));
+        assert_eq!(list[1].cached_eval, TestEval(9));
     }
 }

@@ -45,5 +45,6 @@
     "b2b_charge_value": 0.5,
     "legacy_shape_value": 0.5
   },
-  "freestyle_exploitation": 0.6931471805599453
+  "freestyle_exploitation": 0.6931471805599453,
+  "dag_backprop_best_demotion": true
 }

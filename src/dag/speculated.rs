@@ -187,6 +187,7 @@ impl<'bump, E: Evaluation> Layer<'bump, E> {
         &self,
         to_update: Vec<BackpropUpdate>,
         next_layer: &LayerCommon<E>,
+        backprop_best_demotion: bool,
     ) -> Vec<BackpropUpdate> {
         puffin::profile_function!();
         let mut new_updates = vec![];
@@ -199,7 +200,12 @@ impl<'bump, E: Evaluation> Layer<'bump, E> {
             let children = parent.children.as_mut().unwrap();
             let list = &mut children[update.speculation_piece];
 
-            let is_best = update_child(list, update.mv, child_eval);
+            let is_best = update_child(
+                list,
+                update.mv,
+                child_eval,
+                backprop_best_demotion,
+            );
 
             if is_best {
                 let best_for = |p: Piece| children[p].first().map(|c| c.cached_eval);

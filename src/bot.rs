@@ -33,6 +33,10 @@ pub struct PlayerPieces {
 pub struct BotConfig {
     pub freestyle_weights: freestyle::Weights,
     pub freestyle_exploitation: f64,
+    /// H12: propagate when the previously-best child is demoted below another child.
+    /// False preserves legacy CC2 behavior.
+    #[serde(default)]
+    pub dag_backprop_best_demotion: bool,
 }
 impl Default for BotConfig {
     fn default() -> Self {
