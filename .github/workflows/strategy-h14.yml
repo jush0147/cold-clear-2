@@ -1,0 +1,138 @@
+name: H14 review compute scaling
+on:
+  push:
+    branches: [s2-strategy-clean]
+    paths:
+      - 'scripts/wire-h14.py'
+      - 'experiments/h14-review-compute-scaling-plan.json'
+      - '.github/workflows/strategy-h14.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: strategy-h14-native
+
+      - name: Generate isolated H14 harness
+        run: python3 scripts/wire-h14.py
+
+      - name: Check H14 harness and full library regressions
+        run: |
+          cargo test --release --bin strategy_h14 2>&1 | tee h14-regression.log
+          cargo test --release --lib
+
+      - name: Build frozen executable
+        run: cargo build --release --bin strategy_h14
+
+      - name: A/A control at 10k versus 10k
+        run: |
+          target/release/strategy_h14 \
+            --nodes 10000 --incumbent-nodes 10000 \
+            --start 46990 --seeds 2 | tee h14-control.jsonl
+
+      - name: Package exact tested sources and binary
+        run: |
+          mkdir -p h14-engine
+          cp src/bot.rs h14-engine/
+          cp src/bot/freestyle.rs h14-engine/freestyle.rs
+          cp src/dag.rs h14-engine/
+          cp src/dag/known.rs h14-engine/known.rs
+          cp src/dag/speculated.rs h14-engine/speculated.rs
+          cp src/map.rs h14-engine/
+          cp src/bin/strategy_h14.rs h14-engine/
+          cp target/release/strategy_h14 h14-engine/
+          cp h14-regression.log h14-engine/
+          cp h14-control.jsonl h14-engine/
+          git rev-parse HEAD | tee h14-engine/commit.txt
+          (cd h14-engine && sha256sum bot.rs freestyle.rs dag.rs known.rs speculated.rs map.rs strategy_h14.rs strategy_h14 > manifest.sha256)
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: h14-engine
+          path: h14-engine/
+          if-no-files-found: error
+
+  screen:
+    needs: build
+    runs-on: ubuntu-22.04
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        candidate_nodes: [25000, 50000, 100000]
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: h14-engine
+          path: engine
+
+      - name: Verify frozen H14 engine
+        run: |
+          (cd engine && sha256sum -c manifest.sha256)
+          chmod +x engine/strategy_h14
+
+      - name: Run 10 fresh paired seeds, KO only
+        run: |
+          mkdir -p results
+          engine/strategy_h14 \
+            --nodes ${{ matrix.candidate_nodes }} \
+            --incumbent-nodes 10000 \
+            --start 47000 --seeds 10 | tee results/ko.jsonl
+
+      - name: Summarize paired screen
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          games=[]
+          for line in Path('results/ko.jsonl').read_text().splitlines():
+              obj=json.loads(line)
+              if obj.get('type')=='game': games.append(obj)
+          pairs={}
+          for g in games:
+              pairs.setdefault(g['seed'],[]).append(g)
+          cs=isw=split=malformed=0
+          for seed, gs in pairs.items():
+              if len(gs)!=2:
+                  malformed+=1
+                  continue
+              wins=sum(g['winner']=='candidate' for g in gs)
+              if wins==2: cs+=1
+              elif wins==0: isw+=1
+              else: split+=1
+          summary={
+              'candidate_nodes': ${{ matrix.candidate_nodes }},
+              'incumbent_nodes': 10000,
+              'games': len(games),
+              'paired_seeds': len(pairs),
+              'candidate_wins': sum(g['winner']=='candidate' for g in games),
+              'incumbent_wins': sum(g['winner']=='incumbent' for g in games),
+              'candidate_sweeps': cs,
+              'incumbent_sweeps': isw,
+              'split_pairs': split,
+              'malformed_pairs': malformed,
+              'all_reason_no_legal_placement': all(g.get('reason')=='no_legal_placement' for g in games),
+          }
+          Path('results/summary.json').write_text(json.dumps(summary,indent=2)+'\n')
+          print(json.dumps(summary,indent=2))
+          PY
+          cp engine/commit.txt engine/manifest.sha256 results/
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: h14-screen-${{ matrix.candidate_nodes }}
+          path: results/
+          if-no-files-found: error
