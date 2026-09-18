@@ -105,5 +105,21 @@
     ],
     "enabled_by_default": false,
     "note": "H13 correctness code is now present in branch core. The scored H14 H9+H12 profile intentionally leaves the H13 flag off so historical compute results remain comparable."
+  },
+  "interactive_product_enable": {
+    "status": "enabled_and_wasm_verified",
+    "wasm_run": 35335376427,
+    "head_commit": "0a235d91b16a5fe482563534f083caa56391b27c",
+    "profile": "h9+h12+h13-interactive",
+    "scored_reference_profile": "h9+h12-review",
+    "pending_snapshot_profile": "h9+h12-review",
+    "verification": [
+      "native regressions passed",
+      "wasm32 target check passed",
+      "browser and Node WASM packages built",
+      "WASM smoke verified interactive config_profile and despeculation_backprop=true",
+      "hard-node and pending snapshot smoke checks passed"
+    ],
+    "note": "H13 is enabled only for the persistent WasmBot product path. H14 strength evidence remains tied to the H9+H12 scored reference profile."
   }
 }
