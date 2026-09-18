@@ -64,7 +64,7 @@
     },
     {
       "id": "H6C-vs-H2",
-      "status": "completed_strong_positive_not_conclusive",
+      "status": "reconfirmed_at_200k_borderline_significance",
       "candidate": {
         "pending_safety": 1,
         "useful_attack_reward": 1,
@@ -102,7 +102,22 @@
         "malformed_pairs": 0,
         "all_reason_no_legal_placement": true
       },
-      "interpretation": "At 200k, H6C shows a strong positive direction over H2 (27-13 games; 9-2 paired sweeps), but the 20-pair fresh sample remains just above the conventional 0.05 threshold. This supports retaining H6C directionally at high compute without claiming an independent conclusive reconfirmation."
+      "interpretation": "At 200k, H6C shows a strong positive direction over H2 (27-13 games; 9-2 paired sweeps), but the 20-pair fresh sample remains just above the conventional 0.05 threshold. This supports retaining H6C directionally at high compute without claiming an independent conclusive reconfirmation.",
+      "confirmation": {
+        "run": 35381405495,
+        "seed_range": "48100-48199",
+        "paired_seeds": 100,
+        "games": 200,
+        "candidate_wins": 115,
+        "incumbent_wins": 85,
+        "candidate_sweeps": 33,
+        "incumbent_sweeps": 18,
+        "split_pairs": 49,
+        "effective_sign_pairs": 51,
+        "paired_exact_sign_p": 0.04887389231827033,
+        "malformed_pairs": 0,
+        "all_reason_no_legal_placement": true
+      }
     },
     {
       "id": "H2-vs-H1",
@@ -210,10 +225,25 @@
         "screen_result": "27-13 games, 9-2 sweeps, 9 splits, p=0.0654296875",
         "confirmation_needed": true,
         "confirmation_run": 35381405495,
-        "confirmation_status": "running",
+        "confirmation_status": "completed",
         "confirmation_seed_range": "48100-48199",
         "confirmation_paired_seeds": 100,
-        "confirmation_games": 200
+        "confirmation_games": 200,
+        "confirmation_result": {
+          "paired_seeds": 100,
+          "games": 200,
+          "candidate_wins": 115,
+          "incumbent_wins": 85,
+          "candidate_sweeps": 33,
+          "incumbent_sweeps": 18,
+          "split_pairs": 49,
+          "effective_sign_pairs": 51,
+          "paired_exact_sign_p": 0.04887389231827033,
+          "malformed_pairs": 0,
+          "all_reason_no_legal_placement": true
+        },
+        "confirmation_interpretation": "Fresh 100-pair confirmation retains H6C at 200k: 115-85 games, 33-18 paired sweeps, exact paired sign p=0.04887389231827033. Direction matches both the 20-pair 200k screen and the historical 10k promotion. Evidence is positive and conventionally significant, but the p-value is borderline and 49/100 pairs split.",
+        "extension_decision": "Pending explicit decision on whether to extend to 200 total paired seeds. The predeclared policy permits extension when the effect remains borderline and the product decision materially depends on it."
       },
       {
         "id": "H2-vs-H1",
