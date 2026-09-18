@@ -154,6 +154,33 @@ browser/device measurements remain the product decision evidence.
 Machine-readable details live in
 [`experiments/wasm-review-benchmark.json`](../experiments/wasm-review-benchmark.json).
 
+## Real browser device checkpoint
+
+The packaged browser benchmark has now been run on three representative devices.
+At a 100k hard-node budget:
+
+| Device | Fresh | 8-line pending / 10 scenarios | Persistent 5-step search |
+|---|---:|---:|---:|
+| i5-1135G7 laptop, unplugged, Chrome 152 | 205.0 ms | 227.1 ms | 1055.1 ms total |
+| Ryzen 3 2200G desktop, Chrome 152 | 193.4 ms | 207.8 ms | 997.8 ms total |
+| Galaxy S24, Samsung Internet 30 / Chromium 143 | 128.7 ms | 150.6 ms | 722.6 ms total |
+
+These measurements make 100k a practical product-default candidate rather than
+only a native strength reference. Even the slowest tested fresh 100k case is
+about 205 ms, and persistent H13 play/refill overhead remains tiny relative to
+search.
+
+Do not read the S24-vs-x86 gap as a pure CPU ranking: the browsers/runtimes differ.
+For product purposes, however, the observed end-to-end browser latency is the
+relevant quantity.
+
+Machine-readable medians are in
+[`experiments/wasm-browser-devices.json`](../experiments/wasm-browser-devices.json).
+
+The browser benchmark now includes 200k and generates a downloadable JSON result
+file with an optional device label. Future device evidence should use that file
+rather than copied console/output text.
+
 ## Performance decision model
 
 The final product budget should be chosen using two curves:
@@ -171,7 +198,7 @@ Useful device measurements:
 - second/third/etc. suggestion from a persistent bot session
 - no-pending-garbage case
 - pending-garbage case with the ten hidden-hole scenarios
-- 25k / 50k / 100k, and higher only if strength experiments justify it
+- 25k / 50k / 100k / 200k while mapping the practical browser ceiling
 - sustained several-step use, not only a single cold call
 - desktop browser first; representative mobile browser second
 
