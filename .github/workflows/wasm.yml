@@ -2,7 +2,7 @@ name: wasm
 
 on:
   push:
-    branches: [main, wasm-port, tetrio-s2]
+    branches: [main, wasm-port, tetrio-s2, s2-strategy-clean]
   pull_request:
     branches: [main, wasm-port]
   workflow_dispatch:
