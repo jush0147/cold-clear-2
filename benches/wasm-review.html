@@ -4,20 +4,28 @@
 <title>Cold Clear 2 WASM review benchmark</title>
 <style>
   body { font-family: system-ui, sans-serif; max-width: 900px; margin: 32px auto; padding: 0 16px; }
-  button { font: inherit; padding: 10px 16px; }
+  button, input { font: inherit; padding: 10px 12px; }
+  .controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
   pre { white-space: pre-wrap; overflow-wrap: anywhere; background: #111; color: #eee; padding: 16px; border-radius: 8px; }
   .muted { opacity: .75; }
 </style>
 <h1>Cold Clear 2 WASM review benchmark</h1>
 <p>This measures the actual browser WASM path using the interactive H9+H12+H13 profile for persistent review and the scored H9+H12 snapshot profile for pending analysis.</p>
 <p class="muted">Build the web package into <code>pkg/</code>, serve the repository over HTTP, then open this page. Results are intentionally device/browser-specific.</p>
-<button id="run">Run 25k / 50k / 100k</button>
+<div class="controls">
+  <input id="label" placeholder="Device label (optional)" autocomplete="off">
+  <button id="run">Run 25k / 50k / 100k / 200k</button>
+  <button id="download" disabled>Download results.json</button>
+</div>
 <pre id="out">Idle.</pre>
 <script type="module">
 import init, { WasmBot, analyze_pending_json } from "../pkg/cold_clear_2.js";
 
 const out = document.querySelector("#out");
 const button = document.querySelector("#run");
+const downloadButton = document.querySelector("#download");
+const labelInput = document.querySelector("#label");
+let latestResult = null;
 
 const start = () => ({
   board: Array.from({ length: 20 }, () => Array(10).fill(null)),
@@ -155,6 +163,8 @@ await init();
 
 button.addEventListener("click", async () => {
   button.disabled = true;
+  downloadButton.disabled = true;
+  latestResult = null;
   out.textContent = "Running...";
   await new Promise(requestAnimationFrame);
   try {
@@ -163,7 +173,7 @@ button.addEventListener("click", async () => {
     const fresh = [];
     const pending = [];
     const persistent = [];
-    for (const nodeBudget of [25000, 50000, 100000]) {
+    for (const nodeBudget of [25000, 50000, 100000, 200000]) {
       const freshSamples = [];
       const pendingSamples = [];
       for (let i = 0; i < 3; i++) {
@@ -182,7 +192,11 @@ button.addEventListener("click", async () => {
       ));
       await new Promise(requestAnimationFrame);
     }
-    out.textContent = JSON.stringify({
+    latestResult = {
+      schema_version: 1,
+      benchmark: "cold-clear-2-wasm-review",
+      generated_at: new Date().toISOString(),
+      device_label: labelInput.value.trim() || null,
       user_agent: navigator.userAgent,
       hardware_concurrency: navigator.hardwareConcurrency,
       profiles: {
@@ -204,11 +218,36 @@ button.addEventListener("click", async () => {
           results: persistent,
         },
       },
-    }, null, 2);
+    };
+    out.textContent = JSON.stringify(latestResult, null, 2);
+    downloadButton.disabled = false;
   } catch (error) {
     out.textContent = String(error?.stack || error);
   } finally {
     button.disabled = false;
   }
+});
+
+downloadButton.addEventListener("click", () => {
+  if (!latestResult) return;
+  const safeLabel = (latestResult.device_label || "device")
+    .replace(/[^a-zA-Z0-9._-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 48) || "device";
+  const stamp = latestResult.generated_at
+    .replace(/[:.]/g, "-")
+    .replace("T", "_")
+    .replace("Z", "");
+  const blob = new Blob([JSON.stringify(latestResult, null, 2) + "\n"], {
+    type: "application/json"
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `cc2-wasm-benchmark-${safeLabel}-${stamp}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 });
 </script>
