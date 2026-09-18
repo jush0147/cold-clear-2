@@ -1,6 +1,6 @@
 {
   "experiment": "H12 best-child demotion backprop correctness",
-  "status": "fresh_validation_started",
+  "status": "completed",
   "incumbent": {
     "name": "H9",
     "pending_safety": 1,
@@ -63,6 +63,23 @@
     "games": 80,
     "nodes_per_move": 10000,
     "engine_source_run": 35305597766,
-    "engine_commit": "6c3195a5ec2d666efbc5aac12d12ca6ef2018a00"
-  }
+    "engine_commit": "6c3195a5ec2d666efbc5aac12d12ca6ef2018a00",
+    "result": {
+      "candidate_wins": 40,
+      "incumbent_wins": 40,
+      "candidate_sweeps": 11,
+      "incumbent_sweeps": 11,
+      "split_pairs": 18,
+      "paired_sign_p": 1,
+      "all_games_complete": true,
+      "all_reason_no_legal_placement": true,
+      "malformed_pairs": 0,
+      "max_search_depth_observed": [
+        9,
+        12
+      ]
+    }
+  },
+  "decision": "PROMOTE_AS_CORRECTNESS_BASELINE",
+  "conclusion": "H12 fixes a reproducible stale-parent backprop bug. Fresh validation was exactly neutral at 40:40, so there is no strength claim, but there is also no evidence of regression. Promote the fix as corrected core behavior, not as a strategy win."
 }
