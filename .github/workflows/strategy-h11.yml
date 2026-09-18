@@ -1,0 +1,123 @@
+name: H11 known-speculative search screening
+on:
+  push:
+    branches: [s2-strategy-clean]
+    paths:
+      - 'scripts/wire-h11.py'
+      - '.github/workflows/strategy-h11.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: strategy-h11-native
+
+      - name: Generate isolated H11 core and harness
+        run: python3 scripts/wire-h11.py
+
+      - name: Check H11 harness and core regressions
+        run: |
+          cargo test --release --bin strategy_h11 2>&1 | tee h11-regression.log
+          cargo test --release --lib
+
+      - name: Build frozen executable
+        run: cargo build --release --bin strategy_h11
+
+      - name: Package exact tested core, harness and binary
+        run: |
+          mkdir -p h11-engine
+          cp src/bot.rs h11-engine/
+          cp src/bot/freestyle.rs h11-engine/
+          cp src/dag.rs h11-engine/
+          cp src/bin/strategy_h11.rs h11-engine/
+          cp target/release/strategy_h11 h11-engine/
+          cp h11-regression.log h11-engine/
+          git rev-parse HEAD | tee h11-engine/commit.txt
+          sha256sum src/bot.rs | awk '{print $1 "  bot.rs"}' | tee h11-engine/bot.sha256
+          sha256sum src/bot/freestyle.rs | awk '{print $1 "  freestyle.rs"}' | tee h11-engine/core.sha256
+          sha256sum src/dag.rs | awk '{print $1 "  dag.rs"}' | tee h11-engine/dag.sha256
+          sha256sum src/bin/strategy_h11.rs | awk '{print $1 "  strategy_h11.rs"}' | tee h11-engine/harness.sha256
+          sha256sum target/release/strategy_h11 | awk '{print $1 "  strategy_h11"}' | tee h11-engine/executable.sha256
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: h11-engine
+          path: h11-engine/
+          if-no-files-found: error
+
+      - name: H9/H9 A/A control through H11 engine
+        run: |
+          target/release/strategy_h11 \
+            --known-exploitation 0.6931471805599453 \
+            --speculated-exploitation 0.6931471805599453 \
+            --incumbent-known-exploitation 0.6931471805599453 \
+            --incumbent-speculated-exploitation 0.6931471805599453 \
+            --start 42990 --seeds 2 --nodes 10000 | tee h11-control.jsonl
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: h11-control
+          path: h11-control.jsonl
+          if-no-files-found: error
+
+  screen:
+    needs: build
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        include:
+          - { id: k40s60, known: 0.5108256237659907, spec: 0.916290731874155, label: primary }
+          - { id: k40s50, known: 0.5108256237659907, spec: 0.6931471805599453, label: diagnostic-known-only }
+          - { id: k50s60, known: 0.6931471805599453, spec: 0.916290731874155, label: diagnostic-spec-only }
+          - { id: k60s40, known: 0.916290731874155, spec: 0.5108256237659907, label: diagnostic-reverse }
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: h11-engine
+          path: engine
+
+      - name: Verify frozen H11 engine
+        run: |
+          (cd engine && sha256sum -c bot.sha256 && sha256sum -c core.sha256 && sha256sum -c dag.sha256 && sha256sum -c harness.sha256 && sha256sum -c executable.sha256)
+          chmod +x engine/strategy_h11
+
+      - name: Run 20 shared seeds, both sides, KO only
+        env:
+          KNOWN: ${{ matrix.known }}
+          SPEC: ${{ matrix.spec }}
+          LABEL: ${{ matrix.label }}
+        run: |
+          mkdir -p results
+          printf '%s\n' "$LABEL" > results/role.txt
+          printf '%s\n' "$KNOWN" > results/known-exploitation.txt
+          printf '%s\n' "$SPEC" > results/speculated-exploitation.txt
+          engine/strategy_h11 \
+            --known-exploitation "$KNOWN" \
+            --speculated-exploitation "$SPEC" \
+            --incumbent-known-exploitation 0.6931471805599453 \
+            --incumbent-speculated-exploitation 0.6931471805599453 \
+            --start 43000 --seeds 20 --nodes 10000 | tee results/ko.jsonl
+          cp engine/commit.txt engine/bot.sha256 engine/core.sha256 engine/dag.sha256 engine/harness.sha256 engine/executable.sha256 results/
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: h11-screen-${{ matrix.id }}
+          path: results/
+          if-no-files-found: error
