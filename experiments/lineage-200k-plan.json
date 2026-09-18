@@ -1,6 +1,6 @@
 {
   "experiment": "200k promoted strategy lineage revalidation",
-  "status": "h6c_vs_h2_running",
+  "status": "h6c_strong_positive_h2_vs_h1_next",
   "compute_regime": {
     "nodes_per_move": 200000,
     "reason": "provisional product default after H14 200k-vs-100k"
@@ -64,7 +64,7 @@
     },
     {
       "id": "H6C-vs-H2",
-      "status": "running",
+      "status": "completed_strong_positive_not_conclusive",
       "candidate": {
         "pending_safety": 1,
         "useful_attack_reward": 1,
@@ -89,11 +89,24 @@
         "games": 40,
         "batches": 4
       },
-      "decision": "Treat this as fresh 200k directional revalidation of H6C over H2. Strong positive evidence retains H6C; a clear reversal requires revisiting the promoted chain; weak positive/neutral evidence remains explicitly uncertain rather than being promoted by inertia."
+      "decision": "Treat this as fresh 200k directional revalidation of H6C over H2. Strong positive evidence retains H6C; a clear reversal requires revisiting the promoted chain; weak positive/neutral evidence remains explicitly uncertain rather than being promoted by inertia.",
+      "result": {
+        "paired_seeds": 20,
+        "games": 40,
+        "candidate_wins": 27,
+        "incumbent_wins": 13,
+        "candidate_sweeps": 9,
+        "incumbent_sweeps": 2,
+        "split_pairs": 9,
+        "paired_exact_sign_p": 0.0654296875,
+        "malformed_pairs": 0,
+        "all_reason_no_legal_placement": true
+      },
+      "interpretation": "At 200k, H6C shows a strong positive direction over H2 (27-13 games; 9-2 paired sweeps), but the 20-pair fresh sample remains just above the conventional 0.05 threshold. This supports retaining H6C directionally at high compute without claiming an independent conclusive reconfirmation."
     },
     {
       "id": "H2-vs-H1",
-      "status": "blocked_on_H6C-vs-H2",
+      "status": "prepared_to_run",
       "candidate": {
         "pending_safety": 1,
         "useful_attack_reward": 1,
@@ -132,12 +145,7 @@
     "Do not run lower lineage links until the upper link result is known.",
     "Do not revive rejected H3-H11 hypotheses unless the promoted chain changes."
   ],
-  "active_run": {
-    "id": "H6C-vs-H2",
-    "run": 35377558943,
-    "workflow_commit": "3f177de227ec68be32d8b7c69e304efd8798c881",
-    "status": "running"
-  },
+  "active_run": null,
   "failed_runs": [
     {
       "run": 35357634194,
