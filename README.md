@@ -65,7 +65,7 @@ const visibleState = JSON.parse(bot.player_state_json());
 const capabilities = JSON.parse(bot.capabilities_json());
 ```
 
-`WasmBot` on this branch uses the canonical H9+H12 review configuration. `think_nodes()` applies the same hard evaluator-node budget unit used by H14 and returns the actual searched node count as a JavaScript BigInt. `think()` remains only as a compatibility API for legacy work-iteration callers. `stats_json()` exposes search statistics. An empty suggestion is not, by itself, proof of topout.
+`WasmBot` on this branch uses the interactive H9+H12+H13 profile: the scored H14 H9+H12 configuration plus the H13 persistent-DAG despeculation/backprop correctness fix. The separate pending snapshot API intentionally retains the scored H9+H12 profile because it rebuilds scenario DAGs and cannot benefit from H13 persistence. `think_nodes()` applies the same hard evaluator-node budget unit used by H14 and returns the actual searched node count as a JavaScript BigInt. `think()` remains only as a compatibility API for legacy work-iteration callers. `stats_json()` exposes search statistics. An empty suggestion is not, by itself, proof of topout.
 
 ### Browser performance benchmark
 
