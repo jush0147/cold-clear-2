@@ -1,0 +1,72 @@
+{
+  "experiment": "H11 known-vs-speculative search allocation",
+  "status": "planned",
+  "incumbent": {
+    "name": "H9",
+    "pending_safety": 1.0,
+    "useful_attack_reward": 1.0,
+    "row_transition_scale": 2.5,
+    "combo_scale": 1.0,
+    "h9_cavity_excavation": -0.5,
+    "known_exploitation": 0.6931471805599453,
+    "speculated_exploitation": 0.6931471805599453
+  },
+  "hypothesis": "A single exploitation value may be structurally wrong because known current+Next5 layers and post-preview SevenBag speculation carry different information quality. Preserve more alternatives while the future pieces are actually known, then concentrate the fixed node budget once search crosses into speculative bag branches.",
+  "primary_candidate": {
+    "id": "k40s60",
+    "known_approx_rank0_share": 0.40,
+    "known_exploitation": 0.5108256237659907,
+    "speculated_approx_rank0_share": 0.60,
+    "speculated_exploitation": 0.916290731874155,
+    "promotion_eligible": true
+  },
+  "diagnostic_controls": [
+    {
+      "id": "k40s50",
+      "known_approx_rank0_share": 0.40,
+      "known_exploitation": 0.5108256237659907,
+      "speculated_approx_rank0_share": 0.50,
+      "speculated_exploitation": 0.6931471805599453,
+      "purpose": "isolate broader exploration in known preview only",
+      "promotion_eligible": false
+    },
+    {
+      "id": "k50s60",
+      "known_approx_rank0_share": 0.50,
+      "known_exploitation": 0.6931471805599453,
+      "speculated_approx_rank0_share": 0.60,
+      "speculated_exploitation": 0.916290731874155,
+      "purpose": "isolate tighter search in speculative region only",
+      "promotion_eligible": false
+    },
+    {
+      "id": "k60s40",
+      "known_approx_rank0_share": 0.60,
+      "known_exploitation": 0.916290731874155,
+      "speculated_approx_rank0_share": 0.40,
+      "speculated_exploitation": 0.5108256237659907,
+      "purpose": "reverse-direction structural control",
+      "promotion_eligible": false
+    }
+  ],
+  "screen": {
+    "paired_seeds_per_config": 20,
+    "games_per_config": 40,
+    "configs": 4,
+    "total_games": 160,
+    "seed_start": 43000,
+    "nodes_per_move": 10000
+  },
+  "protocol": {
+    "preview": "current + NEXT5",
+    "post_preview_search": "SevenBag speculation, never true hidden future",
+    "incoming_garbage": "10 hidden-hole scenarios while under observed pressure",
+    "gravity": 0,
+    "result": "KO only",
+    "side_swap": true,
+    "opponent_board_visible_to_bot": false,
+    "hidden_future_visible_to_bot": false,
+    "search_rng": "deterministic and separate from authority RNG"
+  },
+  "decision_rule": "The three diagnostic controls are explanatory only and cannot be promoted. Only k40s60 may advance to fresh validation. If k40s60 does not show a positive screening direction, H11 stops and H9 remains incumbent. If it does, validate k40s60 on fresh seeds, then require a pre-fixed 400-KO confirmation before promotion."
+}
