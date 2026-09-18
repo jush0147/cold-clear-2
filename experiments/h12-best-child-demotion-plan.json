@@ -1,6 +1,6 @@
 {
   "experiment": "H12 best-child demotion backprop correctness",
-  "status": "rerun_started_after_generator_fix",
+  "status": "fresh_validation_started",
   "incumbent": {
     "name": "H9",
     "pending_safety": 1,
@@ -19,7 +19,22 @@
     "seed_start": 44000,
     "nodes_per_move": 10000,
     "run": 35305597766,
-    "workflow_commit": "6c3195a5ec2d666efbc5aac12d12ca6ef2018a00"
+    "workflow_commit": "6c3195a5ec2d666efbc5aac12d12ca6ef2018a00",
+    "result": {
+      "candidate_wins": 46,
+      "incumbent_wins": 34,
+      "candidate_sweeps": 15,
+      "incumbent_sweeps": 9,
+      "split_pairs": 16,
+      "paired_sign_p": 0.30745625495910645,
+      "all_games_complete": true,
+      "all_reason_no_legal_placement": true,
+      "malformed_pairs": 0,
+      "max_search_depth_observed": [
+        9,
+        11
+      ]
+    }
   },
   "protocol": {
     "preview": "current + NEXT5",
@@ -39,5 +54,15 @@
       "reason": "generator emitted literal \\\\n sequences into generated Rust update_child calls; compile failed before regression or KO evidence"
     }
   ],
-  "generator_fix_commit": "32abadd8ccc23b2b3fbce9a39ae85077df92c706"
+  "generator_fix_commit": "32abadd8ccc23b2b3fbce9a39ae85077df92c706",
+  "validation": {
+    "run": null,
+    "workflow_commit": "1512da271e471bff4d4a78c82e2c211ae7e56555",
+    "seed_start": 45000,
+    "paired_seeds": 40,
+    "games": 80,
+    "nodes_per_move": 10000,
+    "engine_source_run": 35305597766,
+    "engine_commit": "6c3195a5ec2d666efbc5aac12d12ca6ef2018a00"
+  }
 }
