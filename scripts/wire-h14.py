@@ -236,7 +236,14 @@ for needle in required:
     if needle not in s:
         raise SystemExit(f"missing H14 invariant: {needle}")
 
-if "strategy.row_transition_scale" in s or "s.nodes" in s:
-    raise SystemExit("H14 must vary only per-side node budget")
+for forbidden in [
+    '"--row-transition-scale"',
+    '"--incumbent-row-transition-scale"',
+    'config.freestyle_weights.row_transitions *= strategy.row_transition_scale;',
+    '"candidate_row_transition_scale"',
+    '"incumbent_row_transition_scale"',
+]:
+    if forbidden in s:
+        raise SystemExit(f"H14 leaked old H6C variable: {forbidden}")
 
 out.write_text(s)
