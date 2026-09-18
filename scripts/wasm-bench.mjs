@@ -96,10 +96,13 @@ for (const nodeBudget of budgets) {
 
 console.log(JSON.stringify({
   runtime: "Node WASM",
-  config_profile: "h9+h12-review",
+  profiles: {
+    fresh_no_pending: "h9+h12+h13-interactive",
+    pending_8_lines: "h9+h12-review",
+  },
   workloads: {
     fresh_no_pending: {
-      description: "fresh empty-board snapshot; SevenBag speculation enabled; no pending garbage",
+      description: "fresh empty-board snapshot; interactive H13 profile; SevenBag speculation enabled; no pending garbage",
       results: fresh,
     },
     pending_8_lines: {
