@@ -1,6 +1,6 @@
 {
   "experiment": "H13 revealed-piece despeculation backprop correctness",
-  "status": "completed_unobservable_in_current_harness",
+  "status": "correctness_core_promoted_unobservable_in_snapshot_harness",
   "incumbent": {
     "name": "H9 + H12 corrected DAG",
     "pending_safety": 1,
@@ -86,5 +86,24 @@
     "reason": "choose() still runs one forecast scenario when incoming is empty, so set_forecast() rebuilds the DAG on every decision."
   },
   "decision": "DO_NOT_RUN_FRESH_KO_VALIDATION_UNDER_THIS_HARNESS",
-  "conclusion": "The targeted H13 unit tests validate the local despeculation/backprop logic, but the current KO/review snapshot harness necessarily discards that persistent-tree correction before every scored search. Therefore the 40:40 / 0-sweep screen is expected and cannot support either a strength claim or a regression claim. Keep H13 documented as a latent persistent-DAG correctness fix; do not spend more KO samples on it unless a future integration preserves the DAG across decisions instead of rebuilding it through set_forecast(). H9 + H12 remains the scored incumbent."
+  "conclusion": "The targeted H13 unit tests validate the local despeculation/backprop logic, but the current KO/review snapshot harness necessarily discards that persistent-tree correction before every scored search. Therefore the 40:40 / 0-sweep screen is expected and cannot support either a strength claim or a regression claim. Keep H13 documented as a latent persistent-DAG correctness fix; do not spend more KO samples on it unless a future integration preserves the DAG across decisions instead of rebuilding it through set_forecast(). H9 + H12 remains the scored incumbent.",
+  "core_promotion": {
+    "run": 35335097243,
+    "commit": "be0811c",
+    "result": "success",
+    "files": [
+      "src/bot.rs",
+      "src/bot/freestyle.rs",
+      "src/dag.rs",
+      "src/dag/known.rs",
+      "src/map.rs"
+    ],
+    "checks": [
+      "both targeted H13 regressions passed",
+      "full release library regressions passed",
+      "wasm32-unknown-unknown library check passed"
+    ],
+    "enabled_by_default": false,
+    "note": "H13 correctness code is now present in branch core. The scored H14 H9+H12 profile intentionally leaves the H13 flag off so historical compute results remain comparable."
+  }
 }
