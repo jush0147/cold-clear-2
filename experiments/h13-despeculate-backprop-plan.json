@@ -1,0 +1,35 @@
+{
+  "experiment": "H13 revealed-piece despeculation backprop correctness",
+  "status": "planned",
+  "incumbent": {
+    "name": "H9 + H12 corrected DAG",
+    "pending_safety": 1.0,
+    "useful_attack_reward": 1.0,
+    "row_transition_scale": 2.5,
+    "h9_cavity_excavation": -0.5,
+    "dag_backprop_best_demotion": true,
+    "dag_backprop_despeculated_values": false
+  },
+  "bug": "When add_piece reveals the next real piece, the first speculative DAG layer is converted to a known layer and its children are narrowed to that piece, but node.eval is copied from the pre-reveal bag-average value and the changed value is not propagated through the preceding known layers.",
+  "fix": "For expanded nodes in the despeculated layer, recompute node.eval from the revealed piece's best child, then directly backprop changed values through all preceding known layers using the H12-corrected best-child demotion logic. Preserve old eval for unexpanded nodes.",
+  "screen": {
+    "candidate_flag": true,
+    "incumbent_flag": false,
+    "paired_seeds": 40,
+    "games": 80,
+    "seed_start": 46000,
+    "nodes_per_move": 10000
+  },
+  "protocol": {
+    "preview": "current + NEXT5, refreshed after every lock",
+    "speculation": "SevenBag only beyond the currently visible preview",
+    "gravity": 0,
+    "result": "KO only",
+    "side_swap": true,
+    "same_h9_evaluator": true,
+    "same_h12_fix": true,
+    "same_search_exploitation": "ln(2)",
+    "opponent_board_visible_to_bot": false
+  },
+  "decision_rule": "H13 is a correctness fix, not a heuristic. Require targeted regression tests plus full regressions. If KO screening is not catastrophically negative, validate on fresh seeds. Promotion is recorded as corrected-core behavior, with strength claims kept separate."
+}
