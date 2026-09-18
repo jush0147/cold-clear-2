@@ -1,6 +1,6 @@
 {
   "experiment": "200k promoted strategy lineage revalidation",
-  "status": "h9_directionally_retained_h6c_vs_h2_next",
+  "status": "h6c_vs_h2_running",
   "compute_regime": {
     "nodes_per_move": 200000,
     "reason": "provisional product default after H14 200k-vs-100k"
@@ -64,7 +64,7 @@
     },
     {
       "id": "H6C-vs-H2",
-      "status": "prepared_to_run",
+      "status": "running",
       "candidate": {
         "pending_safety": 1,
         "useful_attack_reward": 1,
@@ -76,7 +76,20 @@
         "useful_attack_reward": 1,
         "row_transition_scale": 1,
         "h9_cavity_excavation": 0
-      }
+      },
+      "run": 35377558943,
+      "aa_control": {
+        "seed_start": 47690,
+        "paired_seeds": 2,
+        "row_transition_scale_both": 1
+      },
+      "validation": {
+        "seed_start": 47700,
+        "paired_seeds": 20,
+        "games": 40,
+        "batches": 4
+      },
+      "decision": "Treat this as fresh 200k directional revalidation of H6C over H2. Strong positive evidence retains H6C; a clear reversal requires revisiting the promoted chain; weak positive/neutral evidence remains explicitly uncertain rather than being promoted by inertia."
     },
     {
       "id": "H2-vs-H1",
@@ -119,7 +132,12 @@
     "Do not run lower lineage links until the upper link result is known.",
     "Do not revive rejected H3-H11 hypotheses unless the promoted chain changes."
   ],
-  "active_run": null,
+  "active_run": {
+    "id": "H6C-vs-H2",
+    "run": 35377558943,
+    "workflow_commit": "3f177de227ec68be32d8b7c69e304efd8798c881",
+    "status": "running"
+  },
   "failed_runs": [
     {
       "run": 35357634194,
