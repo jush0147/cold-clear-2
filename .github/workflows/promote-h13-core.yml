@@ -1,0 +1,59 @@
+name: Promote H13 persistent DAG correctness
+
+on:
+  push:
+    branches: [s2-strategy-clean]
+    paths:
+      - '.github/workflows/promote-h13-core.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: promote-h13-core
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  promote:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: s2-strategy-clean
+          fetch-depth: 0
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Apply validated H13 patch
+        run: python3 scripts/wire-h13.py
+
+      - name: Verify H13 targeted regressions
+        run: |
+          cargo test --release --lib dag::h13_tests::h13_revealed_piece_replaces_speculative_average_with_known_best -- --exact --nocapture
+          cargo test --release --lib dag::h13_tests::h13_unexpanded_despeculated_node_keeps_existing_eval -- --exact --nocapture
+
+      - name: Verify full corrected core
+        run: |
+          cargo test --release --lib
+          cargo check --target wasm32-unknown-unknown --lib
+          grep -F 'pub dag_backprop_despeculated_values: bool' src/bot.rs
+          grep -F 'options.config.dag_backprop_despeculated_values' src/bot/freestyle.rs
+          grep -F 'fn despeculated_node_eval<E: Evaluation>' src/dag.rs
+          grep -F 'pub fn backprop_direct(' src/dag/known.rs
+
+      - name: Commit H13 core only
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/bot.rs src/bot/freestyle.rs src/dag.rs src/dag/known.rs src/map.rs
+          git diff --cached --quiet && exit 0
+          git commit -m 'Promote H13 persistent DAG despeculation backprop'
+          git push origin HEAD:s2-strategy-clean
