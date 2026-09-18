@@ -6,14 +6,28 @@ use crate::tbp::Start;
 use crate::tetrio::garbage::GarbageQueue;
 use crate::try_create_bot;
 
+const REVIEW_SEARCH_SEED_BASE: u64 = 0xC01D_C1EA_5EED_0001;
+
 #[wasm_bindgen]
-pub struct WasmBot { bot: Option<Bot>, config: Arc<BotConfig>, stats: Statistics }
+pub struct WasmBot {
+    bot: Option<Bot>,
+    config: Arc<BotConfig>,
+    stats: Statistics,
+    decision_index: u64,
+    search_call: u64,
+}
 
 #[wasm_bindgen]
 impl WasmBot {
     #[wasm_bindgen(constructor)]
     pub fn new() -> WasmBot {
-        WasmBot { bot: None, config: Arc::new(BotConfig::interactive_review()), stats: Statistics::default() }
+        WasmBot {
+            bot: None,
+            config: Arc::new(BotConfig::interactive_review()),
+            stats: Statistics::default(),
+            decision_index: 0,
+            search_call: 0,
+        }
     }
 
     pub fn start(&mut self, start_json: &str) -> Result<(), JsValue> {
@@ -30,6 +44,8 @@ impl WasmBot {
         let bot = try_create_bot(start, self.config.clone()).map_err(js_error)?;
         self.bot = Some(bot);
         self.stats = Statistics::default();
+        self.decision_index = 0;
+        self.search_call = 0;
         Ok(())
     }
 
@@ -55,15 +71,22 @@ impl WasmBot {
         if bot.preview_refill_needed() != 0 { return Err(js_error("supply newly visible NEXT pieces before searching")); }
 
         let budget = node_budget as u64;
+        let seed = REVIEW_SEARCH_SEED_BASE
+            ^ self.decision_index.wrapping_mul(0x9E37_79B9_7F4A_7C15)
+            ^ self.search_call.wrapping_mul(0xD1B5_4A32_D192_ED03);
+        self.search_call = self.search_call.wrapping_add(1);
+
         let mut searched = Statistics::default();
         let mut stalled = 0u32;
-        while searched.nodes < budget && stalled < 1024 {
-            let step = bot.do_work_limited(budget - searched.nodes);
-            let stop = step.budget_exhausted;
-            stalled = if step.nodes == 0 { stalled + 1 } else { 0 };
-            searched.accumulate(step);
-            if stop { break; }
-        }
+        crate::ko_support::with_search_seed(seed, || {
+            while searched.nodes < budget && stalled < 1024 {
+                let step = bot.do_work_limited(budget - searched.nodes);
+                let stop = step.budget_exhausted;
+                stalled = if step.nodes == 0 { stalled + 1 } else { 0 };
+                searched.accumulate(step);
+                if stop { break; }
+            }
+        });
         if searched.nodes > budget { return Err(js_error("hard node budget exceeded")); }
         let nodes = searched.nodes;
         self.stats.accumulate(searched);
@@ -82,6 +105,8 @@ impl WasmBot {
         if bot.preview_refill_needed() != 0 { return Err(js_error("restore visible previews before advancing again")); }
         bot.try_advance(placement).map_err(js_error)?;
         self.stats = Statistics::default();
+        self.decision_index = self.decision_index.wrapping_add(1);
+        self.search_call = 0;
         Ok(())
     }
     pub fn play_with_hold_json(&mut self, placement_json: &str, use_hold: bool) -> Result<(), JsValue> {
@@ -90,6 +115,8 @@ impl WasmBot {
         if bot.preview_refill_needed() != 0 { return Err(js_error("restore visible previews before advancing again")); }
         bot.try_play(placement, use_hold).map_err(js_error)?;
         self.stats = Statistics::default();
+        self.decision_index = self.decision_index.wrapping_add(1);
+        self.search_call = 0;
         Ok(())
     }
     pub fn preview_refill_needed(&self) -> Result<u32, JsValue> {
@@ -128,6 +155,7 @@ impl WasmBot {
             "config_profile": "h9+h12+h13-interactive",
             "despeculation_backprop": true,
             "hard_node_budget": true,
+            "deterministic_hard_node_search": true,
             "persistent_dag": true,
             "clutch_clears": false,
             "garbage_special_bonus": true,
