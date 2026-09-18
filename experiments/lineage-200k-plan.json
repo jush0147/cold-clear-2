@@ -248,7 +248,13 @@
           "all_reason_no_legal_placement": true
         },
         "confirmation_interpretation": "Fresh 100-pair confirmation retains H9 at 200k: 117-83 games, 37-20 paired sweeps, exact paired sign p=0.033143967787505446. Direction matches the earlier 20-pair 200k screen and the historical 10k promotion. Evidence is positive and conventionally significant, but still not overwhelming because 43/100 pairs split and the top-line product evaluator depends on this link.",
-        "extension_decision": "Run an independent fresh 100-pair replication under the predeclared borderline-extension rule; interpret separately before any descriptive pooling."
+        "extension_decision": "Run an independent fresh 100-pair replication under the predeclared borderline-extension rule; interpret separately before any descriptive pooling.",
+        "extension_run": 35392726671,
+        "extension_status": "running_or_queued",
+        "extension_seed_range": "48400-48499",
+        "extension_paired_seeds": 100,
+        "extension_games": 200,
+        "extension_method": "Independent fresh-seed replication triggered by the predeclared borderline-extension rule. Interpret separately before any descriptive pooling with the first 100-pair confirmation."
       },
       {
         "id": "H6C-vs-H2",
