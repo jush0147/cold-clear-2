@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
-const { WasmBot, preview_garbage_one_to_one } = require("../pkg-node/cold_clear_2.js");
+const { WasmBot, analyze_pending_json, preview_garbage_one_to_one } = require("../pkg-node/cold_clear_2.js");
 
 const initial = () => ({
   board: Array.from({ length: 20 }, () => Array(10).fill(null)),
@@ -38,6 +38,21 @@ const hardStats = JSON.parse(budgeted.stats_json());
 assert.equal(hardStats.nodes, 1003);
 assert.ok(hardStats.max_depth > 0);
 budgeted.free();
+
+const pendingReport = JSON.parse(analyze_pending_json(JSON.stringify({
+  start: reviewInitial(),
+  incoming: [{ lines: 8, active: true }],
+  pieces_placed: 30,
+  garbage_sent: 0,
+  frames_per_piece: 12,
+  pending_delay_frames: 20,
+  node_budget: 1003,
+})));
+assert.equal(pendingReport.node_budget, 1003);
+assert.ok(pendingReport.nodes <= 1003);
+assert.equal(pendingReport.scenarios, 10);
+assert.equal(pendingReport.config_profile, "h9+h12-review");
+assert.ok(pendingReport.candidates.length > 0);
 
 const before = bot.player_state_json();
 assert.throws(() => bot.new_piece("Z"));
@@ -102,6 +117,7 @@ console.log(JSON.stringify({
   checks: [
     "search",
     "hard-node-budget",
+    "pending-hard-node-budget",
     "h9+h12-review-config",
     "empty-hold",
     "first-hold-refill-two",
