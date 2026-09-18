@@ -65,8 +65,8 @@ impl BotConfig {
         config
     }
 
-    /// Canonical scored review configuration used by H14 and browser review.
-    /// Keep this as the single source of truth for H9 evaluator + H12 DAG.
+    /// Canonical scored H14 configuration. Keep H13 off here so historical
+    /// compute-strength evidence remains comparable.
     pub fn review_h9_h12() -> Self {
         let mut config = Self::legacy();
         config.freestyle_weights.softdrop = 0.0;
@@ -80,6 +80,14 @@ impl BotConfig {
         config.freestyle_weights.row_transitions *= 2.5;
         config.freestyle_weights.h9_cavity_excavation = -0.5;
         config.dag_backprop_best_demotion = true;
+        config
+    }
+
+    /// Interactive replay-review profile: scored H9+H12 plus the H13
+    /// persistent-DAG despeculation correctness fix.
+    pub fn interactive_review() -> Self {
+        let mut config = Self::review_h9_h12();
+        config.dag_backprop_despeculated_values = true;
         config
     }
 }
@@ -246,6 +254,27 @@ mod config_tests {
         assert_eq!(review.freestyle_weights.row_transitions, legacy.freestyle_weights.row_transitions * 2.5);
         assert_eq!(review.freestyle_weights.h9_cavity_excavation, -0.5);
         assert!(review.dag_backprop_best_demotion);
+        assert!(!review.dag_backprop_despeculated_values);
         assert!(!review.freestyle_weights.tetrio_s2);
+    }
+
+    #[test]
+    fn interactive_review_adds_h13_without_changing_scored_h14_profile() {
+        let scored = BotConfig::review_h9_h12();
+        let interactive = BotConfig::interactive_review();
+        assert!(!scored.dag_backprop_despeculated_values);
+        assert!(interactive.dag_backprop_despeculated_values);
+        assert_eq!(
+            interactive.freestyle_weights.row_transitions,
+            scored.freestyle_weights.row_transitions
+        );
+        assert_eq!(
+            interactive.freestyle_weights.h9_cavity_excavation,
+            scored.freestyle_weights.h9_cavity_excavation
+        );
+        assert_eq!(
+            interactive.dag_backprop_best_demotion,
+            scored.dag_backprop_best_demotion
+        );
     }
 }
