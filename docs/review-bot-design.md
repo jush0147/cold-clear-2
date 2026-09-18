@@ -181,6 +181,25 @@ The browser benchmark now includes 200k and generates a downloadable JSON result
 file with an optional device label. Future device evidence should use that file
 rather than copied console/output text.
 
+## 200k real-device checkpoint
+
+The downloadable benchmark was rerun with 200k enabled. Fresh 200k medians were:
+
+| Device/run label | Fresh 200k | Pending 200k | Persistent 5-step interaction |
+|---|---:|---:|---:|
+| 1135G, Chrome 152 | 284.5 ms | 316.2 ms | 1589.0 ms total |
+| S24, Samsung Internet 30 / Chromium 143 | 379.1 ms | 413.6 ms | 2110.3 ms total |
+| 2200G, Chrome 152 | 399.9 ms | 447.7 ms | 2024.8 ms total |
+
+Across these runs, doubling 100k to 200k remained approximately linear in cost.
+There is no observed browser latency cliff at 200k. Absolute rankings moved
+between repeated device runs, so use these as product-latency measurements, not
+as a pure CPU benchmark.
+
+Because 200k remains interactive for the intended click-to-advance review flow,
+a fresh paired native strength probe is now justified: 200k vs 100k on seeds
+47500-47519 using the frozen H14 H9+H12 engine. Workflow run: `35344873507`.
+
 ## Performance decision model
 
 The final product budget should be chosen using two curves:
