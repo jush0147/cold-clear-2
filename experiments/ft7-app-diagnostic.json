@@ -1,0 +1,24 @@
+{
+  "experiment": "exploratory FT7 APP diagnostic",
+  "status": "prepared",
+  "purpose": "Measure raw attack per piece for the current best 200k review profile against corrected legacy in an FT7-style set. Diagnostic only; do not use APP to score or promote strategy.",
+  "candidate": "BotConfig::review_h9_h12() = H1 + H2 + H6C + H9 + H12",
+  "legacy": "BotConfig::legacy() with zero-gravity softdrop, H12 on, H1/H2/H6C/H9 off, H13 off",
+  "format": {
+    "target_wins": 7,
+    "node_budget_per_move": 200000,
+    "seed_start": 49000,
+    "fresh_board_each_round": true,
+    "fresh_piece_seed_each_round": true,
+    "alternate_slots_each_round": true,
+    "winner_condition": "KO only"
+  },
+  "telemetry": {
+    "raw_attack": "sum of tetrio::attack packets before self-cancellation",
+    "cancelled": "raw attack consumed by own pending garbage",
+    "sent": "remaining outgoing attack after self-cancellation",
+    "raw_app": "raw_attack / pieces",
+    "sent_app": "sent / pieces"
+  },
+  "caveat": "The arena is the same zero-gravity turn-based S2 authority used by lineage experiments, not an official simultaneous TETR.IO server simulation. APP is therefore useful diagnostic context, not a direct reproduction of live TL stats."
+}
