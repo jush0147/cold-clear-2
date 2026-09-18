@@ -1,0 +1,111 @@
+name: H14 fresh validation
+on:
+  push:
+    branches: [s2-strategy-clean]
+    paths:
+      - '.github/workflows/strategy-h14-validate.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  validate:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - id: confirm-25k-vs-10k
+            candidate_nodes: 25000
+            incumbent_nodes: 10000
+            start: 47100
+            seeds: 20
+          - id: headroom-100k-vs-25k
+            candidate_nodes: 100000
+            incumbent_nodes: 25000
+            start: 47200
+            seeds: 20
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: h14-engine
+          path: engine
+          github-token: ${{ github.token }}
+          run-id: 35315507874
+
+      - name: Verify frozen H14 engine
+        run: |
+          test "$(cat engine/commit.txt)" = '074e8c3be2db249ca313fa74b229008f47e2ea8d'
+          (cd engine && sha256sum -c manifest.sha256)
+          chmod +x engine/strategy_h14
+
+      - name: Run fresh paired KO validation
+        run: |
+          mkdir -p results
+          engine/strategy_h14 \
+            --nodes ${{ matrix.candidate_nodes }} \
+            --incumbent-nodes ${{ matrix.incumbent_nodes }} \
+            --start ${{ matrix.start }} \
+            --seeds ${{ matrix.seeds }} | tee results/ko.jsonl
+
+      - name: Summarize paired validation
+        run: |
+          python3 - <<'PY'
+          import json, math
+          from pathlib import Path
+          games=[]
+          for line in Path('results/ko.jsonl').read_text().splitlines():
+              obj=json.loads(line)
+              if obj.get('type')=='game': games.append(obj)
+          pairs={}
+          for g in games:
+              pairs.setdefault(g['seed'],[]).append(g)
+          cs=isw=split=malformed=0
+          for seed, gs in pairs.items():
+              if len(gs)!=2:
+                  malformed+=1
+                  continue
+              wins=sum(g['winner']=='candidate' for g in gs)
+              if wins==2: cs+=1
+              elif wins==0: isw+=1
+              else: split+=1
+          n=cs+isw
+          k=min(cs,isw)
+          tail=sum(math.comb(n,i) for i in range(k+1))/(2**n) if n else 0.5
+          p=min(1.0,2*tail) if n else 1.0
+          summary={
+              'id': '${{ matrix.id }}',
+              'candidate_nodes': ${{ matrix.candidate_nodes }},
+              'incumbent_nodes': ${{ matrix.incumbent_nodes }},
+              'seed_start': ${{ matrix.start }},
+              'paired_seeds': len(pairs),
+              'games': len(games),
+              'candidate_wins': sum(g['winner']=='candidate' for g in games),
+              'incumbent_wins': sum(g['winner']=='incumbent' for g in games),
+              'candidate_sweeps': cs,
+              'incumbent_sweeps': isw,
+              'split_pairs': split,
+              'paired_exact_sign_p': p,
+              'malformed_pairs': malformed,
+              'all_reason_no_legal_placement': all(g.get('reason')=='no_legal_placement' for g in games),
+              'max_search_depth': [
+                  min(min(g['max_search_depth']) for g in games) if games else None,
+                  max(max(g['max_search_depth']) for g in games) if games else None,
+              ],
+          }
+          Path('results/summary.json').write_text(json.dumps(summary,indent=2)+'\n')
+          print(json.dumps(summary,indent=2))
+          PY
+          cp engine/commit.txt engine/manifest.sha256 results/
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: h14-validate-${{ matrix.id }}
+          path: results/
+          if-no-files-found: error
