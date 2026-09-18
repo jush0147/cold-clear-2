@@ -1,8 +1,5 @@
 name: Strategy KO experiment
 on:
-  push:
-    branches: [s2-strategy-clean]
-    paths: ['src/**', '.github/workflows/strategy-ko.yml']
   workflow_dispatch:
 permissions:
   contents: write
