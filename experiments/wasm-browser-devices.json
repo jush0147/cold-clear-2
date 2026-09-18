@@ -1,16 +1,16 @@
 {
   "benchmark": "WASM browser device measurements",
-  "status": "three_real_devices_recorded_200k_pending",
+  "status": "three_real_devices_200k_completed_strength_probe_next",
   "devices": [
     {
       "label": "i5-1135G7 unplugged",
       "browser": "Chrome 152",
       "hardware_concurrency": 8,
-      "fresh_100k_ms": 205.0,
+      "fresh_100k_ms": 205,
       "pending_100k_ms": 227.1,
       "persistent_5_step_100k": {
         "search_ms": 1055.1,
-        "advance_refill_ms": 13.0,
+        "advance_refill_ms": 13,
         "interaction_ms": 1071.4
       }
     },
@@ -22,7 +22,7 @@
       "pending_100k_ms": 207.8,
       "persistent_5_step_100k": {
         "search_ms": 997.8,
-        "advance_refill_ms": 14.0,
+        "advance_refill_ms": 14,
         "interaction_ms": 1011.8
       }
     },
@@ -40,13 +40,113 @@
     }
   ],
   "interpretation": [
-    "100k remains interactive on all three tested devices.",
-    "The slowest observed fresh 100k median is about 205 ms.",
-    "Galaxy S24 is fastest in these measurements, but browser/runtime differences prevent attributing the entire gap to CPU architecture."
+    "200k is still interactive on all three measured devices: fresh medians are 284.5-399.9 ms and pending medians are 316.2-447.7 ms.",
+    "Persistent 200k interaction averages about 318-422 ms per bot step across these three runs.",
+    "100k-to-200k cost is approximately linear on these devices; there is no observed browser performance wall at 200k.",
+    "Absolute device ranking varies between runs, so browser/device timing should be treated as product-latency evidence rather than a pure CPU benchmark."
   ],
   "next": [
-    "Run 200k on the same representative devices.",
-    "Use downloadable benchmark JSON for all future device evidence.",
-    "Only then decide whether a fresh 200k-vs-100k KO probe is worth the CI cost."
+    "Run one fresh-seed paired 200k-vs-100k native KO probe on the frozen H14 H9+H12 engine.",
+    "Do not choose 200k as the default unless strength evidence shows enough headroom over 100k to justify roughly doubling compute.",
+    "Keep downloadable JSON as the standard format for future device measurements."
+  ],
+  "downloadable_runs": [
+    {
+      "label": "S24",
+      "generated_at": "2026-09-18T12:20:44.236Z",
+      "browser": "Samsung Internet 30 / Chromium 143",
+      "hardware_concurrency": 8,
+      "medians": {
+        "fresh_ms": {
+          "25000": 46.7,
+          "50000": 91.8,
+          "100000": 191.8,
+          "200000": 379.1
+        },
+        "pending_ms": {
+          "25000": 60,
+          "50000": 111.6,
+          "100000": 212.2,
+          "200000": 413.6
+        },
+        "persistent_5_step_search_ms": {
+          "25000": 248.1,
+          "50000": 508.1,
+          "100000": 1021.4,
+          "200000": 2083.8
+        },
+        "persistent_5_step_interaction_ms": {
+          "25000": 254.7,
+          "50000": 516.8,
+          "100000": 1041.3,
+          "200000": 2110.3
+        }
+      }
+    },
+    {
+      "label": "2200G",
+      "generated_at": "2026-09-18T12:19:56.872Z",
+      "browser": "Chrome 152",
+      "hardware_concurrency": 4,
+      "medians": {
+        "fresh_ms": {
+          "25000": 49,
+          "50000": 97.3,
+          "100000": 202.2,
+          "200000": 399.9
+        },
+        "pending_ms": {
+          "25000": 58.2,
+          "50000": 116.5,
+          "100000": 217.2,
+          "200000": 447.7
+        },
+        "persistent_5_step_search_ms": {
+          "25000": 262.6,
+          "50000": 523.6,
+          "100000": 1054.3,
+          "200000": 2006.4
+        },
+        "persistent_5_step_interaction_ms": {
+          "25000": 267.1,
+          "50000": 530.8,
+          "100000": 1069.9,
+          "200000": 2024.8
+        }
+      }
+    },
+    {
+      "label": "1135G",
+      "generated_at": "2026-09-18T12:22:45.124Z",
+      "browser": "Chrome 152",
+      "hardware_concurrency": 8,
+      "power_state": "not encoded in downloaded result",
+      "medians": {
+        "fresh_ms": {
+          "25000": 40.8,
+          "50000": 79.5,
+          "100000": 142,
+          "200000": 284.5
+        },
+        "pending_ms": {
+          "25000": 53.5,
+          "50000": 95.6,
+          "100000": 171.4,
+          "200000": 316.2
+        },
+        "persistent_5_step_search_ms": {
+          "25000": 226,
+          "50000": 448.3,
+          "100000": 783.4,
+          "200000": 1576
+        },
+        "persistent_5_step_interaction_ms": {
+          "25000": 233.5,
+          "50000": 455.5,
+          "100000": 791.5,
+          "200000": 1589
+        }
+      }
+    }
   ]
 }
