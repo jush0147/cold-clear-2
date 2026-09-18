@@ -133,9 +133,22 @@ the hard-budget boundary through the built WASM package.
 
 These are **GitHub runner Node-WASM measurements**, not desktop Chrome, laptop,
 or mobile numbers. They are useful mainly because they show that 100k is not
-obviously too expensive: after warmup this workload is close to linear at about
-one million evaluator nodes per second. Browser/device measurements remain the
-product decision evidence.
+obviously too expensive. A later CI run varied downward in absolute throughput,
+which is another reason not to treat GitHub-runner milliseconds as device truth.
+
+The pending-garbage benchmark in run `35334761106` held the **total** node
+budget fixed while splitting search across ten hidden-hole scenarios:
+
+| Node budget | Fresh/no pending | Active 8-line pending | Pending overhead |
+|---:|---:|---:|---:|
+| 25k | 35.23 ms | 42.10 ms | +19.5% |
+| 50k | 64.64 ms | 78.87 ms | +22.0% |
+| 100k | 131.97 ms | 150.67 ms | +14.2% |
+
+So ten scenarios did not multiply latency by ten; on this run their orchestration
+and reduced per-scenario search efficiency added roughly 14-22% over the
+same-run fresh path. This is encouraging for the product design, but real
+browser/device measurements remain the product decision evidence.
 
 Machine-readable details live in
 [`experiments/wasm-review-benchmark.json`](../experiments/wasm-review-benchmark.json).
