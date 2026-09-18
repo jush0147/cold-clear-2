@@ -1,0 +1,141 @@
+name: 200k lineage H9 vs H6C resume
+
+on:
+  push:
+    branches: [s2-strategy-clean]
+    paths:
+      - '.github/workflows/strategy-lineage-200k-h9-resume.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  batch:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        include:
+          - { id: b00, start: 47600 }
+          - { id: b01, start: 47605 }
+          - { id: b02, start: 47610 }
+          - { id: b03, start: 47615 }
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: lineage-h9-engine
+          path: frozen
+          github-token: ${{ github.token }}
+          run-id: 35357634194
+
+      - name: Verify frozen engine from successful A/A run
+        run: |
+          (cd frozen && sha256sum -c engine/manifest.sha256)
+          chmod +x frozen/engine/strategy_lineage_h9
+
+      - name: Run five fresh paired seeds at 200k
+        env:
+          ID: ${{ matrix.id }}
+          START: ${{ matrix.start }}
+        run: |
+          mkdir -p results
+          frozen/engine/strategy_lineage_h9 \
+            --cavity-excavation -0.5 \
+            --incumbent-cavity-excavation 0 \
+            --nodes 200000 \
+            --start "$START" \
+            --seeds 5 | tee "results/${ID}.jsonl"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lineage-h9-resume-${{ matrix.id }}
+          path: results/
+          if-no-files-found: error
+
+  summarize:
+    needs: batch
+    if: always() && needs.batch.result == 'success'
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: lineage-h9-resume-b*
+          path: combined
+          merge-multiple: true
+
+      - name: Summarize paired H9 vs H6C evidence
+        run: |
+          python3 - <<'PY'
+          import json, math
+          from pathlib import Path
+
+          games=[]
+          for path in sorted(Path('combined').glob('*.jsonl')):
+              for line in path.read_text().splitlines():
+                  obj=json.loads(line)
+                  if obj.get('type')=='game':
+                      games.append(obj)
+
+          pairs={}
+          for g in games:
+              pairs.setdefault(g['seed'], []).append(g)
+
+          cs=isw=split=malformed=0
+          depths=[]
+          for seed, gs in sorted(pairs.items()):
+              if len(gs)!=2:
+                  malformed+=1
+                  continue
+              wins=sum(g['winner']=='candidate' for g in gs)
+              if wins==2:
+                  cs+=1
+              elif wins==0:
+                  isw+=1
+              else:
+                  split+=1
+              for g in gs:
+                  depths.extend(g.get('max_search_depth', []))
+
+          n=cs+isw
+          k=min(cs,isw)
+          tail=sum(math.comb(n,i) for i in range(k+1))/(2**n) if n else 0.5
+          p=min(1.0,2*tail) if n else 1.0
+
+          summary={
+              'experiment':'200k lineage H9 vs H6C',
+              'candidate':'H9 cavity=-0.5 + H6C + H12',
+              'incumbent':'H6C cavity=0 + H12',
+              'nodes_per_move':200000,
+              'seed_start':47600,
+              'paired_seeds':len(pairs),
+              'games':len(games),
+              'candidate_wins':sum(g['winner']=='candidate' for g in games),
+              'incumbent_wins':sum(g['winner']=='incumbent' for g in games),
+              'candidate_sweeps':cs,
+              'incumbent_sweeps':isw,
+              'split_pairs':split,
+              'paired_exact_sign_p':p,
+              'malformed_pairs':malformed,
+              'all_reason_no_legal_placement':all(g.get('reason')=='no_legal_placement' for g in games),
+              'max_search_depth_range':[min(depths),max(depths)] if depths else None,
+              'source_engine_run':35357634194,
+              'source_engine_aa_control':'passed'
+          }
+          Path('summary.json').write_text(json.dumps(summary,indent=2)+'\n')
+          print(json.dumps(summary,indent=2))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lineage-h9-resume-summary
+          path: summary.json
+          if-no-files-found: error
