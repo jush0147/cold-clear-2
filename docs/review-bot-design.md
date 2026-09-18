@@ -251,6 +251,20 @@ uncertain and does not independently reconfirm the strong 10k-era promotion.
 There is no evidence of reversal, so continue to the independent lower link
 H6C-vs-H2 while keeping H9's high-compute status explicitly uncertain.
 
+A fresh 100-pair / 200-game confirmation on seeds 48000-48099 is now complete:
+
+- H9 won 117-83 games
+- paired sweeps 37-20, with 43 split pairs
+- effective sign-test pairs: 57
+- paired exact sign p = 0.033143967787505446
+- no malformed pairs; all 200 games ended normally by no legal placement
+
+This reconfirms H9 over H6C at 200k. The direction matches both the earlier
+200k screen and the historical 10k promotion. The result is conventionally
+significant, but not overwhelming: 43/100 pairs split and the final product
+evaluator directly depends on this top-line link. An independent fresh 100-pair
+replication is therefore justified by the predeclared borderline-extension rule.
+
 The second link is now also complete:
 
 - H6C (row-transition scale 2.5) vs H2 (scale 1.0), both with H12 and 200k nodes
