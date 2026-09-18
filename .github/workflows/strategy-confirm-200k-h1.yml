@@ -1,0 +1,184 @@
+name: 200k confirm H1 vs legacy
+
+on:
+  push:
+    branches: [s2-strategy-clean]
+    paths:
+      - '.github/workflows/strategy-confirm-200k-h1.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Generate corrected-core H1 lineage harness
+        run: python3 scripts/wire-lineage-h1-200k.py
+
+      - name: Verify current corrected core and harness
+        run: |
+          cargo test --release --lib
+          cargo test --release --bin strategy_lineage_h1
+
+      - name: Build frozen lineage engine
+        run: |
+          cargo build --release --bin strategy_lineage_h1
+          mkdir -p engine
+          cp target/release/strategy_lineage_h1 engine/
+          cp src/bin/strategy_lineage_h1.rs engine/
+          git rev-parse HEAD > engine/commit.txt
+          sha256sum engine/strategy_lineage_h1 engine/strategy_lineage_h1.rs > engine/manifest.sha256
+
+      - name: Run 200k A/A control
+        run: |
+          mkdir -p control
+          engine/strategy_lineage_h1 \
+            --pending-safety 0 \
+            --incumbent-pending-safety 0 \
+            --nodes 200000 \
+            --start 48590 \
+            --seeds 2 | tee control/aa.jsonl
+
+      - name: Upload frozen engine and A/A
+        uses: actions/upload-artifact@v4
+        with:
+          name: lineage-h1-engine
+          path: |
+            engine/
+            control/
+          if-no-files-found: error
+          retention-days: 7
+
+  batch:
+    needs: build
+    runs-on: ubuntu-22.04
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        include:
+          - { id: b00, start: 48600 }
+          - { id: b01, start: 48610 }
+          - { id: b02, start: 48620 }
+          - { id: b03, start: 48630 }
+          - { id: b04, start: 48640 }
+          - { id: b05, start: 48650 }
+          - { id: b06, start: 48660 }
+          - { id: b07, start: 48670 }
+          - { id: b08, start: 48680 }
+          - { id: b09, start: 48690 }
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: lineage-h1-engine
+          path: frozen
+
+      - name: Verify frozen A/A-checked engine
+        run: |
+          (cd frozen && sha256sum -c engine/manifest.sha256)
+          chmod +x frozen/engine/strategy_lineage_h1
+
+      - name: Run ten fresh paired seeds at 200k
+        env:
+          ID: ${{ matrix.id }}
+          START: ${{ matrix.start }}
+        run: |
+          mkdir -p results
+          frozen/engine/strategy_lineage_h1 \
+            --pending-safety 1.0 \
+            --incumbent-pending-safety 0.0 \
+            --nodes 200000 \
+            --start "$START" \
+            --seeds 10 | tee "results/${ID}.jsonl"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: confirm-200k-h1-${{ matrix.id }}
+          path: results/
+          if-no-files-found: error
+          retention-days: 7
+
+  summarize:
+    needs: [build, batch]
+    if: always() && needs.build.result == 'success' && needs.batch.result == 'success'
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: confirm-200k-h1-b*
+          path: combined
+          merge-multiple: true
+
+      - name: Summarize 100-pair H1 vs legacy confirmation
+        run: |
+          python3 - <<'PY'
+          import json, math
+          from pathlib import Path
+
+          games=[]
+          for path in sorted(Path('combined').glob('*.jsonl')):
+              for line in path.read_text().splitlines():
+                  obj=json.loads(line)
+                  if obj.get('type')=='game':
+                      games.append(obj)
+
+          pairs={}
+          for g in games:
+              pairs.setdefault(g['seed'], []).append(g)
+
+          cs=isw=split=malformed=0
+          for seed, gs in sorted(pairs.items()):
+              if len(gs)!=2:
+                  malformed+=1
+                  continue
+              wins=sum(g['winner']=='candidate' for g in gs)
+              if wins==2: cs+=1
+              elif wins==0: isw+=1
+              else: split+=1
+
+          n=cs+isw
+          k=min(cs,isw)
+          tail=sum(math.comb(n,i) for i in range(k+1))/(2**n) if n else 0.5
+          p=min(1.0,2*tail) if n else 1.0
+
+          summary={
+              'experiment':'200k confirm H1 vs corrected legacy',
+              'candidate':'H1 pending_safety=1.0; H2/H6C/H9 off; H12 on',
+              'incumbent':'pending_safety=0.0; H2/H6C/H9 off; H12 on',
+              'nodes_per_move':200000,
+              'seed_start':48600,
+              'paired_seeds':len(pairs),
+              'games':len(games),
+              'candidate_wins':sum(g['winner']=='candidate' for g in games),
+              'incumbent_wins':sum(g['winner']=='incumbent' for g in games),
+              'candidate_sweeps':cs,
+              'incumbent_sweeps':isw,
+              'split_pairs':split,
+              'effective_sign_pairs':n,
+              'paired_exact_sign_p':p,
+              'malformed_pairs':malformed,
+              'all_reason_no_legal_placement':all(g.get('reason')=='no_legal_placement' for g in games),
+          }
+          Path('summary.json').write_text(json.dumps(summary,indent=2)+'\n')
+          print(json.dumps(summary,indent=2))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: confirm-200k-h1-summary
+          path: summary.json
+          if-no-files-found: error
+          retention-days: 30
