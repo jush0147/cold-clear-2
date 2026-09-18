@@ -37,7 +37,9 @@ replay snapshot
 
 Do not rebuild from the replay snapshot after every bot move without a specific reason.
 
-This matters for correctness work such as H13. H13 fixes the case where a newly revealed NEXT piece replaces a speculative bag-average layer and the corrected value must backpropagate through the persistent DAG. The KO snapshot harness currently rebuilds the DAG through `set_forecast()` before each scored decision, so H13 is not observable there. That **does not** mean H13 is irrelevant to the intended interactive product path.
+This matters for correctness work such as H13. H13 fixes the case where a newly revealed NEXT piece replaces a speculative bag-average layer and the corrected value must backpropagate through the persistent DAG. The KO snapshot harness rebuilds the DAG through `set_forecast()` before each scored decision, so H13 is not observable there.
+
+**Repository-state warning:** the validated H13 patch currently exists in `scripts/wire-h13.py` / its experiment evidence, but the H13 core changes are not yet landed in the current `s2-strategy-clean` branch core. Persistent review therefore does not yet receive that correction. Land and regression-test H13 separately after the H9+H12 WASM parity/benchmark baseline is stable.
 
 See `experiments/h13-despeculate-backprop-plan.json` for the exact H13 evidence and limitation.
 
@@ -47,7 +49,7 @@ As of the H14 work:
 
 - scored strategy lineage currently used by the compute harness: **H9 + H12**
 - H12 is a correctness fix for stale best-child demotion/backprop
-- H13 is a latent persistent-DAG correctness fix, not a scored KO promotion
+- H13 is a latent persistent-DAG correctness fix, not a scored KO promotion; its patch is validated experimentally but not yet landed in the current branch core
 - the old 10k-node regime is now known to be compute-starved for review-style search
 
 H14 native results:
@@ -80,17 +82,22 @@ Fresh bridge run `35322969711` completed the adjacent-budget checks:
 
 Both comparisons still point toward more compute, but the adjacent-budget effects are much weaker than the earlier fresh 100k-vs-25k result (30-10; sweeps 11-1; p = 0.00634765625). This is **consistent with diminishing returns**, not proof that 50k is the exact strength knee.
 
-Do not spend another large native KO batch merely to force significance before measuring browser cost. The next product-relevant step is to make native and WASM use the same H9+H12 config and the same hard evaluator-node budget, then benchmark 25k/50k/100k latency on the actual browser path.
+Do not spend another large native KO batch merely to force significance before measuring browser cost. The H9+H12 config and hard-node API are now shared; the active next step is to validate the WASM build/benchmark, then measure 25k/50k/100k on representative desktop browsers before choosing a product budget.
 
 ## Native/WASM parity requirement
 
-Before using browser timing to choose a production budget, native H14 and the WASM review path must represent the **same bot** and the **same budget unit**.
+Before using browser timing to choose a production budget, native H14 and the WASM review path must represent the **same scored configuration** and the **same compute unit**.
 
-At the time this note was written, they do not.
+Current branch state:
 
-### Config mismatch
+- `BotConfig::review_h9_h12()` is now the canonical H9+H12 review configuration.
+- the H14 generator uses that shared config rather than duplicating evaluator constants.
+- `WasmBot` uses the same review config by default.
+- `WasmBot::think_nodes()` uses the same hard evaluator-node budget unit as H14.
+- pending `analysis.rs` also uses the same review config and hard total node budget.
+- the browser/Node benchmark workload uses SevenBag speculation rather than `Randomizer::Unknown`.
 
-H14 freezes the promoted H9 evaluator plus H12 corrected DAG, including:
+H14's scored configuration includes:
 
 - pending safety = 1.0
 - useful attack reward = 1.0
@@ -98,19 +105,16 @@ H14 freezes the promoted H9 evaluator plus H12 corrected DAG, including:
 - H9 cavity excavation = -0.5
 - H12 `dag_backprop_best_demotion = true`
 
-The current WASM `analysis.rs` constructs `BotConfig::default()`. Do not assume that is equivalent to the H14 configuration. In particular, the current default configuration does not encode the H9/H6C experimental values used by H14.
+### Remaining semantic differences
 
-The long-term fix should be one canonical review/strategy configuration shared by native strength experiments and WASM review code, rather than duplicated constants.
+Config/budget parity does **not** mean every review path is now byte-for-byte the H14 KO harness.
 
-### Budget mismatch
+- H14's KO `choose()` uses `Forecast::snapshot`; pending browser analysis retains its explicit pace/delay forecast model.
+- `WasmBot` only performs SevenBag speculation if the supplied `Start.randomizer` is `SevenBag`. `Randomizer::Unknown` deliberately disables speculation beyond visible preview.
+- replay integration must reconstruct `bag_state` only from already-observed piece history. Supplying hidden future randomizer state would violate the information boundary.
+- pending analysis still rebuilds separate scenario bots; the no-pending persistent `WasmBot` path is the relevant baseline for measuring DAG reuse.
 
-H14 uses a hard **evaluator-node budget per move** through limited search.
-
-The current WASM pending-analysis API accepts `iterations` and repeatedly calls `do_work()`. An iteration count is **not** the same quantity as H14's evaluator-node budget.
-
-Do not compare "25k" native results with "25k iterations" in WASM as if they were equivalent.
-
-The browser review API should expose or internally use the same hard node-budget semantics before latency/strength trade-offs are measured.
+Do not compare browser timings to H14 strength unless the tested workload reports the H9+H12 profile, hard node budget, and the intended randomizer/speculation mode.
 
 ## Performance decision model
 
