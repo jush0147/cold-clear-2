@@ -13,7 +13,7 @@ pub struct WasmBot { bot: Option<Bot>, config: Arc<BotConfig>, stats: Statistics
 impl WasmBot {
     #[wasm_bindgen(constructor)]
     pub fn new() -> WasmBot {
-        WasmBot { bot: None, config: Arc::new(BotConfig::review_h9_h12()), stats: Statistics::default() }
+        WasmBot { bot: None, config: Arc::new(BotConfig::interactive_review()), stats: Statistics::default() }
     }
 
     pub fn start(&mut self, start_json: &str) -> Result<(), JsValue> {
@@ -125,7 +125,8 @@ impl WasmBot {
             "normal_garbage_queue_primitives": true,
             "movement": "SRS+ CW/CCW/180 with Clutch spawn rescue; replay-fixture checked",
             "pending_forecast_api": "analyze_pending_json",
-            "config_profile": "h9+h12-review",
+            "config_profile": "h9+h12+h13-interactive",
+            "despeculation_backprop": true,
             "hard_node_budget": true,
             "persistent_dag": true,
             "clutch_clears": false,
