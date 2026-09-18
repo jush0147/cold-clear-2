@@ -243,7 +243,13 @@
           "all_reason_no_legal_placement": true
         },
         "confirmation_interpretation": "Fresh 100-pair confirmation retains H6C at 200k: 115-85 games, 33-18 paired sweeps, exact paired sign p=0.04887389231827033. Direction matches both the 20-pair 200k screen and the historical 10k promotion. Evidence is positive and conventionally significant, but the p-value is borderline and 49/100 pairs split.",
-        "extension_decision": "Pending explicit decision on whether to extend to 200 total paired seeds. The predeclared policy permits extension when the effect remains borderline and the product decision materially depends on it."
+        "extension_decision": "Pending explicit decision on whether to extend to 200 total paired seeds. The predeclared policy permits extension when the effect remains borderline and the product decision materially depends on it.",
+        "extension_run": 35387613300,
+        "extension_status": "running_or_queued",
+        "extension_seed_range": "48300-48399",
+        "extension_paired_seeds": 100,
+        "extension_games": 200,
+        "extension_method": "Independent fresh-seed replication triggered by predeclared borderline-extension rule. Interpret replication separately before any descriptive pooling with the first 100-pair confirmation."
       },
       {
         "id": "H2-vs-H1",
