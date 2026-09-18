@@ -1,6 +1,6 @@
 {
   "experiment": "200k promoted strategy lineage revalidation",
-  "status": "h6c_strong_positive_h2_vs_h1_next",
+  "status": "h2_vs_h1_running",
   "compute_regime": {
     "nodes_per_move": 200000,
     "reason": "provisional product default after H14 200k-vs-100k"
@@ -106,7 +106,7 @@
     },
     {
       "id": "H2-vs-H1",
-      "status": "prepared_to_run",
+      "status": "running",
       "candidate": {
         "pending_safety": 1,
         "useful_attack_reward": 1,
@@ -118,7 +118,21 @@
         "useful_attack_reward": 0,
         "row_transition_scale": 1,
         "h9_cavity_excavation": 0
-      }
+      },
+      "run": 35380734276,
+      "aa_control": {
+        "seed_start": 47790,
+        "paired_seeds": 2,
+        "attack_both": 0,
+        "cancel_both": 0
+      },
+      "validation": {
+        "seed_start": 47800,
+        "paired_seeds": 20,
+        "games": 40,
+        "batches": 4
+      },
+      "decision": "Treat this as fresh 200k directional revalidation of H2 useful attack over H1. Strong positive evidence retains H2; a clear reversal requires revisiting the promoted chain; weak positive/neutral evidence remains explicitly uncertain."
     },
     {
       "id": "H1-vs-legacy",
@@ -145,7 +159,12 @@
     "Do not run lower lineage links until the upper link result is known.",
     "Do not revive rejected H3-H11 hypotheses unless the promoted chain changes."
   ],
-  "active_run": null,
+  "active_run": {
+    "id": "H2-vs-H1",
+    "run": 35380734276,
+    "workflow_commit": "a61ed2f50417b109862e007cfa529bb13ddfe699",
+    "status": "running"
+  },
   "failed_runs": [
     {
       "run": 35357634194,
