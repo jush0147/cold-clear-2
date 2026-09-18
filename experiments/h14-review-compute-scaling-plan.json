@@ -223,15 +223,19 @@
     ],
     "native_sampling": "Pause additional large KO batches unless browser measurements show that a higher budget is practical and the remaining strength uncertainty matters for the product decision.",
     "wasm_baseline": {
-      "status": "fresh_no_pending_completed_pending_scenario_running",
-      "run": 35334313492,
+      "status": "node_wasm_fresh_and_pending_completed_browser_devices_pending",
+      "runs": [
+        35334313492,
+        35334761106
+      ],
       "config_profile": "h9+h12-review",
       "budgets": [
         25000,
         50000,
         100000
       ],
-      "note": "Fresh no-pending Node-WASM baseline is recorded in experiments/wasm-review-benchmark.json. Pending ten-scenario cost is being measured separately."
+      "finding": "100k was ~97-132ms in fresh Node-WASM across two CI runs; on the same second run active 8-line ten-scenario analysis was ~151ms, only ~14% slower than fresh. CI runner timing is not device evidence.",
+      "record": "experiments/wasm-review-benchmark.json"
     }
   }
 }
