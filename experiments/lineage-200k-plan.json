@@ -190,18 +190,34 @@
       {
         "id": "H9-vs-H6C",
         "screen_result": "24-16 games, 8-4 sweeps, 8 splits, p=0.3876953125",
-        "confirmation_needed": true
+        "confirmation_needed": true,
+        "confirmation_run": 35381400762,
+        "confirmation_status": "running",
+        "confirmation_seed_range": "48000-48099",
+        "confirmation_paired_seeds": 100,
+        "confirmation_games": 200
       },
       {
         "id": "H6C-vs-H2",
         "screen_result": "27-13 games, 9-2 sweeps, 9 splits, p=0.0654296875",
-        "confirmation_needed": true
+        "confirmation_needed": true,
+        "confirmation_run": 35381405495,
+        "confirmation_status": "running",
+        "confirmation_seed_range": "48100-48199",
+        "confirmation_paired_seeds": 100,
+        "confirmation_games": 200
       },
       {
         "id": "H2-vs-H1",
         "screen_result": "pending",
         "confirmation_needed": "decide_after_screen"
       }
-    ]
+    ],
+    "execution_change": {
+      "timing": "recorded before H2-vs-H1 screen result",
+      "reason": "H9-vs-H6C and H6C-vs-H2 candidates/configurations are already frozen; their large fresh-seed confirmations are independent of the still-running H2-vs-H1 screen, so run them in parallel to reduce wall-clock time.",
+      "concurrency": "Each confirmation uses 10 batches x 10 paired seeds with max-parallel=5. H2-vs-H1 screen may run concurrently.",
+      "storage": "Per-batch artifacts retain 7 days; summary artifacts retain 30 days."
+    }
   }
 }
