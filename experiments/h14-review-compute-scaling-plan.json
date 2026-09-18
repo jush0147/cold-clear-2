@@ -1,6 +1,6 @@
 {
   "experiment": "H14 review compute scaling",
-  "status": "screen_completed_validation_planned",
+  "status": "fresh_validation_completed_bridge_planned",
   "question": "With evaluator, rules, visible information and hidden-garbage treatment frozen, does giving the review bot more evaluator-node compute per move improve KO strength?",
   "incumbent": {
     "name": "H9 + H12 corrected core",
@@ -123,6 +123,66 @@
         "purpose": "fresh-seed test of whether substantial quality headroom remains above 25k"
       }
     ],
-    "decision_rule": "Treat the 25k-vs-10k batch as the confirmatory compute-scaling test. Treat 100k-vs-25k as a marginal-compute/headroom test, not as a substitute confirmation. Do not infer 50k placement from transitivity. If 25k confirms and 100k does not clearly beat 25k, prefer 25k as the provisional review budget. If 100k clearly beats 25k, run a later 50k bridge test before choosing a review budget."
+    "decision_rule": "Treat the 25k-vs-10k batch as the confirmatory compute-scaling test. Treat 100k-vs-25k as a marginal-compute/headroom test, not as a substitute confirmation. Do not infer 50k placement from transitivity. If 25k confirms and 100k does not clearly beat 25k, prefer 25k as the provisional review budget. If 100k clearly beats 25k, run a later 50k bridge test before choosing a review budget.",
+    "results": {
+      "confirm-25k-vs-10k": {
+        "run": 35317721601,
+        "seeds": "47100-47119",
+        "paired_seeds": 20,
+        "games": 40,
+        "candidate_wins": 29,
+        "incumbent_wins": 11,
+        "candidate_sweeps": 9,
+        "incumbent_sweeps": 0,
+        "split_pairs": 11,
+        "paired_exact_sign_p": 0.00390625,
+        "max_search_depth": [
+          9,
+          12
+        ]
+      },
+      "headroom-100k-vs-25k": {
+        "run": 35317721601,
+        "seeds": "47200-47219",
+        "paired_seeds": 20,
+        "games": 40,
+        "candidate_wins": 30,
+        "incumbent_wins": 10,
+        "candidate_sweeps": 11,
+        "incumbent_sweeps": 1,
+        "split_pairs": 8,
+        "paired_exact_sign_p": 0.00634765625,
+        "max_search_depth": [
+          10,
+          14
+        ]
+      }
+    },
+    "interpretation": "The 25k budget independently confirms a large improvement over 10k, and 100k independently shows substantial additional headroom over 25k. Therefore 25k is not the compute-strength knee for this native KO harness. The next question is where the gain saturates between 25k and 100k."
+  },
+  "bridge": {
+    "status": "planned",
+    "frozen_engine_run": 35315507874,
+    "comparisons": [
+      {
+        "id": "50k-vs-25k",
+        "candidate_nodes": 50000,
+        "incumbent_nodes": 25000,
+        "seed_start": 47300,
+        "paired_seeds": 20,
+        "games": 40,
+        "purpose": "measure the first half of remaining compute headroom"
+      },
+      {
+        "id": "100k-vs-50k",
+        "candidate_nodes": 100000,
+        "incumbent_nodes": 50000,
+        "seed_start": 47400,
+        "paired_seeds": 20,
+        "games": 40,
+        "purpose": "measure the second half and locate the practical strength knee"
+      }
+    ],
+    "interpretation_rule": "Do not choose a browser/WASM production budget from native strength alone. Use these bridge tests to map the strength curve, then benchmark the exact same H9+H12 configuration and hard node budgets in browser WebAssembly on target devices."
   }
 }
