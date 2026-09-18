@@ -3,8 +3,24 @@ name: wasm
 on:
   push:
     branches: [main, wasm-port, tetrio-s2, s2-strategy-clean]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'scripts/wasm-*.mjs'
+      - 'benches/wasm-review.html'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - '.github/workflows/wasm.yml'
   pull_request:
     branches: [main, wasm-port]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'scripts/wasm-*.mjs'
+      - 'benches/wasm-review.html'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - '.github/workflows/wasm.yml'
   workflow_dispatch:
 
 permissions:
