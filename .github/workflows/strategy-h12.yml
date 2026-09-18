@@ -29,8 +29,8 @@ jobs:
 
       - name: Reproduce and fix demoted-best regression
         run: |
-          cargo test --release h12_demoted_best_requires_parent_recompute -- --exact --nocapture
-          cargo test --release h12_nonbest_change_that_stays_nonbest_needs_no_parent_recompute -- --exact --nocapture
+          cargo test --release --lib dag::h12_tests::h12_demoted_best_requires_parent_recompute -- --exact --nocapture
+          cargo test --release --lib dag::h12_tests::h12_nonbest_change_that_stays_nonbest_needs_no_parent_recompute -- --exact --nocapture
 
       - name: Check H12 harness and full library regressions
         run: |
