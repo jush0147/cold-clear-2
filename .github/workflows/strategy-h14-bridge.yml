@@ -1,9 +1,5 @@
 name: H14 compute bridge
 on:
-  push:
-    branches: [s2-strategy-clean]
-    paths:
-      - '.github/workflows/strategy-h14-bridge.yml'
   workflow_dispatch:
 permissions:
   contents: read
