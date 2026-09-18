@@ -100,7 +100,7 @@
   "rationale": "Review is not constrained by live-player placement latency. Before inventing another evaluator feature, measure whether the existing H9+H12 engine is simply compute-limited, especially because visible incoming garbage splits the total budget across ten hole scenarios.",
   "h13_context": "H13 remains a persistent-DAG correctness fix but is unobservable in the current snapshot/forecast harness because choose() rebuilds the DAG via set_forecast() before each scored search. H14 therefore freezes the scored H9+H12 core rather than changing persistence semantics.",
   "validation": {
-    "status": "planned",
+    "status": "completed",
     "frozen_engine_run": 35315507874,
     "frozen_engine_commit": "074e8c3be2db249ca313fa74b229008f47e2ea8d",
     "comparisons": [
@@ -161,7 +161,7 @@
     "interpretation": "The 25k budget independently confirms a large improvement over 10k, and 100k independently shows substantial additional headroom over 25k. Therefore 25k is not the compute-strength knee for this native KO harness. The next question is where the gain saturates between 25k and 100k."
   },
   "bridge": {
-    "status": "planned",
+    "status": "completed",
     "frozen_engine_run": 35315507874,
     "comparisons": [
       {
@@ -221,6 +221,17 @@
       "Benchmark fresh-snapshot and persistent-session latency at 25k, 50k, 100k (and higher only if justified) in desktop browsers first, then representative mobile.",
       "Do not call 50k the final production budget until strength and browser-latency curves are considered together."
     ],
-    "native_sampling": "Pause additional large KO batches unless browser measurements show that a higher budget is practical and the remaining strength uncertainty matters for the product decision."
+    "native_sampling": "Pause additional large KO batches unless browser measurements show that a higher budget is practical and the remaining strength uncertainty matters for the product decision.",
+    "wasm_baseline": {
+      "status": "fresh_no_pending_completed_pending_scenario_running",
+      "run": 35334313492,
+      "config_profile": "h9+h12-review",
+      "budgets": [
+        25000,
+        50000,
+        100000
+      ],
+      "note": "Fresh no-pending Node-WASM baseline is recorded in experiments/wasm-review-benchmark.json. Pending ten-scenario cost is being measured separately."
+    }
   }
 }
