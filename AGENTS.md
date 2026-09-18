@@ -15,3 +15,4 @@ For any work on TETR.IO TL S2 strategy, KO experiments, replay review, Cold Clea
 The repository documents are the continuity source of truth when chat context and summaries disagree.
 10. Browser performance evidence lives in `experiments/wasm-browser-devices.json`. Prefer downloadable benchmark JSON over copied page output, and do not treat one run's device ordering as a pure CPU ranking.
 11. H14 has a fresh 200k-vs-100k headroom probe on seeds 47500-47519; check `experiments/h14-review-compute-scaling-plan.json` and the latest Actions run before launching more compute tests.
+12. After compute testing, follow the ordered roadmap in `docs/review-bot-design.md` under **Canonical product roadmap after compute testing**; do not skip directly from strength experiments to UI integration.
