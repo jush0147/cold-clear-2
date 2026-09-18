@@ -268,13 +268,20 @@ for path in [known_path, spec_path]:
     s = s.replace(old, new, 1)
 
     old = 'let is_best = update_child(children, update.mv, child_eval);' if path == known_path else 'let is_best = update_child(list, update.mv, child_eval);'
-    new = (
-        'let is_best = update_child(\\n                children,\\n                update.mv,\\n                child_eval,\\n                backprop_best_demotion,\\n            );'
-        if path == known_path else
-        'let is_best = update_child(\\n                list,\\n                update.mv,\\n                child_eval,\\n                backprop_best_demotion,\\n            );'
-    )
-    # Keep real newlines rather than literal backslash-n.
-    new = new.replace('\\\\n', '\n')
+    if path == known_path:
+        new = '''let is_best = update_child(
+                children,
+                update.mv,
+                child_eval,
+                backprop_best_demotion,
+            );'''
+    else:
+        new = '''let is_best = update_child(
+                list,
+                update.mv,
+                child_eval,
+                backprop_best_demotion,
+            );'''
     if old not in s:
         raise SystemExit(f'update_child call not found in {path}')
     s = s.replace(old, new, 1)
