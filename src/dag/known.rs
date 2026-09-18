@@ -7,7 +7,8 @@ use crate::data::{GameState, Piece, Placement};
 use crate::map::StateMap;
 
 use super::{
-    update_child, BackpropUpdate, Child, ChildData, Evaluation, LayerCommon, SelectResult,
+    update_child, BackpropUpdate, Child, ChildData, DirectBackpropUpdate, Evaluation,
+    LayerCommon, SelectResult,
 };
 
 pub(super) struct Layer<'bump, E: Evaluation> {
@@ -154,6 +155,50 @@ impl<'bump, E: Evaluation> Layer<'bump, E> {
         }
 
         next
+    }
+
+    pub fn backprop_direct(
+        &self,
+        to_update: Vec<DirectBackpropUpdate<E>>,
+        backprop_best_demotion: bool,
+    ) -> Vec<DirectBackpropUpdate<E>> {
+        puffin::profile_function!();
+        let mut new_updates = vec![];
+
+        for update in to_update {
+            if update.speculation_piece != self.piece {
+                continue;
+            }
+
+            let mut parent = self.states.get_raw_mut(update.parent).unwrap();
+            let children = parent.children.as_mut().unwrap();
+
+            let affects_parent = update_child(
+                children,
+                update.mv,
+                update.child_eval,
+                backprop_best_demotion,
+            );
+
+            if affects_parent {
+                let eval = children[0].cached_eval;
+
+                if parent.eval != eval {
+                    parent.eval = eval;
+
+                    for &(parent, mv, speculation_piece) in parent.parents {
+                        new_updates.push(DirectBackpropUpdate {
+                            parent,
+                            mv,
+                            speculation_piece,
+                            child_eval: eval,
+                        });
+                    }
+                }
+            }
+        }
+
+        new_updates
     }
 
     pub fn backprop(

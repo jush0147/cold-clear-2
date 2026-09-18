@@ -74,6 +74,13 @@ struct BackpropUpdate {
     child: u64,
 }
 
+struct DirectBackpropUpdate<E: Evaluation> {
+    parent: u64,
+    speculation_piece: Piece,
+    mv: Placement,
+    child_eval: E,
+}
+
 impl<E: Evaluation> Dag<E> {
     pub fn new(root: GameState, queue: &[Piece]) -> Self {
         let mut top_layer = LayerCommon::default();
@@ -81,7 +88,7 @@ impl<E: Evaluation> Dag<E> {
 
         let mut layer = &mut top_layer;
         for &piece in queue {
-            layer.kind.despeculate(piece);
+            let _ = layer.kind.despeculate(piece, false);
             layer = &mut layer.next_layer;
         }
 
@@ -106,15 +113,49 @@ impl<E: Evaluation> Dag<E> {
         self.top_layer.kind.initialize_root(&self.root);
     }
 
-    pub fn add_piece(&mut self, piece: Piece) {
+    pub fn add_piece(
+        &mut self,
+        piece: Piece,
+        backprop_despeculated_values: bool,
+        backprop_best_demotion: bool,
+    ) {
         puffin::profile_function!();
-        let mut layer = &mut self.top_layer;
-        loop {
-            if layer.kind.despeculate(piece) {
-                // TODO: backprop despeculated values
-                return;
+
+        let (known_depth, mut updates) = {
+            let mut known_depth = 0usize;
+            let mut layer = &mut self.top_layer;
+            loop {
+                if let Some(updates) =
+                    layer.kind.despeculate(piece, backprop_despeculated_values)
+                {
+                    break (known_depth, updates);
+                }
+                known_depth += 1;
+                layer = &mut layer.next_layer;
             }
-            layer = &mut layer.next_layer;
+        };
+
+        if !backprop_despeculated_values || updates.is_empty() {
+            return;
+        }
+
+        // Every layer before the first speculative layer is known. Walk that
+        // prefix again from the root, then propagate the revealed-piece value
+        // changes from the boundary back toward the root.
+        let mut layers = Vec::with_capacity(known_depth);
+        let mut layer = &*self.top_layer;
+        for _ in 0..known_depth {
+            layers.push(layer);
+            layer = &layer.next_layer;
+        }
+
+        for layer in layers.into_iter().rev() {
+            updates = layer
+                .kind
+                .backprop_direct(updates, backprop_best_demotion);
+            if updates.is_empty() {
+                break;
+            }
         }
     }
 
@@ -190,6 +231,18 @@ impl<E: Evaluation> Selection<'_, E> {
     }
 }
 
+fn despeculated_node_eval<E: Evaluation>(
+    old_eval: E,
+    children: Option<&[Child<E>]>,
+) -> E {
+    match children {
+        Some(children) => {
+            E::average(std::iter::once(children.first().map(|c| c.cached_eval)))
+        }
+        None => old_eval,
+    }
+}
+
 fn update_child<E: Evaluation>(
     list: &mut [Child<E>],
     placement: Placement,
@@ -251,6 +304,22 @@ impl<E: Evaluation> WithBump<E> {
         })
     }
 
+    fn backprop_direct(
+        &self,
+        to_update: Vec<DirectBackpropUpdate<E>>,
+        backprop_best_demotion: bool,
+    ) -> Vec<DirectBackpropUpdate<E>> {
+        puffin::profile_function!();
+        self.with(|this| match this.data {
+            LayerKind::Known(l) => {
+                l.backprop_direct(to_update, backprop_best_demotion)
+            }
+            LayerKind::Speculated(_) => {
+                unreachable!("layers before the first speculative layer must be known")
+            }
+        })
+    }
+
     fn piece(&self) -> Option<Piece> {
         self.with(|this| match this.data {
             LayerKind::Known(l) => Some(l.piece),
@@ -288,27 +357,48 @@ impl<E: Evaluation> WithBump<E> {
         })
     }
 
-    fn despeculate(&mut self, piece: Piece) -> bool {
+    fn despeculate(
+        &mut self,
+        piece: Piece,
+        backprop_despeculated_values: bool,
+    ) -> Option<Vec<DirectBackpropUpdate<E>>> {
         puffin::profile_function!();
         self.with_mut(|this| {
             let old = match this.data {
-                LayerKind::Known(_) => return false,
+                LayerKind::Known(_) => return None,
                 LayerKind::Speculated(l) => std::mem::take(l),
             };
 
-            let layer = known::Layer {
-                states: old.states.map_values(|node| known::Node {
+            let mut updates = vec![];
+            let states = old.states.map_values(|node| {
+                let children = node.children.map(|v| v.into_children(piece));
+                let eval = if backprop_despeculated_values {
+                    despeculated_node_eval(node.eval, children.as_deref())
+                } else {
+                    node.eval
+                };
+
+                if backprop_despeculated_values && eval != node.eval {
+                    for &(parent, mv, speculation_piece) in node.parents {
+                        updates.push(DirectBackpropUpdate {
+                            parent,
+                            mv,
+                            speculation_piece,
+                            child_eval: eval,
+                        });
+                    }
+                }
+
+                known::Node {
                     parents: node.parents,
-                    eval: node.eval,
-                    children: node.children.map(|v| v.into_children(piece)),
+                    eval,
+                    children,
                     expanding: node.expanding,
-                }),
-                piece,
-            };
+                }
+            });
 
-            *this.data = LayerKind::Known(layer);
-
-            true
+            *this.data = LayerKind::Known(known::Layer { states, piece });
+            Some(updates)
         })
     }
 
@@ -415,5 +505,75 @@ mod h12_tests {
         assert!(!update_child(&mut list, placement(1), TestEval(9), true));
         assert_eq!(list[0].cached_eval, TestEval(10));
         assert_eq!(list[1].cached_eval, TestEval(9));
+    }
+}
+
+#[cfg(test)]
+mod h13_tests {
+    use super::*;
+    use crate::data::{PieceLocation, Rotation, Spin};
+
+    #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
+    struct TestEval(i32);
+
+    #[derive(Clone, Copy, Debug)]
+    struct TestReward(i32);
+
+    impl std::ops::Add<TestReward> for TestEval {
+        type Output = Self;
+        fn add(self, rhs: TestReward) -> Self { TestEval(self.0 + rhs.0) }
+    }
+
+    impl Evaluation for TestEval {
+        type Reward = TestReward;
+        fn scalar(self) -> f32 { self.0 as f32 }
+        fn average(of: impl Iterator<Item = Option<Self>>) -> Self {
+            let values: Vec<_> = of.collect();
+            let sum: i32 = values
+                .iter()
+                .map(|v| v.unwrap_or(TestEval(-1_000_000)).0)
+                .sum();
+            TestEval(sum / values.len() as i32)
+        }
+    }
+
+    fn placement(x: i8) -> Placement {
+        Placement {
+            location: PieceLocation {
+                piece: Piece::T,
+                rotation: Rotation::North,
+                x,
+                y: 0,
+            },
+            spin: Spin::None,
+        }
+    }
+
+    #[test]
+    fn h13_revealed_piece_replaces_speculative_average_with_known_best() {
+        let children = [
+            Child {
+                mv: placement(0),
+                reward: TestReward(0),
+                cached_eval: TestEval(9),
+            },
+            Child {
+                mv: placement(1),
+                reward: TestReward(0),
+                cached_eval: TestEval(7),
+            },
+        ];
+        assert_eq!(
+            despeculated_node_eval(TestEval(50), Some(&children)),
+            TestEval(9)
+        );
+    }
+
+    #[test]
+    fn h13_unexpanded_despeculated_node_keeps_existing_eval() {
+        assert_eq!(
+            despeculated_node_eval::<TestEval>(TestEval(13), None),
+            TestEval(13)
+        );
     }
 }

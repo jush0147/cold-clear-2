@@ -31,9 +31,13 @@ impl Mode for Freestyle {
         None
     }
 
-    fn new_piece(&mut self, _options: &BotOptions, piece: Piece) {
+    fn new_piece(&mut self, options: &BotOptions, piece: Piece) {
         puffin::profile_function!();
-        self.dag.add_piece(piece);
+        self.dag.add_piece(
+            piece,
+            options.config.dag_backprop_despeculated_values,
+            options.config.dag_backprop_best_demotion,
+        );
     }
 
     fn suggest(&self, _options: &BotOptions) -> Vec<Placement> {

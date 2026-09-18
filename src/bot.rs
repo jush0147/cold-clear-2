@@ -37,6 +37,11 @@ pub struct BotConfig {
     /// False preserves legacy CC2 behavior.
     #[serde(default)]
     pub dag_backprop_best_demotion: bool,
+    /// H13: when a new preview piece turns the boundary layer from speculative
+    /// to known, replace bag-average values with that piece's known value and
+    /// propagate the change toward the root. False preserves pre-H13 behavior.
+    #[serde(default)]
+    pub dag_backprop_despeculated_values: bool,
 }
 impl Default for BotConfig {
     fn default() -> Self {
