@@ -265,6 +265,19 @@ Interpretation: H6C shows a strong positive high-compute direction but the
 Continue to H2-vs-H1 while retaining H6C directionally rather than overstating
 the result.
 
+The third promoted-chain link is now complete:
+
+- H2 (useful attack reward 1.0) vs H1 (0.0), both with H12 and 200k nodes
+- fresh seeds 47800-47819
+- 32-8 games for H2
+- paired sweeps 14-2, 4 split pairs
+- paired exact sign p = 0.004180908203125
+- no malformed pairs; all 40 games ended normally by no legal placement
+
+Interpretation: unlike the upper two links, H2 is clearly reconfirmed directionally
+at 200k even on the 20-pair screen. It still receives the same planned 100-pair
+fresh confirmation so all retained lineage links have comparable high-compute evidence.
+
 3. **Unify pending garbage with the persistent interactive review session.**
    Today these capabilities are split:
    - persistent `WasmBot`: H9+H12+H13 with preserved DAG, but no pending
