@@ -1,0 +1,52 @@
+{
+  "benchmark": "WASM browser device measurements",
+  "status": "three_real_devices_recorded_200k_pending",
+  "devices": [
+    {
+      "label": "i5-1135G7 unplugged",
+      "browser": "Chrome 152",
+      "hardware_concurrency": 8,
+      "fresh_100k_ms": 205.0,
+      "pending_100k_ms": 227.1,
+      "persistent_5_step_100k": {
+        "search_ms": 1055.1,
+        "advance_refill_ms": 13.0,
+        "interaction_ms": 1071.4
+      }
+    },
+    {
+      "label": "Ryzen 3 2200G",
+      "browser": "Chrome 152",
+      "hardware_concurrency": 4,
+      "fresh_100k_ms": 193.4,
+      "pending_100k_ms": 207.8,
+      "persistent_5_step_100k": {
+        "search_ms": 997.8,
+        "advance_refill_ms": 14.0,
+        "interaction_ms": 1011.8
+      }
+    },
+    {
+      "label": "Galaxy S24",
+      "browser": "Samsung Internet 30 / Chromium 143",
+      "hardware_concurrency": 8,
+      "fresh_100k_ms": 128.7,
+      "pending_100k_ms": 150.6,
+      "persistent_5_step_100k": {
+        "search_ms": 722.6,
+        "advance_refill_ms": 11.7,
+        "interaction_ms": 734.3
+      }
+    }
+  ],
+  "interpretation": [
+    "100k remains interactive on all three tested devices.",
+    "The slowest observed fresh 100k median is about 205 ms.",
+    "Galaxy S24 is fastest in these measurements, but browser/runtime differences prevent attributing the entire gap to CPU architecture."
+  ],
+  "next": [
+    "Run 200k on the same representative devices.",
+    "Use downloadable benchmark JSON for all future device evidence.",
+    "Only then decide whether a fresh 200k-vs-100k KO probe is worth the CI cost."
+  ]
+}
