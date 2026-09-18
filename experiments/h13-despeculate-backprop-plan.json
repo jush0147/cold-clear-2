@@ -1,10 +1,10 @@
 {
   "experiment": "H13 revealed-piece despeculation backprop correctness",
-  "status": "planned",
+  "status": "screening_running",
   "incumbent": {
     "name": "H9 + H12 corrected DAG",
-    "pending_safety": 1.0,
-    "useful_attack_reward": 1.0,
+    "pending_safety": 1,
+    "useful_attack_reward": 1,
     "row_transition_scale": 2.5,
     "h9_cavity_excavation": -0.5,
     "dag_backprop_best_demotion": true,
@@ -18,7 +18,9 @@
     "paired_seeds": 40,
     "games": 80,
     "seed_start": 46000,
-    "nodes_per_move": 10000
+    "nodes_per_move": 10000,
+    "run": 35310736516,
+    "workflow_commit": "b583bdc8637a90bcbf7671a20f4f8e4645e9a8c7"
   },
   "protocol": {
     "preview": "current + NEXT5, refreshed after every lock",
@@ -31,5 +33,13 @@
     "same_search_exploitation": "ln(2)",
     "opponent_board_visible_to_bot": false
   },
-  "decision_rule": "H13 is a correctness fix, not a heuristic. Require targeted regression tests plus full regressions. If KO screening is not catastrophically negative, validate on fresh seeds. Promotion is recorded as corrected-core behavior, with strength claims kept separate."
+  "decision_rule": "H13 is a correctness fix, not a heuristic. Require targeted regression tests plus full regressions. If KO screening is not catastrophically negative, validate on fresh seeds. Promotion is recorded as corrected-core behavior, with strength claims kept separate.",
+  "failed_runs": [
+    {
+      "run": 35310242251,
+      "evidence_games": 0,
+      "reason": "Dag::new initial queue caller still used the pre-H13 despeculate(piece) signature; compile failed before strategy evidence"
+    }
+  ],
+  "generator_fix_commit": "b583bdc8637a90bcbf7671a20f4f8e4645e9a8c7"
 }
