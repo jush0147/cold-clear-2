@@ -1,0 +1,49 @@
+name: FT7 APP diagnostic
+
+on:
+  push:
+    branches: [s2-strategy-clean]
+    paths:
+      - 'src/bin/diagnostic_ft7_app.rs'
+      - '.github/workflows/diagnostic-ft7-app.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ft7:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Test diagnostic harness
+        run: cargo test --release --bin diagnostic_ft7_app
+
+      - name: Run best vs corrected legacy FT7 at 200k
+        run: |
+          mkdir -p results
+          cargo run --release --bin diagnostic_ft7_app -- \
+            --start 49000 \
+            --target 7 \
+            --nodes 200000 | tee results/ft7.jsonl
+
+      - name: Extract match summary
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          rows=[json.loads(x) for x in Path('results/ft7.jsonl').read_text().splitlines()]
+          summary=next(x for x in rows if x.get('type')=='match_summary')
+          Path('results/summary.json').write_text(json.dumps(summary,indent=2)+'\n')
+          print(json.dumps(summary,indent=2))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ft7-app-diagnostic
+          path: results/
+          if-no-files-found: error
+          retention-days: 30
