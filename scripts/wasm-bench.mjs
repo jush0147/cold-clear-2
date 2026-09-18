@@ -147,7 +147,7 @@ function summarizePersistent(nodeBudget, sessions) {
 freshSample(5000);
 pendingSample(5000);
 
-const budgets = [25000, 50000, 100000];
+const budgets = [25000, 50000, 100000, 200000];
 const repeats = 3;
 const fresh = [];
 const pending = [];
