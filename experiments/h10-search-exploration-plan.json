@@ -1,12 +1,12 @@
 {
   "experiment": "H10 search exploitation/exploration",
-  "status": "confirmation_started",
+  "status": "completed",
   "incumbent": {
     "name": "H9",
-    "pending_safety": 1.0,
-    "useful_attack_reward": 1.0,
+    "pending_safety": 1,
+    "useful_attack_reward": 1,
     "row_transition_scale": 2.5,
-    "combo_scale": 1.0,
+    "combo_scale": 1,
     "h9_cavity_excavation": -0.5,
     "freestyle_exploitation": 0.6931471805599453
   },
@@ -27,14 +27,78 @@
     "seed_start": 40000,
     "nodes_per_move": 10000,
     "results": {
-      "0.25": {"exploitation": 0.2876820724517809, "candidate": 14, "incumbent": 26, "candidate_sweeps": 2, "incumbent_sweeps": 8, "split": 10, "paired_p": 0.109375},
-      "0.35": {"exploitation": 0.4307829160924542, "candidate": 18, "incumbent": 22, "candidate_sweeps": 4, "incumbent_sweeps": 6, "split": 10, "paired_p": 0.75390625},
-      "0.40": {"exploitation": 0.5108256237659907, "candidate": 25, "incumbent": 15, "candidate_sweeps": 6, "incumbent_sweeps": 1, "split": 13, "paired_p": 0.125},
-      "0.45": {"exploitation": 0.5978370007556204, "candidate": 17, "incumbent": 23, "candidate_sweeps": 5, "incumbent_sweeps": 8, "split": 7, "paired_p": 0.5810546875},
-      "0.55": {"exploitation": 0.7985076962177716, "candidate": 25, "incumbent": 15, "candidate_sweeps": 7, "incumbent_sweeps": 2, "split": 11, "paired_p": 0.1796875},
-      "0.60": {"exploitation": 0.916290731874155, "candidate": 19, "incumbent": 21, "candidate_sweeps": 4, "incumbent_sweeps": 5, "split": 11, "paired_p": 1.0},
-      "0.65": {"exploitation": 1.0498221244986778, "candidate": 10, "incumbent": 30, "candidate_sweeps": 1, "incumbent_sweeps": 11, "split": 8, "paired_p": 0.00634765625},
-      "0.75": {"exploitation": 1.3862943611198906, "candidate": 12, "incumbent": 28, "candidate_sweeps": 1, "incumbent_sweeps": 9, "split": 10, "paired_p": 0.021484375}
+      "0.25": {
+        "exploitation": 0.2876820724517809,
+        "candidate": 14,
+        "incumbent": 26,
+        "candidate_sweeps": 2,
+        "incumbent_sweeps": 8,
+        "split": 10,
+        "paired_p": 0.109375
+      },
+      "0.35": {
+        "exploitation": 0.4307829160924542,
+        "candidate": 18,
+        "incumbent": 22,
+        "candidate_sweeps": 4,
+        "incumbent_sweeps": 6,
+        "split": 10,
+        "paired_p": 0.75390625
+      },
+      "0.40": {
+        "exploitation": 0.5108256237659907,
+        "candidate": 25,
+        "incumbent": 15,
+        "candidate_sweeps": 6,
+        "incumbent_sweeps": 1,
+        "split": 13,
+        "paired_p": 0.125
+      },
+      "0.45": {
+        "exploitation": 0.5978370007556204,
+        "candidate": 17,
+        "incumbent": 23,
+        "candidate_sweeps": 5,
+        "incumbent_sweeps": 8,
+        "split": 7,
+        "paired_p": 0.5810546875
+      },
+      "0.55": {
+        "exploitation": 0.7985076962177716,
+        "candidate": 25,
+        "incumbent": 15,
+        "candidate_sweeps": 7,
+        "incumbent_sweeps": 2,
+        "split": 11,
+        "paired_p": 0.1796875
+      },
+      "0.60": {
+        "exploitation": 0.916290731874155,
+        "candidate": 19,
+        "incumbent": 21,
+        "candidate_sweeps": 4,
+        "incumbent_sweeps": 5,
+        "split": 11,
+        "paired_p": 1
+      },
+      "0.65": {
+        "exploitation": 1.0498221244986778,
+        "candidate": 10,
+        "incumbent": 30,
+        "candidate_sweeps": 1,
+        "incumbent_sweeps": 11,
+        "split": 8,
+        "paired_p": 0.00634765625
+      },
+      "0.75": {
+        "exploitation": 1.3862943611198906,
+        "candidate": 12,
+        "incumbent": 28,
+        "candidate_sweeps": 1,
+        "incumbent_sweeps": 9,
+        "split": 10,
+        "paired_p": 0.021484375
+      }
     },
     "interpretation": "Both extremes were harmful. The tied screening leaders were 40% and 55%, but nearby points did not reproduce the advantage, so screening alone did not identify a stable monotonic direction."
   },
@@ -48,8 +112,24 @@
     "seed_start": 41000,
     "nodes_per_move": 10000,
     "results": {
-      "0.40": {"exploitation": 0.5108256237659907, "candidate": 40, "incumbent": 40, "candidate_sweeps": 10, "incumbent_sweeps": 10, "split": 20, "paired_p": 1.0},
-      "0.55": {"exploitation": 0.7985076962177716, "candidate": 46, "incumbent": 34, "candidate_sweeps": 12, "incumbent_sweeps": 6, "split": 22, "paired_p": 0.237884521484375}
+      "0.40": {
+        "exploitation": 0.5108256237659907,
+        "candidate": 40,
+        "incumbent": 40,
+        "candidate_sweeps": 10,
+        "incumbent_sweeps": 10,
+        "split": 20,
+        "paired_p": 1
+      },
+      "0.55": {
+        "exploitation": 0.7985076962177716,
+        "candidate": 46,
+        "incumbent": 34,
+        "candidate_sweeps": 12,
+        "incumbent_sweeps": 6,
+        "split": 22,
+        "paired_p": 0.237884521484375
+      }
     },
     "interpretation": "The 40% exploration-heavy screen winner regressed exactly to 40:40. The 55% slightly greedier candidate remained positive at 46:34 and is the pre-fixed finalist. This does not establish a general monotonic benefit of greedier search; it only justifies confirming the fixed 55% setting."
   },
@@ -69,7 +149,21 @@
     "games": 400,
     "nodes_per_move": 10000,
     "candidate_exploitation": 0.7985076962177716,
-    "incumbent_exploitation": 0.6931471805599453
+    "incumbent_exploitation": 0.6931471805599453,
+    "candidate_wins": 197,
+    "incumbent_wins": 203,
+    "candidate_win_rate": 0.4925,
+    "candidate_sweeps": 45,
+    "incumbent_sweeps": 48,
+    "split_pairs": 107,
+    "paired_sign_p": 0.8358461346314852,
+    "max_search_depth_observed": [
+      9,
+      12
+    ],
+    "all_games_complete": true,
+    "all_reason_no_legal_placement": true,
+    "malformed_pairs": 0
   },
   "protocol": {
     "preview": "current + NEXT5",
@@ -82,5 +176,7 @@
     "hidden_future_visible_to_bot": false,
     "search_rng": "deterministic and separate from authority RNG"
   },
-  "promotion_rule": "No promotion from screening or validation. The fixed 55% finalist must beat H9 in fresh confirmation. If it does not, keep H9 and stop scalar exploitation tuning rather than inventing intermediate values post-hoc."
+  "promotion_rule": "No promotion from screening or validation. The fixed 55% finalist must beat H9 in fresh confirmation. If it does not, keep H9 and stop scalar exploitation tuning rather than inventing intermediate values post-hoc.",
+  "decision": "DO_NOT_PROMOTE",
+  "conclusion": "The fixed 55% finalist regressed to 197:203 over 400 fresh KO games. Keep H9 at the default exploitation ln(2), and stop scalar exploitation tuning rather than selecting a new value post hoc."
 }
