@@ -70,11 +70,17 @@ const capabilities = JSON.parse(bot.capabilities_json());
 ### Browser performance benchmark
 
 After building `pkg/`, serve the repository over HTTP and open
-`benches/wasm-review.html`. The page measures fresh-snapshot 25k, 50k and
-100k hard-node searches in the actual browser WASM path and reports wall time,
-nodes/sec, search depth and speculative expansions. The GitHub `wasm` workflow
-also uploads a ready-to-serve `cold-clear-2-browser-bench` artifact and a rough
-Node-WASM benchmark JSON.
+`benches/wasm-review.html`. The page measures fresh-snapshot 25k, 50k, 100k
+and 200k hard-node searches in the actual browser WASM path, plus pending
+ten-scenario and persistent five-step workloads. It reports wall time, nodes/sec,
+search depth and speculative expansions.
+
+The page has an optional device-label field and a **Download results.json**
+button after a successful run. Use the downloaded JSON for device evidence
+instead of copying the on-page output manually.
+
+The GitHub `wasm` workflow also uploads a ready-to-serve
+`cold-clear-2-browser-bench` artifact and a rough Node-WASM benchmark JSON.
 
 Treat Node/GitHub-runner timings only as CI evidence. Product budget decisions
 should use the browser page on representative desktop hardware and, secondarily,
