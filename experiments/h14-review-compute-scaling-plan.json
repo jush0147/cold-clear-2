@@ -1,6 +1,6 @@
 {
   "experiment": "H14 review compute scaling",
-  "status": "200k_headroom_probe_running",
+  "status": "200k_promoted_provisional_product_budget_lineage_revalidation_next",
   "question": "With evaluator, rules, visible information and hidden-garbage treatment frozen, does giving the review bot more evaluator-node compute per move improve KO strength?",
   "incumbent": {
     "name": "H9 + H12 corrected core",
@@ -218,14 +218,15 @@
     "runtime_observation": "On GitHub ubuntu-22.04 runners, the 50k-vs-25k 20-pair job ran about 63 minutes and the 100k-vs-50k job about 69 minutes. Additional native KO sampling is now relatively expensive compared with the product value of measuring exact browser/WASM cost."
   },
   "next_step": {
-    "priority": "WASM/native parity and browser performance",
+    "priority": "200k high-compute strategy-lineage revalidation",
     "actions": [
-      "Create one canonical H9+H12 review config shared by native H14 and WASM analysis.",
-      "Replace/augment WASM analysis iterations with the same hard evaluator-node budget semantics used by H14.",
-      "Benchmark fresh-snapshot and persistent-session latency at 25k, 50k, 100k (and higher only if justified) in desktop browsers first, then representative mobile.",
-      "Do not call 50k the final production budget until strength and browser-latency curves are considered together."
+      "Revalidate H9 vs H6C at 200k.",
+      "If H9 still holds, revalidate H6C vs H2 at 200k.",
+      "If H6C still holds, revalidate H2 vs H1/legacy at 200k.",
+      "Do not resurrect every rejected H3-H11 hypothesis unless the promoted lineage changes.",
+      "Keep 200k as the provisional product default while lineage checks run."
     ],
-    "native_sampling": "Pause additional large KO batches unless browser measurements show that a higher budget is practical and the remaining strength uncertainty matters for the product decision.",
+    "native_sampling": "Stop generic compute-scaling tests after the completed 200k-vs-100k probe. New native batches should now answer lineage/correctness questions at the chosen 200k regime.",
     "wasm_baseline": {
       "status": "real_devices_200k_completed",
       "runs": [
@@ -244,7 +245,7 @@
     }
   },
   "probe_200k": {
-    "status": "running",
+    "status": "completed",
     "run": 35344873507,
     "workflow_commit": "bd4d3068d510b91d20a43632fc606ca9851d5804",
     "frozen_engine_run": 35315507874,
@@ -255,6 +256,28 @@
     "paired_seeds": 20,
     "games": 40,
     "purpose": "Fresh-seed check whether strength continues to scale beyond 100k now that 200k browser latency is known to remain interactive on representative devices.",
-    "interpretation_rule": "Treat this as a fresh headroom probe. If 200k clearly beats 100k, 200k becomes a serious product-budget candidate and a later strategy-lineage revalidation should use the chosen high-compute regime. If direction is weak or neutral, prefer 100k as the practical default candidate and stop compute escalation."
+    "interpretation_rule": "Treat this as a fresh headroom probe. If 200k clearly beats 100k, 200k becomes a serious product-budget candidate and a later strategy-lineage revalidation should use the chosen high-compute regime. If direction is weak or neutral, prefer 100k as the practical default candidate and stop compute escalation.",
+    "result": {
+      "candidate_wins": 29,
+      "incumbent_wins": 11,
+      "candidate_sweeps": 9,
+      "incumbent_sweeps": 0,
+      "split_pairs": 11,
+      "paired_exact_sign_p": 0.00390625,
+      "malformed_pairs": 0,
+      "all_reason_no_legal_placement": true
+    },
+    "runtime_observation": "The paired KO step ran for about 2h04m on the GitHub ubuntu runner.",
+    "interpretation": "Fresh-seed evidence shows clear strength headroom from 100k to 200k. Combined with real-browser measurements showing roughly 0.28-0.40s fresh and 0.32-0.45s pending latency at 200k, 200k is promoted to the provisional product default compute regime. Stop compute escalation here for now; do not automatically launch 400k tests before strategy-lineage revalidation and product integration."
+  },
+  "product_budget_decision": {
+    "status": "provisional",
+    "default_nodes": 200000,
+    "rationale": [
+      "200k clearly beat 100k on fresh paired seeds 47500-47519: 29-11 games, 9-0 paired sweeps, p=0.00390625.",
+      "200k remained interactive on all three real browser/device runs, with fresh medians 284.5-399.9 ms and pending medians 316.2-447.7 ms.",
+      "Further compute escalation is intentionally paused to avoid turning the product roadmap into an open-ended scaling experiment."
+    ],
+    "next": "Revalidate the promoted H9 -> H6C -> H2 -> H1/legacy lineage at 200k before integrating strategy assumptions deeper into the product."
   }
 }
