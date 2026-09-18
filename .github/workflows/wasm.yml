@@ -38,13 +38,32 @@ jobs:
         run: |
           set -euo pipefail
           node scripts/wasm-smoke.mjs | tee wasm-runtime.json
+      - name: Benchmark hard node budgets in Node WASM
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/wasm-bench.mjs | tee wasm-benchmark.json
+      - name: Package browser benchmark bundle
+        shell: bash
+        run: |
+          rm -rf browser-bench
+          mkdir -p browser-bench
+          cp -r pkg browser-bench/pkg
+          cp benches/wasm-review.html browser-bench/index.html
       - name: Upload browser wasm package
         uses: actions/upload-artifact@v4
         with:
           name: cold-clear-2-wasm
           path: pkg/
+      - name: Upload browser benchmark bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: cold-clear-2-browser-bench
+          path: browser-bench/
       - name: Upload runtime evidence
         uses: actions/upload-artifact@v4
         with:
           name: wasm-runtime-${{ github.sha }}
-          path: wasm-runtime.json
+          path: |
+            wasm-runtime.json
+            wasm-benchmark.json
