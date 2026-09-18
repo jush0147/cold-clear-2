@@ -59,6 +59,24 @@ impl BotConfig {
         config.freestyle_weights.legacy_shape_value = shape_value;
         config
     }
+
+    /// Canonical scored review configuration used by H14 and browser review.
+    /// Keep this as the single source of truth for H9 evaluator + H12 DAG.
+    pub fn review_h9_h12() -> Self {
+        let mut config = Self::legacy();
+        config.freestyle_weights.softdrop = 0.0;
+        config.freestyle_weights.pending_safety = 1.0;
+        config.freestyle_weights.useful_attack_reward = 1.0;
+        config.freestyle_weights.cancellation_reward = 0.0;
+        config.freestyle_weights.h3_b2b_charge_value = 0.0;
+        config.freestyle_weights.h3_surge_bank_value = 0.0;
+        config.freestyle_weights.h6_base_holes_scale = 1.0;
+        config.freestyle_weights.h6_base_coveredness_scale = 1.0;
+        config.freestyle_weights.row_transitions *= 2.5;
+        config.freestyle_weights.h9_cavity_excavation = -0.5;
+        config.dag_backprop_best_demotion = true;
+        config
+    }
 }
 
 #[derive(Debug)]
@@ -206,5 +224,23 @@ impl Statistics {
         self.max_depth = self.max_depth.max(other.max_depth);
         self.speculative_expansions += other.speculative_expansions;
         self.budget_exhausted |= other.budget_exhausted;
+    }
+}
+
+#[cfg(test)]
+mod config_tests {
+    use super::BotConfig;
+
+    #[test]
+    fn review_h9_h12_matches_scored_h14_configuration() {
+        let legacy = BotConfig::legacy();
+        let review = BotConfig::review_h9_h12();
+        assert_eq!(review.freestyle_weights.pending_safety, 1.0);
+        assert_eq!(review.freestyle_weights.useful_attack_reward, 1.0);
+        assert_eq!(review.freestyle_weights.cancellation_reward, 0.0);
+        assert_eq!(review.freestyle_weights.row_transitions, legacy.freestyle_weights.row_transitions * 2.5);
+        assert_eq!(review.freestyle_weights.h9_cavity_excavation, -0.5);
+        assert!(review.dag_backprop_best_demotion);
+        assert!(!review.freestyle_weights.tetrio_s2);
     }
 }
