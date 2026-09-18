@@ -1,6 +1,6 @@
 {
   "experiment": "200k promoted strategy lineage revalidation",
-  "status": "promoted_links_h2_h6c_h9_revalidated_at_200k_h1_vs_legacy_next",
+  "status": "h1_vs_legacy_100pair_running",
   "compute_regime": {
     "nodes_per_move": 200000,
     "reason": "provisional product default after H14 200k-vs-100k"
@@ -226,7 +226,7 @@
     },
     {
       "id": "H1-vs-legacy",
-      "status": "optional_if_needed_after_H2-vs-H1",
+      "status": "running_100pair_confirmation",
       "candidate": {
         "pending_safety": 1,
         "useful_attack_reward": 0,
@@ -239,7 +239,20 @@
         "row_transition_scale": 1,
         "h9_cavity_excavation": 0
       },
-      "note": "Historical H1 was retained as an experimental incumbent rather than conclusively promoted; rerun this link if final lineage confidence requires it."
+      "note": "Run directly at 100 paired seeds because H1 was the one historically unresolved link and 40-game screens were already shown to be noisy. Both sides use corrected H12 core; H2/H6C/H9 are off.",
+      "run": 35403426381,
+      "aa_control": {
+        "seed_start": 48590,
+        "paired_seeds": 2,
+        "pending_safety_both": 0
+      },
+      "validation": {
+        "seed_start": 48600,
+        "paired_seeds": 100,
+        "games": 200,
+        "batches": 10,
+        "max_parallel": 5
+      }
     }
   ],
   "guardrails": [
@@ -249,7 +262,12 @@
     "Do not run lower lineage links until the upper link result is known.",
     "Do not revive rejected H3-H11 hypotheses unless the promoted chain changes."
   ],
-  "active_run": null,
+  "active_run": {
+    "id": "H1-vs-legacy",
+    "run": 35403426381,
+    "workflow_commit": "25cbbf7acc404611d75a6a675535a7bc3700495f",
+    "status": "running"
+  },
   "failed_runs": [
     {
       "run": 35357634194,
