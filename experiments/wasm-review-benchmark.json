@@ -1,12 +1,12 @@
 {
   "benchmark": "WASM review hard-node baseline",
-  "status": "node_wasm_ci_completed_browser_devices_pending",
+  "status": "node_wasm_fresh_and_pending_completed_browser_devices_pending",
   "run": 35334313492,
   "commit": "e89b2e478f014078df58c06df61b977d428a0e9e",
   "config_profile": "h9+h12-review",
   "workload": "fresh empty-board snapshot; SevenBag speculation enabled; no pending garbage",
   "runtime": "Node WASM on GitHub Actions ubuntu runner",
-  "caveat": "CI Node-WASM timing is implementation evidence only. Do not use it as desktop Chrome, laptop, or mobile performance.",
+  "caveat": "GitHub runner Node-WASM varies materially between runs; use these numbers for order-of-magnitude and relative overhead only. Desktop/mobile browser measurements remain authoritative for product budget.",
   "warmup_nodes": 5000,
   "repeats_per_budget": 3,
   "results": [
@@ -48,8 +48,61 @@
   },
   "interpretation": "After warmup the CI Node-WASM path is roughly linear near one million evaluator nodes per second. This makes 100k plausibly interactive on capable desktop hardware, but browser/device measurements are required before selecting a product budget.",
   "next": [
-    "benchmark pending-garbage ten-scenario analysis at the same total node budgets",
     "run the standalone browser benchmark on representative desktop hardware",
-    "measure persistent multi-step review after H13 is landed in the interactive core"
+    "land H13 persistent-DAG correctness into a distinct interactive-review profile",
+    "measure persistent multi-step review after H13 landing"
+  ],
+  "runs": [
+    {
+      "run": 35334761106,
+      "commit": "7f75393c6205ecdd65f07746bc99755f2c71bc46",
+      "runtime": "Node WASM on GitHub Actions ubuntu runner",
+      "fresh_no_pending": [
+        {
+          "node_budget": 25000,
+          "median_ms": 35.228137,
+          "median_nodes_per_second": 709660.0084
+        },
+        {
+          "node_budget": 50000,
+          "median_ms": 64.636075,
+          "median_nodes_per_second": 773561.8229
+        },
+        {
+          "node_budget": 100000,
+          "median_ms": 131.966822,
+          "median_nodes_per_second": 757766.221
+        }
+      ],
+      "pending_8_lines_10_scenarios": [
+        {
+          "node_budget": 25000,
+          "median_ms": 42.101168,
+          "median_nodes_per_second": 593807.7537,
+          "scenarios": 10,
+          "candidates": 26
+        },
+        {
+          "node_budget": 50000,
+          "median_ms": 78.874472,
+          "median_nodes_per_second": 633918.6651,
+          "scenarios": 10,
+          "candidates": 26
+        },
+        {
+          "node_budget": 100000,
+          "median_ms": 150.665574,
+          "median_nodes_per_second": 663721.6276,
+          "scenarios": 10,
+          "candidates": 26
+        }
+      ],
+      "pending_overhead_vs_fresh_pct": {
+        "25000": 19.5,
+        "50000": 22,
+        "100000": 14.2
+      },
+      "interpretation": "With a fixed total hard-node budget, splitting active garbage across ten hidden-hole scenarios adds modest overhead on this CI Node-WASM run rather than multiplying latency by ten."
+    }
   ]
 }
