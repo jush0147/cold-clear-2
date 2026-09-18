@@ -1,6 +1,6 @@
 {
   "experiment": "H14 review compute scaling",
-  "status": "bridge_completed_wasm_benchmark_next",
+  "status": "200k_headroom_probe_running",
   "question": "With evaluator, rules, visible information and hidden-garbage treatment frozen, does giving the review bot more evaluator-node compute per move improve KO strength?",
   "incumbent": {
     "name": "H9 + H12 corrected core",
@@ -23,6 +23,10 @@
     {
       "id": "100k",
       "nodes_per_move": 100000
+    },
+    {
+      "id": "200k",
+      "nodes_per_move": 200000
     }
   ],
   "frozen_protocol": {
@@ -223,7 +227,7 @@
     ],
     "native_sampling": "Pause additional large KO batches unless browser measurements show that a higher budget is practical and the remaining strength uncertainty matters for the product decision.",
     "wasm_baseline": {
-      "status": "node_wasm_fresh_and_pending_completed_browser_devices_pending",
+      "status": "real_devices_200k_completed",
       "runs": [
         35334313492,
         35334761106
@@ -232,10 +236,25 @@
       "budgets": [
         25000,
         50000,
-        100000
+        100000,
+        200000
       ],
-      "finding": "100k was ~97-132ms in fresh Node-WASM across two CI runs; on the same second run active 8-line ten-scenario analysis was ~151ms, only ~14% slower than fresh. CI runner timing is not device evidence.",
-      "record": "experiments/wasm-review-benchmark.json"
+      "finding": "On three real browser/device runs, 200k fresh medians were 284.5-399.9 ms, pending medians 316.2-447.7 ms, and persistent interaction averaged about 318-422 ms per bot step. No browser performance wall was observed at 200k.",
+      "record": "experiments/wasm-browser-devices.json"
     }
+  },
+  "probe_200k": {
+    "status": "running",
+    "run": 35344873507,
+    "workflow_commit": "bd4d3068d510b91d20a43632fc606ca9851d5804",
+    "frozen_engine_run": 35315507874,
+    "frozen_engine_commit": "074e8c3be2db249ca313fa74b229008f47e2ea8d",
+    "candidate_nodes": 200000,
+    "incumbent_nodes": 100000,
+    "seed_start": 47500,
+    "paired_seeds": 20,
+    "games": 40,
+    "purpose": "Fresh-seed check whether strength continues to scale beyond 100k now that 200k browser latency is known to remain interactive on representative devices.",
+    "interpretation_rule": "Treat this as a fresh headroom probe. If 200k clearly beats 100k, 200k becomes a serious product-budget candidate and a later strategy-lineage revalidation should use the chosen high-compute regime. If direction is weak or neutral, prefer 100k as the practical default candidate and stop compute escalation."
   }
 }
