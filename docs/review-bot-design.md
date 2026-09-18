@@ -71,6 +71,17 @@ Therefore:
 
 The accidental rerun `35317697118` repeated the same 47000-47009 screen and produced identical traces. It is useful determinism evidence only and must **not** be pooled as independent strength evidence.
 
+## H14 bridge update
+
+Fresh bridge run `35322969711` completed the adjacent-budget checks:
+
+- 50k vs 25k, seeds 47300-47319: 26-14 games; paired sweeps 8-2 with 10 splits; paired exact sign p = 0.109375.
+- 100k vs 50k, seeds 47400-47419: 24-16 games; paired sweeps 6-2 with 12 splits; paired exact sign p = 0.2890625.
+
+Both comparisons still point toward more compute, but the adjacent-budget effects are much weaker than the earlier fresh 100k-vs-25k result (30-10; sweeps 11-1; p = 0.00634765625). This is **consistent with diminishing returns**, not proof that 50k is the exact strength knee.
+
+Do not spend another large native KO batch merely to force significance before measuring browser cost. The next product-relevant step is to make native and WASM use the same H9+H12 config and the same hard evaluator-node budget, then benchmark 25k/50k/100k latency on the actual browser path.
+
 ## Native/WASM parity requirement
 
 Before using browser timing to choose a production budget, native H14 and the WASM review path must represent the **same bot** and the **same budget unit**.
