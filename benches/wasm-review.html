@@ -87,6 +87,70 @@ function summarize(nodeBudget, samples) {
   };
 }
 
+const revealStream = ["Z", "O", "I", "T", "L", "J", "S", "Z", "O", "I", "T", "L", "J", "S"];
+
+function persistentSession(nodeBudget, steps = 5) {
+  const bot = new WasmBot();
+  bot.start(JSON.stringify(start()));
+  let revealIndex = 0;
+  const stepSamples = [];
+  for (let step = 0; step < steps; step++) {
+    bot.reset_stats();
+    const searchStart = performance.now();
+    const nodes = bot.think_nodes(nodeBudget);
+    const searchMs = performance.now() - searchStart;
+    const stats = JSON.parse(bot.stats_json());
+    const suggestions = JSON.parse(bot.suggest_json());
+    if (!suggestions.length) throw new Error("persistent session produced no suggestion");
+
+    let advanceRefillMs = 0;
+    let revealed = 0;
+    if (step + 1 < steps) {
+      const advanceStart = performance.now();
+      bot.play_json(JSON.stringify(suggestions[0]));
+      const needed = Number(bot.preview_refill_needed());
+      revealed = needed;
+      for (let i = 0; i < needed; i++) {
+        if (revealIndex >= revealStream.length) throw new Error("reveal stream exhausted");
+        bot.new_piece(revealStream[revealIndex++]);
+      }
+      if (bot.preview_refill_needed() !== 0) throw new Error("preview refill incomplete");
+      advanceRefillMs = performance.now() - advanceStart;
+    }
+    stepSamples.push({
+      step: step + 1,
+      search_ms: searchMs,
+      advance_refill_ms: advanceRefillMs,
+      nodes: Number(nodes),
+      max_depth: stats.max_depth,
+      speculative_expansions: stats.speculative_expansions,
+      revealed,
+      piece: suggestions[0].location.piece,
+    });
+  }
+  bot.free();
+  return {
+    steps,
+    total_search_ms: stepSamples.reduce((sum, x) => sum + x.search_ms, 0),
+    total_advance_refill_ms: stepSamples.reduce((sum, x) => sum + x.advance_refill_ms, 0),
+    step_samples: stepSamples,
+  };
+}
+
+function summarizePersistent(nodeBudget, sessions) {
+  return {
+    node_budget: nodeBudget,
+    repeats: sessions.length,
+    steps_per_session: sessions[0]?.steps ?? 0,
+    median_total_search_ms: median(sessions.map(x => x.total_search_ms)),
+    median_total_advance_refill_ms: median(sessions.map(x => x.total_advance_refill_ms)),
+    median_total_interaction_ms: median(
+      sessions.map(x => x.total_search_ms + x.total_advance_refill_ms),
+    ),
+    sessions,
+  };
+}
+
 await init();
 
 button.addEventListener("click", async () => {
@@ -98,6 +162,7 @@ button.addEventListener("click", async () => {
     pendingSample(5000);
     const fresh = [];
     const pending = [];
+    const persistent = [];
     for (const nodeBudget of [25000, 50000, 100000]) {
       const freshSamples = [];
       const pendingSamples = [];
@@ -111,6 +176,11 @@ button.addEventListener("click", async () => {
       }
       fresh.push(summarize(nodeBudget, freshSamples));
       pending.push(summarize(nodeBudget, pendingSamples));
+      persistent.push(summarizePersistent(
+        nodeBudget,
+        Array.from({ length: 3 }, () => persistentSession(nodeBudget, 5)),
+      ));
+      await new Promise(requestAnimationFrame);
     }
     out.textContent = JSON.stringify({
       user_agent: navigator.userAgent,
@@ -118,6 +188,7 @@ button.addEventListener("click", async () => {
       profiles: {
         fresh_no_pending: "h9+h12+h13-interactive",
         pending_8_lines: "h9+h12-review",
+        persistent_5_step: "h9+h12+h13-interactive",
       },
       workloads: {
         fresh_no_pending: {
@@ -127,6 +198,10 @@ button.addEventListener("click", async () => {
         pending_8_lines: {
           description: "one active 8-line packet; ten hidden-hole scenarios; 12 frames/piece",
           results: pending,
+        },
+        persistent_5_step: {
+          description: "five bot-selected moves in one persistent DAG session; search and play/refill/H13 costs are separated",
+          results: persistent,
         },
       },
     }, null, 2);
