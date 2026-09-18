@@ -1,0 +1,36 @@
+name: Promote H9 incumbent core
+on:
+  push:
+    branches: [s2-strategy-clean]
+    paths: ['.github/workflows/promote-h9-core.yml']
+permissions:
+  contents: write
+defaults:
+  run:
+    shell: bash
+jobs:
+  promote:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: s2-strategy-clean
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Generate exact promoted H9 core
+        run: |
+          python3 scripts/wire-h9.py
+          echo 'ff871957179fab3c1a025d0dd443ecd9d0c05f62ab07d040bc2c70183ce69544  src/bot/freestyle.rs' | sha256sum -c -
+          grep -F 'pub h9_cavity_excavation: f32,' src/bot/freestyle.rs
+          grep -F 'fn cavity_excavation_cost(board: &Board) -> u32' src/bot/freestyle.rs
+      - name: Regression test promoted core
+        run: cargo test --release --lib
+      - name: Commit only promoted core
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/bot/freestyle.rs
+          git diff --cached --quiet && exit 0
+          git commit -m 'Promote H9 cavity excavation evaluator'
+          git push origin HEAD:s2-strategy-clean
