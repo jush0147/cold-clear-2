@@ -305,6 +305,18 @@ Interpretation: unlike the upper two links, H2 is clearly reconfirmed directiona
 at 200k even on the 20-pair screen. It still receives the same planned 100-pair
 fresh confirmation so all retained lineage links have comparable high-compute evidence.
 
+That 100-pair / 200-game confirmation on seeds 48200-48299 is now complete:
+
+- H2 won 147-53 games
+- paired sweeps 51-4, with 45 split pairs
+- effective sign-test pairs: 55
+- paired exact sign p = 2.0474233419776056e-11
+- no malformed pairs; all 200 games ended normally by no legal placement
+
+This is decisive high-compute reconfirmation of H2 over H1. No additional H2
+replication is needed under the predeclared rule, which reserves extension for
+borderline results.
+
 3. **Unify pending garbage with the persistent interactive review session.**
    Today these capabilities are split:
    - persistent `WasmBot`: H9+H12+H13 with preserved DAG, but no pending
