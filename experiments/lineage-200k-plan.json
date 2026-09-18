@@ -1,6 +1,6 @@
 {
   "experiment": "200k promoted strategy lineage revalidation",
-  "status": "h9_vs_h6c_running",
+  "status": "h9_directionally_retained_h6c_vs_h2_next",
   "compute_regime": {
     "nodes_per_move": 200000,
     "reason": "provisional product default after H14 200k-vs-100k"
@@ -21,7 +21,7 @@
   "sequence": [
     {
       "id": "H9-vs-H6C",
-      "status": "running_recovery",
+      "status": "completed_directionally_retained_uncertain",
       "candidate": {
         "pending_safety": 1,
         "useful_attack_reward": 1,
@@ -46,11 +46,25 @@
         "batches": 4
       },
       "decision": "If H9 retains a credible positive direction at 200k, continue to H6C-vs-H2. If it reverses materially, stop and reconsider the promoted chain before testing lower links.",
-      "run": 35359700385
+      "run": 35359700385,
+      "source_engine_run": 35357634194,
+      "result": {
+        "paired_seeds": 20,
+        "games": 40,
+        "candidate_wins": 24,
+        "incumbent_wins": 16,
+        "candidate_sweeps": 8,
+        "incumbent_sweeps": 4,
+        "split_pairs": 8,
+        "paired_exact_sign_p": 0.3876953125,
+        "malformed_pairs": 0,
+        "all_reason_no_legal_placement": true
+      },
+      "interpretation": "At 200k, H9 retains a positive direction (24-16 games; 8-4 paired sweeps) but the 20-pair fresh sample is statistically uncertain. This does not establish H9 as compute-invariant; it also does not show a reversal. Continue to the independent lower lineage link H6C-vs-H2 while keeping H9's 200k status explicitly uncertain."
     },
     {
       "id": "H6C-vs-H2",
-      "status": "blocked_on_H9-vs-H6C",
+      "status": "prepared_to_run",
       "candidate": {
         "pending_safety": 1,
         "useful_attack_reward": 1,
@@ -105,13 +119,7 @@
     "Do not run lower lineage links until the upper link result is known.",
     "Do not revive rejected H3-H11 hypotheses unless the promoted chain changes."
   ],
-  "active_run": {
-    "id": "H9-vs-H6C",
-    "run": 35359700385,
-    "workflow_commit": "a015ca17f2bf20bce60d0171f2ab04a16fe1987a",
-    "status": "running_recovery",
-    "source_engine_run": 35357634194
-  },
+  "active_run": null,
   "failed_runs": [
     {
       "run": 35357634194,
