@@ -1,0 +1,107 @@
+{
+  "experiment": "200k promoted strategy lineage revalidation",
+  "status": "h9_vs_h6c_prepared",
+  "compute_regime": {
+    "nodes_per_move": 200000,
+    "reason": "provisional product default after H14 200k-vs-100k"
+  },
+  "shared_protocol": {
+    "preview": "current + NEXT5",
+    "speculation": "SevenBag beyond visible preview",
+    "gravity": 0,
+    "result": "KO only",
+    "side_swap": true,
+    "incoming_garbage": "observable packets; ten unknown-hole scenarios under pressure",
+    "hidden_future": false,
+    "opponent_board": false,
+    "dag_backprop_best_demotion": true,
+    "dag_backprop_despeculated_values": false,
+    "note": "H13 remains off because the snapshot KO harness rebuilds DAGs before scored search."
+  },
+  "sequence": [
+    {
+      "id": "H9-vs-H6C",
+      "status": "prepared",
+      "candidate": {
+        "pending_safety": 1,
+        "useful_attack_reward": 1,
+        "row_transition_scale": 2.5,
+        "h9_cavity_excavation": -0.5
+      },
+      "incumbent": {
+        "pending_safety": 1,
+        "useful_attack_reward": 1,
+        "row_transition_scale": 2.5,
+        "h9_cavity_excavation": 0
+      },
+      "aa_control": {
+        "seed_start": 47590,
+        "paired_seeds": 2,
+        "cavity_both": 0
+      },
+      "validation": {
+        "seed_start": 47600,
+        "paired_seeds": 20,
+        "games": 40,
+        "batches": 4
+      },
+      "decision": "If H9 retains a credible positive direction at 200k, continue to H6C-vs-H2. If it reverses materially, stop and reconsider the promoted chain before testing lower links."
+    },
+    {
+      "id": "H6C-vs-H2",
+      "status": "blocked_on_H9-vs-H6C",
+      "candidate": {
+        "pending_safety": 1,
+        "useful_attack_reward": 1,
+        "row_transition_scale": 2.5,
+        "h9_cavity_excavation": 0
+      },
+      "incumbent": {
+        "pending_safety": 1,
+        "useful_attack_reward": 1,
+        "row_transition_scale": 1,
+        "h9_cavity_excavation": 0
+      }
+    },
+    {
+      "id": "H2-vs-H1",
+      "status": "blocked_on_H6C-vs-H2",
+      "candidate": {
+        "pending_safety": 1,
+        "useful_attack_reward": 1,
+        "row_transition_scale": 1,
+        "h9_cavity_excavation": 0
+      },
+      "incumbent": {
+        "pending_safety": 1,
+        "useful_attack_reward": 0,
+        "row_transition_scale": 1,
+        "h9_cavity_excavation": 0
+      }
+    },
+    {
+      "id": "H1-vs-legacy",
+      "status": "optional_if_needed_after_H2-vs-H1",
+      "candidate": {
+        "pending_safety": 1,
+        "useful_attack_reward": 0,
+        "row_transition_scale": 1,
+        "h9_cavity_excavation": 0
+      },
+      "incumbent": {
+        "pending_safety": 0,
+        "useful_attack_reward": 0,
+        "row_transition_scale": 1,
+        "h9_cavity_excavation": 0
+      },
+      "note": "Historical H1 was retained as an experimental incumbent rather than conclusively promoted; rerun this link if final lineage confidence requires it."
+    }
+  ],
+  "guardrails": [
+    "Use fresh seeds for each link.",
+    "Use H12 corrected DAG on both sides.",
+    "Do not pool old 10k results with 200k samples as independent evidence.",
+    "Do not run lower lineage links until the upper link result is known.",
+    "Do not revive rejected H3-H11 hypotheses unless the promoted chain changes."
+  ]
+}
