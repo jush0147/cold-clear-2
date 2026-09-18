@@ -11,6 +11,10 @@ const initial = () => ({
   back_to_back: false,
   randomizer: { type: "unknown" },
 });
+const reviewInitial = () => ({
+  ...initial(),
+  randomizer: { type: "seven_bag", bag_state: ["Z"] },
+});
 const state = bot => JSON.parse(bot.player_state_json());
 const o = JSON.stringify({ location: { type: "O", orientation: "north", x: 0, y: 0 }, spin: "none" });
 const i = JSON.stringify({ location: { type: "I", orientation: "east", x: 0, y: 2 }, spin: "none" });
@@ -24,6 +28,17 @@ assert.equal(typeof nodes, "bigint");
 assert.ok(nodes > 0n);
 assert.ok(suggestion.length > 0);
 assert.ok(JSON.parse(bot.stats_json()).expansions > 0);
+
+const budgeted = new WasmBot();
+budgeted.start(JSON.stringify(reviewInitial()));
+assert.throws(() => budgeted.think_nodes(0));
+const hardNodes = budgeted.think_nodes(1003);
+assert.equal(hardNodes, 1003n);
+const hardStats = JSON.parse(budgeted.stats_json());
+assert.equal(hardStats.nodes, 1003);
+assert.ok(hardStats.max_depth > 0);
+assert.ok(hardStats.speculative_expansions > 0);
+budgeted.free();
 
 const before = bot.player_state_json();
 assert.throws(() => bot.new_piece("Z"));
@@ -66,6 +81,9 @@ assert.equal(same.preview_refill_needed(), 2);
 const capabilities = JSON.parse(same.capabilities_json());
 assert.equal(capabilities.rules_parity_verified, false);
 assert.equal(capabilities.pending_garbage_in_search, false);
+assert.equal(capabilities.config_profile, "h9+h12-review");
+assert.equal(capabilities.hard_node_budget, true);
+assert.equal(capabilities.persistent_dag, true);
 same.free();
 
 const pending = JSON.parse(preview_garbage_one_to_one(JSON.stringify([{ lines: 8, active: false }]), 3, 0, 8));
@@ -77,4 +95,21 @@ assert.equal(active.risen, 2);
 assert.deepEqual(active.remaining, [{ lines: 4, active: false }]);
 assert.throws(() => preview_garbage_one_to_one('[{"lines":3,"active":true,"hole":4}]', 0, 0, 8));
 
-console.log(JSON.stringify({ runtime: "Node WASM", status: "passed", nodes: nodes.toString(), checks: ["search", "empty-hold", "first-hold-refill-two", "same-piece-explicit-hold", "invalid-input-no-mutation", "no-hidden-preview", "normal-garbage-queue"], capabilities }, null, 2));
+console.log(JSON.stringify({
+  runtime: "Node WASM",
+  status: "passed",
+  nodes: nodes.toString(),
+  hard_nodes: hardNodes.toString(),
+  checks: [
+    "search",
+    "hard-node-budget",
+    "h9+h12-review-config",
+    "empty-hold",
+    "first-hold-refill-two",
+    "same-piece-explicit-hold",
+    "invalid-input-no-mutation",
+    "no-hidden-preview",
+    "normal-garbage-queue"
+  ],
+  capabilities
+}, null, 2));
