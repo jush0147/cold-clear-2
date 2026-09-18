@@ -66,6 +66,7 @@ jobs:
           mkdir -p browser-bench
           cp -r pkg browser-bench/pkg
           cp benches/wasm-review.html browser-bench/index.html
+          sed -i 's#../pkg/cold_clear_2.js#./pkg/cold_clear_2.js#' browser-bench/index.html
       - name: Upload browser wasm package
         uses: actions/upload-artifact@v4
         with:
