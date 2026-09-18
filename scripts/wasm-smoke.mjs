@@ -54,6 +54,21 @@ assert.equal(pendingReport.scenarios, 10);
 assert.equal(pendingReport.config_profile, "h9+h12-review");
 assert.ok(pendingReport.candidates.length > 0);
 
+const persistent = new WasmBot();
+persistent.start(JSON.stringify(reviewInitial()));
+persistent.think_nodes(5000);
+const persistentMove = JSON.parse(persistent.suggest_json())[0];
+assert.ok(persistentMove);
+persistent.play_json(JSON.stringify(persistentMove));
+for (const piece of ["Z", "O"].slice(0, Number(persistent.preview_refill_needed()))) {
+  persistent.new_piece(piece);
+}
+assert.equal(persistent.preview_refill_needed(), 0);
+persistent.reset_stats();
+assert.equal(persistent.think_nodes(5000), 5000n);
+assert.ok(JSON.parse(persistent.suggest_json()).length > 0);
+persistent.free();
+
 const before = bot.player_state_json();
 assert.throws(() => bot.new_piece("Z"));
 assert.throws(() => bot.play_json(JSON.stringify({ location: { type: "O", orientation: "north", x: 127, y: -128 }, spin: "none" })));
@@ -118,6 +133,7 @@ console.log(JSON.stringify({
     "search",
     "hard-node-budget",
     "pending-hard-node-budget",
+    "persistent-h13-continuation",
     "h9+h12+h13-interactive-config",
     "empty-hold",
     "first-hold-refill-two",
