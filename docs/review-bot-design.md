@@ -95,6 +95,7 @@ Current branch state:
 - the H14 generator uses `review_h9_h12()` rather than duplicating evaluator constants.
 - persistent `WasmBot` uses `interactive_review()`.
 - `WasmBot::think_nodes()` uses the same hard evaluator-node budget unit as H14.
+- hard-node `WasmBot` search now uses a deterministic per-decision/per-call seed sequence; WASM run `35345085940` passed the regression that two identical sessions produce identical suggestions at the same budget.
 - pending `analysis.rs` intentionally stays on `review_h9_h12()` because scenario DAGs are rebuilt and H13 persistence is not observable there.
 - the browser/Node benchmark workload uses SevenBag speculation rather than `Randomizer::Unknown`.
 
