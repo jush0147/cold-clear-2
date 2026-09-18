@@ -102,19 +102,9 @@ replace(
     config.freestyle_weights.h6_base_coveredness_scale = 1.0;
     config.freestyle_weights.row_transitions *= strategy.row_transition_scale;
 ''',
-'''    // Freeze the scored H9 evaluator plus the promoted H12 corrected DAG.
-    // H14 changes only evaluator-node compute per move.
-    config.freestyle_weights.softdrop = 0.0;
-    config.freestyle_weights.pending_safety = 1.0;
-    config.freestyle_weights.useful_attack_reward = 1.0;
-    config.freestyle_weights.cancellation_reward = 0.0;
-    config.freestyle_weights.h3_b2b_charge_value = 0.0;
-    config.freestyle_weights.h3_surge_bank_value = 0.0;
-    config.freestyle_weights.h6_base_holes_scale = 1.0;
-    config.freestyle_weights.h6_base_coveredness_scale = 1.0;
-    config.freestyle_weights.row_transitions *= 2.5;
-    config.freestyle_weights.h9_cavity_excavation = -0.5;
-    config.dag_backprop_best_demotion = true;
+'''    // H14 changes only evaluator-node compute per move. The scored H9+H12
+    // configuration is centralized so native and WASM review cannot drift.
+    let config = BotConfig::review_h9_h12();
 ''',
     "fixed H9+H12 config",
 )
@@ -224,11 +214,7 @@ replace(
 )
 
 required = [
-    "config.freestyle_weights.pending_safety = 1.0;",
-    "config.freestyle_weights.useful_attack_reward = 1.0;",
-    "config.freestyle_weights.row_transitions *= 2.5;",
-    "config.freestyle_weights.h9_cavity_excavation = -0.5;",
-    "config.dag_backprop_best_demotion = true;",
+    "let config = BotConfig::review_h9_h12();",
     "let budget = strategies[active].nodes;",
     '"experiment": "H14 review compute scaling"',
 ]
