@@ -21,6 +21,10 @@ const profiles=[
 ];
 const tracePath=process.env.TRACE_OUT||null;
 const progressEveryLockSteps=Number(process.env.PROGRESS_EVERY_LOCKS||250);
+const diagnosticMaxLockSteps=process.env.DIAGNOSTIC_MAX_LOCKS
+  ? Number(process.env.DIAGNOSTIC_MAX_LOCKS)
+  : null;
+const stopOnFirstDecisionDivergence=process.env.STOP_ON_FIRST_DECISION_DIVERGENCE==='1';
 
 const out=runSynchronousMatch({
   Engine,
@@ -38,6 +42,8 @@ const out=runSynchronousMatch({
   onProgress:progressEveryLockSteps>0
     ? (progress)=>process.stderr.write(JSON.stringify(progress)+'\n')
     : null,
+  diagnosticMaxLockSteps,
+  stopOnFirstDecisionDivergence,
 });
 
 if(tracePath) writeFileSync(tracePath,JSON.stringify(out.trace,null,2)+'\n');
