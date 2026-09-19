@@ -20,11 +20,19 @@ export function runSynchronousMatch({
   tetrpRef = null,
   trace = false,
   safetyLockSteps = 5000,
+  progressEveryLockSteps = 0,
+  onProgress = null,
 }) {
   if (!Number.isSafeInteger(seed)) throw new Error('seed must be a safe integer');
   if (!Number.isInteger(nodeBudget) || nodeBudget < 1000) throw new Error('invalid node budget');
   if (!Number.isInteger(framesPerPiece) || framesPerPiece < 1) throw new Error('invalid frames per piece');
   if (!Array.isArray(profiles) || profiles.length !== 2) throw new Error('exactly two profiles are required');
+  if (!Number.isInteger(progressEveryLockSteps) || progressEveryLockSteps < 0) {
+    throw new Error('invalid progress interval');
+  }
+  if (onProgress !== null && typeof onProgress !== 'function') {
+    throw new Error('onProgress must be a function or null');
+  }
 
   const handling = {
     arr:0,das:1,dcd:0,sdf:20,
@@ -45,6 +53,34 @@ export function runSynchronousMatch({
   let lockStep=0;
   const traces=[];
   const searchNodes=[0,0];
+  const startedAtMs=Date.now();
+
+  function progressSnapshot(frame) {
+    return {
+      type:'tetrp_match_progress',
+      seed,
+      lock_steps:lockStep,
+      frame,
+      wall_time_ms:Date.now()-startedAtMs,
+      profiles:[...profiles],
+      slots:[0,1].map(slot=>{
+        const state=engines[slot].state;
+        return {
+          profile:profiles[slot],
+          playing:state.playing,
+          reason:state.reason,
+          pieces:state.stats.pieces,
+          generated:state.attack.totals.generated,
+          cancelled:state.attack.totals.cancelled,
+          sent:state.attack.totals.sent,
+          tanked:state.attack.totals.tanked,
+          received:state.attack.totals.received,
+          search_nodes:searchNodes[slot],
+          multiplier:state.attack.multiplier,
+        };
+      }),
+    };
+  }
 
   function deliverTransfers() {
     const transfers=queuedTransfers;
@@ -154,6 +190,9 @@ export function runSynchronousMatch({
     }
 
     lockStep++;
+    if(progressEveryLockSteps>0 && onProgress && lockStep%progressEveryLockSteps===0) {
+      onProgress(progressSnapshot(lockFrame));
+    }
     if(!engines[0].state.playing || !engines[1].state.playing) break;
   }
 
