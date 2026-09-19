@@ -451,6 +451,7 @@
   },
   "authority_scope": "legacy_simplified_turn_based_ko_arena",
   "strength_interpretation": "Historical 200k lineage evidence remains valid only within the legacy turn-based authority. It does not decide target TETR.IO-like synchronous strength after the 2026-09-19 authority migration.",
-  "superseded_by": "experiments/tetrp-authority-migration-plan.json",
-  "superseded_on": "2026-09-19"
+  "superseded_by": "experiments/tetrp-strategy-lineage-reset-policy.json",
+  "superseded_on": "2026-09-19",
+  "supersession_note": "The previous reverse lineage revalidation is no longer the primary strategy-selection path. H1-H11 strategy conclusions are now treated as historical priors and will be re-screened under current Tetrp authority at 200k using asymmetric paired seeds."
 }
