@@ -1,0 +1,163 @@
+{
+  "experiment": "tetrp-authority-migration",
+  "status": "active_protocol_migration",
+  "discovered": "2026-09-19",
+  "reason": [
+    "Historical KO strength experiments used a simplified zero-gravity turn-based arena rather than the reverse-engineered Tetrp/TETR.IO synchronous authority.",
+    "Turn order changes what each side can observe before deciding and can materially affect pending-garbage safety, cancellation, downstacking, B2B/Surge, combo blocking, and pressure timing.",
+    "The exhibition integration demonstrated that the Tetrp authority can drive both bots synchronously and emit replayable .ttrm, but its initial snapshot adapter still needs correctness work before strength inference."
+  ],
+  "evidence_scope": {
+    "remains_valid": [
+      "H12 best-child demotion/backprop correctness fix",
+      "H13 despeculation/backprop correctness fix",
+      "hard evaluator-node budget API",
+      "deterministic search plumbing",
+      "WASM/browser latency measurements as performance evidence",
+      "Tetrp replay reconstruction and deterministic engine conformance work"
+    ],
+    "legacy_arena_only_strength_evidence": [
+      "H1 pending-safety strength results",
+      "H2 useful-attack strength results",
+      "H6C row-transition strength results",
+      "H9 cavity-excavation strength results",
+      "H14 node-budget strength scaling",
+      "200k lineage comparisons and final-profile H1 ablation",
+      "historical rejected strategy hypotheses H3-H11"
+    ],
+    "note": "Legacy-arena results remain useful priors and regression history. They are not erased, but they no longer establish strength under the target synchronous TETR.IO-like authority."
+  },
+  "target_authority": {
+    "engine": "jush0147/tetrp deterministic reverse-engineered TL engine",
+    "ownership": {
+      "tetrp": [
+        "board state",
+        "piece sequence and 7-bag progression",
+        "hold/current/NEXT",
+        "B2B/Surge/combo",
+        "attack calculation",
+        "garbage packet delivery/ack/cancellation/tanking",
+        "garbage hole RNG",
+        "frame clock and time-based scaling",
+        "KO/game-over"
+      ],
+      "cold_clear_2": [
+        "consume only player-visible own state",
+        "search under a fixed hard evaluator-node budget",
+        "choose a legal placement"
+      ]
+    },
+    "synchronous_barrier": [
+      "At a decision point, snapshot both players before either new placement is applied.",
+      "Search both sides from those snapshots.",
+      "Commit both chosen placements to the authority on the same scheduled lock frame/pace.",
+      "Only then advance attack/garbage consequences according to Tetrp engine timing."
+    ],
+    "fairness": [
+      "Both players use the same match seed within a game.",
+      "Candidate and baseline use the same hard node budget and visible-state adapter.",
+      "Keep A/B slot swapping until the new harness proves slot/gameid symmetry with explicit controls.",
+      "KO remains the only scored match outcome; APP/attack are diagnostics only."
+    ]
+  },
+  "adapter_blockers_before_strength_testing": [
+    {
+      "id": "visible-seven-bag-state",
+      "requirement": "Derive CC2 SevenBag state from already observed piece history and validated CC2 randomizer semantics. Do not infer it by naive set subtraction of current+NEXT5, and never expose hidden NEXT6+ or authority RNG state."
+    },
+    {
+      "id": "state-parity",
+      "requirement": "Verify current, hold, exactly NEXT5, board orientation, combo, B2B count/Surge state, and observable pending garbage against Tetrp authority at every decision boundary."
+    },
+    {
+      "id": "garbage-timing",
+      "requirement": "Preserve pending-vs-active packet timing from Tetrp. Search may model only garbage already observable to that player."
+    },
+    {
+      "id": "synchronous-commit",
+      "requirement": "Both bots must choose before either side's newly generated attack becomes visible to the opponent."
+    },
+    {
+      "id": "legal-placement",
+      "requirement": "Chosen CC2 placements must be executable under Tetrp SRS+/movement rules; path synthesis is a transport/visualization concern and must not change the chosen placement."
+    }
+  ],
+  "correctness_gates": [
+    "Adapter fixture tests across 7-bag boundaries, including empty/nonempty hold.",
+    "No-hidden-information tests for NEXT6+, authority RNG, opponent board, and future attacks.",
+    "A/A deterministic symmetry controls at several seeds.",
+    "Replay round-trip validation through unmodified Tetrp reconstruction for representative short and long matches.",
+    "Trace assertions that both decisions for a lock step were produced from pre-commit snapshots.",
+    "Explicit documentation of pace and all Tetrp rule overrides for every scored run."
+  ],
+  "strength_revalidation_order": [
+    {
+      "stage": 1,
+      "name": "whole-profile transfer test",
+      "comparison": "current tuned H1+H2+H6C+H9+H12 vs corrected legacy+H12",
+      "purpose": "Determine whether the legacy-arena tuned package transfers at all before spending compute on historical archaeology.",
+      "initial_budget": "200k evaluator nodes per decision",
+      "pace": "Begin with a deterministic equal-pace controlled benchmark; test multiple plausible pace regimes before treating the result as robust."
+    },
+    {
+      "stage": 2,
+      "name": "retained-feature ablations",
+      "condition": "Run only if stage 1 shows useful transfer or a mixed result worth decomposing.",
+      "comparisons": [
+        "final minus H1",
+        "final minus H2",
+        "final minus H6C",
+        "final minus H9"
+      ],
+      "purpose": "Identify which legacy-arena promotions transfer under the new authority."
+    },
+    {
+      "stage": 3,
+      "name": "reopen legacy rejections",
+      "priority": {
+        "high": [
+          "H3 B2B/Surge, reformulated around unnecessary chain breaks and timing rather than blindly restoring the old terminal reward",
+          "H5/H7 combo shaping and combo interaction"
+        ],
+        "medium_high": [
+          "H6/H6B height, holes, and coveredness under real pending-garbage timing"
+        ],
+        "medium": [
+          "H4 structured setup"
+        ],
+        "low": [
+          "H8 retuning around surviving features",
+          "H10 exploitation scalar",
+          "H11 known/speculative allocation"
+        ]
+      },
+      "policy": "Historical rejected parameter values are priors, not mandatory retests. Re-formulate hypotheses when the old implementation encoded the concept poorly."
+    },
+    {
+      "stage": 4,
+      "name": "compute sanity check",
+      "purpose": "Recheck a small 100k-vs-200k or nearby comparison under the new authority. Existing browser latency data remains valid; only strength-vs-budget needs new-authority confirmation."
+    }
+  ],
+  "pace_policy": {
+    "reason": "Pace is gameplay semantics in TL because garbage travel/activation and late-round garbage scaling are frame-based.",
+    "rule": "Do not label 2 PPS as a pure visualization setting in scored Tetrp-authority matches.",
+    "initial_control": "Use equal fixed pace for both sides to isolate strategy.",
+    "robustness": "Before final strategy promotion, repeat or screen across multiple plausible equal-pace regimes or a replay-derived pace distribution."
+  },
+  "legacy_workflow_policy": {
+    "action": "Freeze old turn-based strength workflows. Do not launch new strategy tuning on them.",
+    "active_h1_ablation_run": 35420978082,
+    "interpretation": "Regardless of completion status, this run is legacy-arena evidence and no longer decides the target final evaluator."
+  },
+  "exhibition_note": {
+    "runs": [
+      35422505999,
+      35422613934,
+      35423524654
+    ],
+    "result_observed": "The synchronous Tetrp exhibition produced materially different match behavior from the legacy FT7.",
+    "inference_limit": "The exhibition is not formal strength evidence because the initial SevenBag snapshot adapter was simplified and the authority/protocol changed."
+  },
+  "next_action": "Implement and verify the synchronous Tetrp authority adapter before any further evaluator tuning."
+}
