@@ -103,7 +103,7 @@ export function createPlacementTools({Engine, boardModule:B, rotationModule:R}) 
     }));
   }
 
-  function schedulePath(startFrame,lockFrame,moves) {
+  function legacySchedulePath(startFrame,lockFrame,moves) {
     const inputs=[];
     let frame=startFrame,slot=0;
     const subframes=[0,0.2,0.4,0.6,0.8];
@@ -116,10 +116,6 @@ export function createPlacementTools({Engine, boardModule:B, rotationModule:R}) 
     };
     for(const move of moves) {
       if(move==='hardDrop') continue;
-      // With g=0 and SDF=20, a held soft-drop segment advances exactly one
-      // row. Tetrp processes subframe events in insertion order, so down can be
-      // transported as a normal tap instead of wasting one whole source frame.
-      // Placement transport must not impose an artificial PPS-dependent reachability limit.
       tap(move==='down'?'softDrop':move);
     }
     if(frame>=lockFrame) {
@@ -128,6 +124,73 @@ export function createPlacementTools({Engine, boardModule:B, rotationModule:R}) 
     inputs.push({frame:lockFrame,type:'keydown',key:'hardDrop',subframe:0.5});
     inputs.push({frame:lockFrame,type:'keyup',key:'hardDrop',subframe:0.6});
     return inputs;
+  }
+
+  function compactSchedulePath(startFrame,lockFrame,moves) {
+    const inputs=[];
+    const pathMoves=moves.filter(move=>move!=='hardDrop');
+    const softDrops=pathMoves.filter(move=>move==='down').length;
+
+    // Fallback transport for reset-heavy placements. Horizontal, rotation and
+    // hold taps consume no authority time; only soft drop needs a positive
+    // segment because Tetrp advances it through fall(). Keeping grounded taps
+    // at one subframe prevents synthetic tap spacing from tripping the 15-reset
+    // auto-lock before the intended hard drop.
+    const lockTick=lockFrame*10+5;
+    let tick=lockTick-softDrops;
+    const firstTick=startFrame*10;
+    if(tick<firstTick) {
+      throw new Error('path needs too much compact synthetic time: start='+startFrame+' firstTick='+tick+' lock='+lockFrame);
+    }
+    const emit=(type,key,at)=>{
+      const frame=Math.floor(at/10);
+      const subframe=Number(((at%10)/10).toFixed(1));
+      inputs.push({frame,type,key,subframe});
+    };
+
+    for(const move of pathMoves) {
+      const key=move==='down'?'softDrop':move;
+      emit('keydown',key,tick);
+      if(move==='down') tick++;
+      emit('keyup',key,tick);
+    }
+    if(tick!==lockTick) throw new Error('internal compact placement transport tick drift');
+    emit('keydown','hardDrop',lockTick);
+    emit('keyup','hardDrop',lockTick);
+    return inputs;
+  }
+
+  function scheduleLocksAtAuthorityInstant(engine,inputs,startFrame,lockFrame) {
+    const probe=Engine.restore(engine.serialize());
+    const beforePieces=probe.state.stats.pieces;
+    for(let frame=startFrame;frame<=lockFrame;frame++) {
+      probe.step(inputsForFrame(inputs,frame));
+    }
+    const locks=probe.trace.filter(event=>event.type==='lock');
+    if(locks.length===0) {
+      // A genuine authority death before the planned placement is not a
+      // transport failure; the scored match will end for the same reason.
+      return !probe.state.playing && probe.state.stats.pieces===beforePieces;
+    }
+    if(locks.length!==1 || probe.state.stats.pieces!==beforePieces+1) return false;
+    const lock=locks[0];
+    return lock.frame===lockFrame && Math.abs(lock.subframe-0.5)<1e-9;
+  }
+
+  function schedulePath(startFrame,lockFrame,moves,engine=null) {
+    // Preserve the established transport exactly for ordinary placements so
+    // completed experiment games remain comparable. Only fall back to compact
+    // equal-subframe transport when the pinned Tetrp authority proves that the
+    // ordinary spacing would auto-lock early or lock more than one piece.
+    const ordinary=legacySchedulePath(startFrame,lockFrame,moves);
+    if(engine===null || scheduleLocksAtAuthorityInstant(engine,ordinary,startFrame,lockFrame)) {
+      return ordinary;
+    }
+    const compact=compactSchedulePath(startFrame,lockFrame,moves);
+    if(!scheduleLocksAtAuthorityInstant(engine,compact,startFrame,lockFrame)) {
+      throw new Error('no reset-safe Tetrp transport for placement path');
+    }
+    return compact;
   }
 
   function inputsForFrame(inputs,frame) {
