@@ -98,6 +98,9 @@ export function runSynchronousMatch({
       if(!report.per_packet_ready_timing) {
         throw new Error('per-packet garbage timing was lost before search');
       }
+      if(!report.authority_attack_clock) {
+        throw new Error('Tetrp attack scaling clock was lost before search');
+      }
       if(report.nodes>nodeBudget) throw new Error('hard node budget exceeded');
       if(!report.candidates.length) throw new Error('search produced no candidate');
       searchNodes[slot]+=report.nodes;
