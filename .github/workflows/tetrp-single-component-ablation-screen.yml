@@ -1,0 +1,135 @@
+name: Tetrp single-component ablation screen
+
+on:
+  push:
+    branches: [tetrp-authority]
+    paths:
+      - '.github/workflows/tetrp-single-component-ablation-screen.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: tetrp-single-component-ablation-screen-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: jush0147/tetrp
+          ref: 0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2
+          path: tetrp-reference
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify placement transport at 3 PPS
+        run: node scripts/test-tetrp-placement-scheduler.mjs tetrp-reference
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - name: Install wasm-pack
+        run: cargo install wasm-pack --locked
+      - name: Build Node WASM
+        run: wasm-pack build --release --target nodejs --out-dir pkg-node
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ablation-node-wasm
+          path: pkg-node/
+          retention-days: 1
+
+  batch:
+    needs: build
+    runs-on: ubuntu-22.04
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      max-parallel: 12
+      matrix:
+        include:
+          - { profile: review_minus_h1_h12,  component: h1,  start: 64000, end: 64001, label: 'h1-a' }
+          - { profile: review_minus_h1_h12,  component: h1,  start: 64002, end: 64003, label: 'h1-b' }
+          - { profile: review_minus_h1_h12,  component: h1,  start: 64004, end: 64005, label: 'h1-c' }
+          - { profile: review_minus_h1_h12,  component: h1,  start: 64006, end: 64007, label: 'h1-d' }
+          - { profile: review_minus_h2_h12,  component: h2,  start: 64000, end: 64001, label: 'h2-a' }
+          - { profile: review_minus_h2_h12,  component: h2,  start: 64002, end: 64003, label: 'h2-b' }
+          - { profile: review_minus_h2_h12,  component: h2,  start: 64004, end: 64005, label: 'h2-c' }
+          - { profile: review_minus_h2_h12,  component: h2,  start: 64006, end: 64007, label: 'h2-d' }
+          - { profile: review_minus_h6c_h12, component: h6c, start: 64000, end: 64001, label: 'h6c-a' }
+          - { profile: review_minus_h6c_h12, component: h6c, start: 64002, end: 64003, label: 'h6c-b' }
+          - { profile: review_minus_h6c_h12, component: h6c, start: 64004, end: 64005, label: 'h6c-c' }
+          - { profile: review_minus_h6c_h12, component: h6c, start: 64006, end: 64007, label: 'h6c-d' }
+          - { profile: review_minus_h9_h12,  component: h9,  start: 64000, end: 64001, label: 'h9-a' }
+          - { profile: review_minus_h9_h12,  component: h9,  start: 64002, end: 64003, label: 'h9-b' }
+          - { profile: review_minus_h9_h12,  component: h9,  start: 64004, end: 64005, label: 'h9-c' }
+          - { profile: review_minus_h9_h12,  component: h9,  start: 64006, end: 64007, label: 'h9-d' }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: jush0147/tetrp
+          ref: 0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2
+          path: tetrp-reference
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@v4
+        with:
+          name: ablation-node-wasm
+          path: pkg-node
+      - name: Run two-seed single-component ablation batch
+        env:
+          NODE_BUDGET: '200000'
+          FRAMES_PER_PIECE: '24'
+          TETRP_REF: 0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2
+          SLOT0_PROFILE: review_h9_h12
+          SLOT1_PROFILE: ${{ matrix.profile }}
+          SAFETY_LOCK_STEPS: '5000'
+        run: |
+          set -euo pipefail
+          mkdir -p results
+          : > "results/${{ matrix.label }}.jsonl"
+          for seed in $(seq ${{ matrix.start }} ${{ matrix.end }}); do
+            MATCH_SEED="$seed" node scripts/run-tetrp-authority-match.mjs tetrp-reference \
+              | tee -a "results/${{ matrix.label }}.jsonl"
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ablation-result-${{ matrix.label }}
+          path: results/
+          if-no-files-found: error
+          retention-days: 14
+
+  summarize:
+    needs: batch
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: ablation-result-*
+          path: ablation-results
+          merge-multiple: true
+      - name: Summarize single-component ablation screen
+        run: |
+          mkdir -p summary
+          node scripts/summarize-tetrp-ablation-screen.mjs ablation-results summary/ablation-summary.json \
+            | tee summary/ablation-summary.log
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tetrp-single-component-ablation-screen
+          path: summary/
+          if-no-files-found: error
+          retention-days: 30
