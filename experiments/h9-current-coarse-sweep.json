@@ -1,0 +1,170 @@
+{
+  "experiment": "H9 current-stack coarse parameter sweep",
+  "status": "preregistered",
+  "decision_date": "2026-09-19",
+  "policy_source": "experiments/tetrp-strategy-lineage-reset-policy.json",
+  "family": "H9 cavity excavation",
+  "purpose": "Search the H9 parameter family under the current 200k Tetrp stack. This is parameter-region discovery, not promotion evidence.",
+  "incumbent_profile": "corrected_legacy_h12",
+  "fixed_stack": {
+    "tetrp_ref": "0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2",
+    "authority": "synchronous Tetrp TL",
+    "node_budget_per_decision": 200000,
+    "frames_per_piece": 24,
+    "pps": 2.5,
+    "gravity": 0,
+    "h12": true,
+    "h13": false,
+    "result_rule": "KO only"
+  },
+  "grid": [
+    {
+      "value": -1.5,
+      "profile": "reset_h9_cavity_m1_5_h12"
+    },
+    {
+      "value": -1,
+      "profile": "reset_h9_cavity_m1_h12"
+    },
+    {
+      "value": -0.5,
+      "profile": "reset_h9_cavity_m0_5_h12"
+    },
+    {
+      "value": -0.25,
+      "profile": "reset_h9_cavity_m0_25_h12"
+    },
+    {
+      "value": 0,
+      "profile": "reset_h9_cavity_0_h12",
+      "role": "A/A calibration alias"
+    },
+    {
+      "value": 0.25,
+      "profile": "reset_h9_cavity_p0_25_h12"
+    },
+    {
+      "value": 0.5,
+      "profile": "reset_h9_cavity_p0_5_h12"
+    },
+    {
+      "value": 1,
+      "profile": "reset_h9_cavity_p1_h12"
+    },
+    {
+      "value": 1.5,
+      "profile": "reset_h9_cavity_p1_5_h12"
+    }
+  ],
+  "range_reason": [
+    "The old H9 hypothesis searched only negative penalties. The reset policy does not assume the old sign remains correct.",
+    "The coarse grid therefore crosses zero symmetrically enough to detect whether the useful region is negative, neutral, or positive.",
+    "The old -0.5 winner remains in the grid as a historical reference, not as a privileged finalist."
+  ],
+  "sampling": {
+    "paired_units_per_value": 20,
+    "games_per_pair": 2,
+    "games_per_value": 40,
+    "fresh_seed_pairs": [
+      [
+        65200,
+        65201
+      ],
+      [
+        65202,
+        65203
+      ],
+      [
+        65204,
+        65205
+      ],
+      [
+        65206,
+        65207
+      ],
+      [
+        65208,
+        65209
+      ],
+      [
+        65210,
+        65211
+      ],
+      [
+        65212,
+        65213
+      ],
+      [
+        65214,
+        65215
+      ],
+      [
+        65216,
+        65217
+      ],
+      [
+        65218,
+        65219
+      ],
+      [
+        65220,
+        65221
+      ],
+      [
+        65222,
+        65223
+      ],
+      [
+        65224,
+        65225
+      ],
+      [
+        65226,
+        65227
+      ],
+      [
+        65228,
+        65229
+      ],
+      [
+        65230,
+        65231
+      ],
+      [
+        65232,
+        65233
+      ],
+      [
+        65234,
+        65235
+      ],
+      [
+        65236,
+        65237
+      ],
+      [
+        65238,
+        65239
+      ]
+    ],
+    "common_random_numbers": "Every H9 value uses the same 20 asymmetric seed pairs to reduce seed-composition noise when comparing parameter values.",
+    "pair_design": "Game A candidate gets seed X in slot0 and incumbent seed Y in slot1; Game B swaps profile assignment so candidate gets seed Y in slot1.",
+    "independence": "The 20 asymmetric pairs are the experimental units; 40 games are not 40 independent observations."
+  },
+  "calibration": {
+    "zero_profile": "reset_h9_cavity_0_h12",
+    "expected": "Because H9=0 is configuration-identical to corrected_legacy_h12, each deterministic asymmetric pair should split 1-1 when candidate labels swap slots.",
+    "gate": "Require exactly 20-20 games, 0 candidate sweeps, 0 incumbent sweeps, 20 split pairs. Any violation blocks interpretation of the sweep."
+  },
+  "region_selection": {
+    "primary_metric": "net paired sweeps = candidate_sweeps - incumbent_sweeps",
+    "secondary_metric": "candidate KO wins out of 40",
+    "app_role": "diagnostic only; APP cannot override KO/pair direction",
+    "promising_direction": "A nonzero value with positive net paired sweeps and >20/40 KO wins is considered directionally promising for refinement.",
+    "refinement_window": "After the run, take the best net-sweep value or tied plateau and include immediate neighboring grid values around that region for fresh local refinement. Cap the initial refinement set at five values.",
+    "boundary_rule": "If the best value is -1.5 or +1.5, the refinement must extend the search range outward on that side before a finalist can be chosen.",
+    "no_positive_region": "If no nonzero value has positive net paired sweeps and >20/40 wins, pause H9 rather than force a finalist.",
+    "no_promotion": "No coarse-sweep outcome can promote H9."
+  },
+  "next_if_promising": "Preregister a fresh local-refinement grid around the selected region, targeting about 40 fresh pairs / 80 games per refined value. Only after fresh refinement may one fixed finalist earn a roughly 200-pair / 400-game promotion confirmation."
+}
