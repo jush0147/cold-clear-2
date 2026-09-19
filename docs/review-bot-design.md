@@ -231,7 +231,52 @@ H1 can interact with H2/H6C/H9, the decisive product question is now a direct
 final-profile ablation: H2+H6C+H9+H12 with pending_safety 1 versus 0 at 200k.
 That fresh 100-pair run is 35420978082.
 
-## Canonical product roadmap after compute testing
+## 2026-09-19 authority migration roadmap
+
+The previous high-compute lineage roadmap below is now **historical legacy-arena evidence**. A synchronous replayable exhibition exposed a material protocol mismatch: the old KO authority was turn-based, while target TL play is simultaneous and frame-timed.
+
+The active roadmap is now:
+
+1. **Freeze legacy-arena strategy tuning.**
+   - Preserve H1-H14 results as historical evidence.
+   - The cancelled final-profile H1 ablation run `35420978082` no longer decides the target evaluator.
+
+2. **Make Tetrp the target match authority.**
+   - Tetrp owns rules, board state, piece RNG/progression, attack, garbage timing/cancellation/tanking, time scaling and KO.
+   - Cold Clear owns search and placement choice only.
+
+3. **Fix the visible-state adapter before scoring strength.**
+   - Derive SevenBag state from observed history rather than naive current+NEXT5 set subtraction.
+   - Verify current/hold/NEXT5, combo, B2B/Surge, pending garbage and board orientation.
+   - Prove no hidden NEXT, RNG, opponent board or future attack leaks.
+
+4. **Enforce synchronous decisions.**
+   - Both bots search pre-commit snapshots.
+   - Neither side may observe the other's newly generated attack before choosing its move for that lock step.
+
+5. **Pass correctness controls.**
+   - bag-boundary fixtures;
+   - A/A deterministic symmetry checks;
+   - long and short replay round trips through unmodified Tetrp;
+   - trace assertions for the synchronous decision barrier.
+
+6. **Run the first new-authority strength baseline.**
+   - current tuned H1+H2+H6C+H9+H12 vs corrected legacy+H12;
+   - 200k nodes initially;
+   - equal controlled pace first, then pace robustness.
+
+7. **Decompose only after transfer is established.**
+   - H1/H2/H6C/H9 ablations;
+   - reopen H3 B2B/Surge and H5/H7 combo ideas early;
+   - then H6/H6B, H4, and lower-priority H8/H10/H11.
+
+8. **Recheck compute strength under the new authority.**
+   - Browser/device timing evidence remains valid.
+   - Only the old H14 claim about strength gained from additional nodes needs a smaller new-authority sanity check.
+
+See `experiments/tetrp-authority-migration-plan.json` for the machine-readable protocol.
+
+## Historical product roadmap after compute testing
 
 After the current compute experiments finish, follow this order unless new
 evidence justifies changing it. Do not skip ahead merely because a later UI
