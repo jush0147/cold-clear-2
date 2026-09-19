@@ -61,6 +61,10 @@ fn copy_randomizer(randomizer: &Randomizer) -> Randomizer {
 }
 
 pub fn analyze(request: Request) -> Result<Report, String> {
+    analyze_with_profile(request, "review_h9_h12")
+}
+
+pub fn analyze_with_profile(request: Request, profile: &str) -> Result<Report, String> {
     request.start.validate()?;
     if request.start.queue.len() != 6 {
         return Err("exactly current + five NEXT pieces are required".into());
@@ -72,7 +76,25 @@ pub fn analyze(request: Request) -> Result<Report, String> {
     let scenarios: u32 = if request.incoming.is_empty() { 1 } else { 10 };
     let mut scores: HashMap<Placement, (f64, f32, u32)> = HashMap::new();
     let mut nodes = 0u64;
-    let config = Arc::new(BotConfig::review_h9_h12());
+    let (config, profile_label): (Arc<BotConfig>, &'static str) = match profile {
+        "review_h9_h12" => (Arc::new(BotConfig::review_h9_h12()), "h9+h12-review"),
+        "corrected_legacy_h12" => {
+            let mut c = BotConfig::legacy();
+            c.freestyle_weights.softdrop = 0.0;
+            c.freestyle_weights.pending_safety = 0.0;
+            c.freestyle_weights.useful_attack_reward = 0.0;
+            c.freestyle_weights.cancellation_reward = 0.0;
+            c.freestyle_weights.h3_b2b_charge_value = 0.0;
+            c.freestyle_weights.h3_surge_bank_value = 0.0;
+            c.freestyle_weights.h6_base_holes_scale = 1.0;
+            c.freestyle_weights.h6_base_coveredness_scale = 1.0;
+            c.freestyle_weights.h9_cavity_excavation = 0.0;
+            c.dag_backprop_best_demotion = true;
+            c.dag_backprop_despeculated_values = false;
+            (Arc::new(c), "corrected-legacy+h12")
+        }
+        _ => return Err("profile must be review_h9_h12 or corrected_legacy_h12".into()),
+    };
 
     for scenario in 0..scenarios {
         let start = Start {
@@ -147,7 +169,7 @@ pub fn analyze(request: Request) -> Result<Report, String> {
         nodes,
         node_budget: request.node_budget,
         scenarios,
-        config_profile: "h9+h12-review",
+        config_profile: profile_label,
         pending_garbage_in_search: true,
         rules_parity_verified: false,
         frames_per_piece: request.frames_per_piece,
