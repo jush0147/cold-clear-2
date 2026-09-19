@@ -1,0 +1,78 @@
+name: Tetrp synchronous runtime smoke
+
+on:
+  push:
+    branches: [s2-strategy-clean]
+    paths:
+      - 'scripts/lib/tetrp-synchronous-match.mjs'
+      - 'scripts/run-tetrp-authority-match.mjs'
+      - '.github/workflows/tetrp-authority-runtime-smoke.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/checkout@v4
+        with:
+          repository: jush0147/tetrp
+          ref: 0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2
+          path: tetrp-reference
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Install wasm-pack
+        run: cargo install wasm-pack --locked
+
+      - name: Build Node WASM
+        run: wasm-pack build --release --target nodejs --out-dir pkg-node
+
+      - name: Run deterministic smoke twice
+        env:
+          MATCH_SEED: '61000'
+          NODE_BUDGET: '10000'
+          FRAMES_PER_PIECE: '30'
+          TETRP_REF: 0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2
+        run: |
+          mkdir -p smoke
+          node scripts/run-tetrp-authority-match.mjs tetrp-reference > smoke/run-a.jsonl
+          node scripts/run-tetrp-authority-match.mjs tetrp-reference > smoke/run-b.jsonl
+          diff -u smoke/run-a.jsonl smoke/run-b.jsonl
+
+      - name: Verify runtime contract
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync, writeFileSync } from 'node:fs';
+          const row=JSON.parse(readFileSync('smoke/run-a.jsonl','utf8').trim());
+          if(row.type!=='tetrp_synchronous_match') throw new Error('wrong result type');
+          if(row.synchronous_barrier!==true) throw new Error('synchronous barrier missing');
+          if(row.per_packet_ready_timing!==true) throw new Error('exact packet timing missing');
+          if(row.tetrp_ref!=='0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2') throw new Error('unpinned Tetrp authority');
+          if(row.node_budget_per_decision!==10000) throw new Error('node budget drift');
+          if(row.frames_per_piece!==30 || row.pps!==2) throw new Error('pace drift');
+          if(row.winner_slot!==0 && row.winner_slot!==1) throw new Error('smoke match did not reach a unique KO');
+          if(row.profiles[0]!=='review_h9_h12' || row.profiles[1]!=='corrected_legacy_h12') throw new Error('profile drift');
+          if(row.slots.some(s=>s.search_nodes<=0 || s.pieces<=0)) throw new Error('empty search or game');
+          writeFileSync('smoke/verified.json',JSON.stringify({ok:true,seed:row.seed,winner_profile:row.winner_profile,lock_steps:row.lock_steps},null,2)+'\n');
+          console.log(JSON.stringify(row,null,2));
+          NODE
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tetrp-synchronous-runtime-smoke
+          path: smoke/
+          if-no-files-found: error
+          retention-days: 14
