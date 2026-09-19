@@ -53,7 +53,11 @@ function fakeEngine(hiddenTail, rngSeed, holeSeed) {
         ],
       },
       stats:{pieces:23},
-      rules:{garbagespeed_frames:20},
+      rules:{
+        garbagespeed_frames:20,
+        garbagemargin_frames:10800,
+        garbageincrease_per_second:0.008,
+      },
     }
   };
 }
@@ -76,6 +80,10 @@ function fakeEngine(hiddenTail, rngSeed, holeSeed) {
   assert.deepEqual(req.incoming,a.incoming);
   assert.equal(req.frames_per_piece,30);
   assert.equal(req.pending_delay_frames,20);
+  assert.equal(req.authority_frame,100);
+  assert.equal(req.garbage_multiplier,1);
+  assert.equal(req.garbage_margin_frames,10800);
+  assert.equal(req.garbage_increase_per_second,0.008);
   assert.equal(JSON.stringify(req).includes('111'),false);
   assert.equal(JSON.stringify(req).includes('222'),false);
 }
@@ -98,6 +106,7 @@ console.log(JSON.stringify({
     'empty-hold two-draw tracking',
     'hidden-state noninterference',
     'per-packet remaining garbage timing',
+    'authority attack scaling clock',
     'hold-driven visible draw advance'
   ]
 },null,2));
