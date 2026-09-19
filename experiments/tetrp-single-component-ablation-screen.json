@@ -60,7 +60,7 @@
     "guard": "This is a screening ablation, not final feature significance. Do not pool the four ablations as 32 independent trials for a single claim, and do not use APP to override KO."
   },
   "rationale": "Fresh confirmation already established whole-profile transfer and robustness at 2/2.5/3 PPS. Use the primary 2.5 PPS pace for component archaeology first; only re-run pace robustness for components whose removal/retention decision needs confirmation.",
-  "next_after_screen": "First diagnose H1 same-seed decision divergence at 200k without running to KO. Then confirm consequential/ambiguous components on fresh seeds; consider paired asymmetric slot seeds if same-seed mirror locking prevents identification.",
+  "next_after_screen": "Superseded by the strategy-lineage reset. Use fresh asymmetric paired seeds under current Tetrp authority; do not spend more compute trying to score the H1 same-seed mirror caps.",
   "run_id": 35431278966,
   "observed": {
     "h1": {
@@ -111,5 +111,39 @@
       "full_sent_app": 0.9242219215155616,
       "ablated_sent_app": 0.9426251691474966
     }
+  },
+  "h1_mirror_diagnostic": {
+    "run_id": 35434406144,
+    "status": "completed",
+    "seeds": [
+      64000,
+      64002,
+      64004,
+      64006
+    ],
+    "node_budget_per_decision": 200000,
+    "frames_per_piece": 24,
+    "max_diagnostic_locks": 500,
+    "stop_on_first_decision_divergence": true,
+    "result": {
+      "64000": {
+        "first_decision_divergence_lock": null,
+        "locks_observed": 500
+      },
+      "64002": {
+        "first_decision_divergence_lock": null,
+        "locks_observed": 500
+      },
+      "64004": {
+        "first_decision_divergence_lock": null,
+        "locks_observed": 500
+      },
+      "64006": {
+        "first_decision_divergence_lock": null,
+        "locks_observed": 500
+      }
+    },
+    "conclusion": "All four previously capped H1 seeds remained decision-identical through 500 locks. The 5000-lock cap behavior is therefore consistent with deterministic same-seed mirror locking, not evidence for or against H1 strength.",
+    "implication": "Do not use same-seed symmetric synchronous head-to-head as the primary strategy comparison. Use asymmetric paired seed assignments in the reset lineage."
   }
 }
