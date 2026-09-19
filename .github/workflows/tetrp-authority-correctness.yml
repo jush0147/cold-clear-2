@@ -11,6 +11,8 @@ on:
       - 'tests/replay_fixtures.rs'
       - 'tests/fixtures/replay-v19.json'
       - 'scripts/lib/tetrp-authority-adapter.mjs'
+      - 'scripts/lib/tetrp-placement-path.mjs'
+      - 'scripts/test-tetrp-placement-scheduler.mjs'
       - 'scripts/test-tetrp-authority-adapter.mjs'
       - '.github/workflows/tetrp-authority-correctness.yml'
   workflow_dispatch:
@@ -47,6 +49,8 @@ jobs:
 
       - name: Test visible-state adapter
         run: node scripts/test-tetrp-authority-adapter.mjs
+      - name: Test placement transport scheduler
+        run: node scripts/test-tetrp-placement-scheduler.mjs tetrp-reference
 
       - name: Verify pinned Tetrp attack authority
         run: node --test tetrp-reference/test/attack.test.js
