@@ -49,6 +49,7 @@ jobs:
           EXHIBITION_SEED: '49000'
           NODE_BUDGET: '200000'
         run: |
+          set -o pipefail
           mkdir -p exhibition
           node scripts/generate-tetrp-exhibition.mjs tetrp-reference exhibition/tuned-vs-legacy-2pps.ttrm \
             | tee exhibition/generator.log
