@@ -202,6 +202,21 @@ export function runSynchronousMatch({
     }
 
     for(let slot=0;slot<2;slot++) {
+      const expectedPieces=visible[slot].pieces_placed+1;
+      const actualPieces=engines[slot].state.stats.pieces;
+      if(actualPieces>expectedPieces || (engines[slot].state.playing && actualPieces!==expectedPieces)) {
+        throw new Error('placement transport changed an unexpected number of pieces '+JSON.stringify({
+          slot,
+          lock_step:lockStep+1,
+          profile:profiles[slot],
+          before_pieces:visible[slot].pieces_placed,
+          after_pieces:actualPieces,
+          playing:engines[slot].state.playing,
+          reason:engines[slot].state.reason,
+          planned_moves:plans[slot].path.moves,
+          scheduled_inputs:plans[slot].inputs,
+        }));
+      }
       if(engines[slot].state.playing) {
         const postVisible=visibleBagSix(engines[slot].state);
         try {
