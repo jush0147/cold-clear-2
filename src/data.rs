@@ -212,7 +212,12 @@ impl GameState {
         let cleared_mask = self.board.line_clears();
         let lines_cleared = cleared_mask.count_ones();
         let garbage_cleared = (cleared_mask & self.board.garbage_rows).count_ones();
-        let b2b_count_before = self.b2b_count as u32;
+        let b2b_raw_before = if self.back_to_back {
+            self.b2b_count as u32 + 1
+        } else {
+            0
+        };
+        let b2b_count_before = b2b_raw_before.saturating_sub(1);
         let mut back_to_back = false;
         let mut b2b_broken = false;
         let mut combo = 0;
@@ -220,15 +225,24 @@ impl GameState {
         if lines_cleared != 0 {
             self.board.remove_lines(cleared_mask);
             perfect_clear = self.board.cols.iter().all(|&c| c == 0);
-            let difficult = lines_cleared == 4 || !matches!(placement.spin, Spin::None) || perfect_clear;
+            let difficult = lines_cleared == 4 || !matches!(placement.spin, Spin::None);
+            let contribution = u32::from(perfect_clear) + u32::from(difficult);
             combo = self.combo as u32;
             self.combo = self.combo.saturating_add(1);
-            if difficult {
-                back_to_back = self.back_to_back;
-                self.b2b_count = if self.back_to_back { self.b2b_count.saturating_add(1) } else { 0 };
+            if contribution != 0 {
+                // TETR.IO v19 keeps a raw B2B counter. CC2 stores the displayed
+                // x-count (raw - 1) while active. An All Clear contributes one
+                // charge in addition to a difficult clear, so a PC Quad/Spin
+                // can advance the raw counter by two in a single placement.
+                let b2b_raw_after = b2b_raw_before.saturating_add(contribution);
                 self.back_to_back = true;
+                self.b2b_count = b2b_raw_after.saturating_sub(1).min(u16::MAX as u32) as u16;
+                // This is the authority's normal-attack B2B bonus condition,
+                // including the all-clear-only exception.
+                back_to_back = b2b_raw_after > 1
+                    && !(perfect_clear && contribution == 1);
             } else {
-                b2b_broken = self.back_to_back;
+                b2b_broken = b2b_raw_before != 0;
                 self.back_to_back = false;
                 self.b2b_count = 0;
             }
@@ -263,3 +277,45 @@ fn clear_lines(col: &mut u64, mut lines: u64) {
         lines >>= 1;
     }
 }
+
+#[cfg(test)]
+mod tetrp_b2b_transition_tests {
+    use super::*;
+
+    fn transition(active: bool, count: u16, lines: u32, spin: Spin, pc: bool) -> (bool,u16,bool,bool) {
+        let raw_before = if active { count as u32 + 1 } else { 0 };
+        if lines == 0 {
+            return (active,count,false,false);
+        }
+        let difficult = lines == 4 || !matches!(spin, Spin::None);
+        let contribution = u32::from(pc) + u32::from(difficult);
+        if contribution != 0 {
+            let raw_after = raw_before + contribution;
+            (
+                true,
+                raw_after.saturating_sub(1).min(u16::MAX as u32) as u16,
+                raw_after > 1 && !(pc && contribution == 1),
+                false,
+            )
+        } else {
+            (false,0,false,raw_before != 0)
+        }
+    }
+
+    #[test]
+    fn all_clear_and_difficult_clear_contribute_separately() {
+        // First ordinary difficult clear establishes raw B2B=1 (display x0).
+        assert_eq!(transition(false,0,4,Spin::None,false),(true,0,false,false));
+        // A PC Quad contributes both PC and difficult charge: raw=2 immediately.
+        assert_eq!(transition(false,0,4,Spin::None,true),(true,1,true,false));
+        // An all-clear-only normal clear advances charge but suppresses the
+        // normal B2B send bonus, matching pinned Tetrp v19.
+        assert_eq!(transition(true,2,2,Spin::None,true),(true,3,false,false));
+    }
+
+    #[test]
+    fn ordinary_clear_breaks_live_chain() {
+        assert_eq!(transition(true,4,2,Spin::None,false),(false,0,false,true));
+    }
+}
+
