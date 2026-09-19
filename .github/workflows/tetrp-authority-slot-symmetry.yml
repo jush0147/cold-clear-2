@@ -13,6 +13,10 @@ on:
       - '.github/workflows/tetrp-authority-slot-symmetry.yml'
   workflow_dispatch:
 
+concurrency:
+  group: tetrp-gate-tetrp-authority-slot-symmetry-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
