@@ -31,22 +31,44 @@ pub fn base_attack(spin: Spin, lines: u32) -> u32 {
     }
 }
 pub fn multiplier_attack(base_plus_b2b: u32, combo: u32) -> u32 {
+    multiplier_attack_with_garbage(base_plus_b2b, combo, 1.0)
+}
+
+pub fn multiplier_attack_with_garbage(base_plus_b2b: u32, combo: u32, garbage_multiplier: f64) -> u32 {
+    debug_assert!(garbage_multiplier.is_finite() && garbage_multiplier > 0.0);
     let scaled = base_plus_b2b as f64 * (1.0 + 0.25 * combo as f64);
     let minimum = if combo > 1 { (1.25 * combo as f64).ln_1p() } else { 0.0 };
-    scaled.max(minimum).floor() as u32
+    (scaled.max(minimum) * garbage_multiplier).floor() as u32
 }
 /// `count` is CC2's displayed B2B x-count (Tetrp raw counter minus one).
 /// Tetrp v19 releases max(0, raw - 4), therefore displayed x4 banks one line.
 pub fn surge_size(count: u32) -> u32 { count.saturating_sub(3) }
 pub fn attack(info: &PlacementInfo) -> AttackBreakdown {
+    attack_with_multiplier(info, 1.0)
+}
+
+pub fn attack_with_multiplier(info: &PlacementInfo, garbage_multiplier: f64) -> AttackBreakdown {
     if info.lines_cleared == 0 { return AttackBreakdown::default(); }
+    debug_assert!(garbage_multiplier.is_finite() && garbage_multiplier > 0.0);
     let base = base_attack(info.placement.spin, info.lines_cleared);
     let spin_or_quad = info.lines_cleared >= 4 || info.placement.spin != Spin::None;
-    let b2b_bonus = u32::from((spin_or_quad || info.perfect_clear) && info.back_to_back);
+    // GameState::advance already applies the pinned Tetrp v19 B2B bonus
+    // condition, including the all-clear-only exception.
+    let b2b_bonus = u32::from(info.back_to_back);
     let garbage_special_bonus = u32::from(spin_or_quad && info.garbage_cleared > 0);
-    let perfect_clear_bonus = if info.perfect_clear { 5 } else { 0 };
-    let line_clear_attack = multiplier_attack(base + b2b_bonus, info.combo) + garbage_special_bonus;
-    let surge_released = if info.b2b_broken { surge_size(info.b2b_count_before) } else { 0 };
+    let perfect_clear_bonus = if info.perfect_clear {
+        (5.0 * garbage_multiplier).floor() as u32
+    } else {
+        0
+    };
+    let line_clear_attack =
+        multiplier_attack_with_garbage(base + b2b_bonus, info.combo, garbage_multiplier)
+        + garbage_special_bonus;
+    let surge_released = if info.b2b_broken {
+        (surge_size(info.b2b_count_before) as f64 * garbage_multiplier).floor() as u32
+    } else {
+        0
+    };
     // Integer equivalent of JS Math.round(surge / 3); denominator 3 has no ties.
     let third = (surge_released + 1) / 3;
     AttackBreakdown {
@@ -106,4 +128,24 @@ mod tests {
     }
     #[test]
     fn combo_rounding() { assert_eq!(multiplier_attack(4,1),5);assert_eq!(multiplier_attack(0,6),2); }
+    #[test]
+    fn garbage_multiplier_scales_before_flat_garbage_bonus() {
+        let mut i=info(Spin::Full,2,0,true);
+        i.garbage_cleared=1;
+        let a=attack_with_multiplier(&i,1.5);
+        // (full double 4 + B2B 1) * 1.5 = 7.5 -> 7, then +1 garbage bonus.
+        assert_eq!(a.line_clear_attack,8);
+        i.perfect_clear=true;
+        assert_eq!(attack_with_multiplier(&i,1.5).perfect_clear_bonus,7);
+    }
+
+    #[test]
+    fn garbage_multiplier_scales_corrected_surge_before_packet_split() {
+        let mut i=info(Spin::None,2,0,false);
+        i.b2b_broken=true;
+        i.b2b_count_before=9; // pinned Tetrp raw=10 -> base surge=6
+        let a=attack_with_multiplier(&i,1.5);
+        assert_eq!(a.surge_released,9);
+        assert_eq!(&a.packet_values[..3],&[3,3,3]);
+    }
 }
