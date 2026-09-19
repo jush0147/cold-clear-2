@@ -1,6 +1,6 @@
 {
   "experiment": "tetrp-whole-profile-transfer-screen",
-  "status": "preregistered_waiting_for_runtime_smoke",
+  "status": "preregistered_waiting_for_rule_parity_and_runtime_regression",
   "authority": {
     "repository": "jush0147/tetrp",
     "commit": "0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2",
@@ -80,5 +80,25 @@
     "aa_mirror": 35426860435,
     "slot_symmetry": 35427035469,
     "runtime_smoke": 35427163348
+  },
+  "gates_required": [
+    "visible-state adapter correctness workflow green",
+    "tuned and legacy A/A mirror controls green",
+    "slot-swap trace symmetry green",
+    "lean synchronous runtime deterministic smoke green on the final rule-parity revision",
+    "Cold Clear search-side TL attack/B2B/Surge model regression-tested against pinned Tetrp v19 semantics"
+  ],
+  "rule_parity_revision": {
+    "status": "in_progress",
+    "tetrp_ref": "0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2",
+    "corrected": [
+      "recognized mini uses non-full base attack table",
+      "Surge release is max(0, raw_b2b-4), equivalent to max(0, displayed_x-3)",
+      "All Clear and difficult clear contribute separately to raw B2B charge",
+      "all-clear-only normal attack suppresses the ordinary B2B send bonus",
+      "garbage multiplier scales normal/combo, Surge and All Clear at the hypothetical lock frame",
+      "garbage-special bonus remains flat after multiplier"
+    ],
+    "validation_run": 35427898834
   }
 }
