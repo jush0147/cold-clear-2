@@ -152,6 +152,27 @@ pub fn analyze_with_profile(request: Request, profile: &str) -> Result<Report, S
     let mut nodes = 0u64;
     let (config, profile_label): (Arc<BotConfig>, &'static str) = match profile {
         "review_h9_h12" => (Arc::new(BotConfig::review_h9_h12()), "h9+h12-review"),
+        "review_minus_h1_h12" => {
+            let mut c = BotConfig::review_h9_h12();
+            c.freestyle_weights.pending_safety = 0.0;
+            (Arc::new(c), "review-minus-h1+h12")
+        }
+        "review_minus_h2_h12" => {
+            let mut c = BotConfig::review_h9_h12();
+            c.freestyle_weights.useful_attack_reward = 0.0;
+            c.freestyle_weights.cancellation_reward = 0.0;
+            (Arc::new(c), "review-minus-h2+h12")
+        }
+        "review_minus_h6c_h12" => {
+            let mut c = BotConfig::review_h9_h12();
+            c.freestyle_weights.row_transitions = BotConfig::legacy().freestyle_weights.row_transitions;
+            (Arc::new(c), "review-minus-h6c+h12")
+        }
+        "review_minus_h9_h12" => {
+            let mut c = BotConfig::review_h9_h12();
+            c.freestyle_weights.h9_cavity_excavation = 0.0;
+            (Arc::new(c), "review-minus-h9+h12")
+        }
         "corrected_legacy_h12" => {
             let mut c = BotConfig::legacy();
             c.freestyle_weights.softdrop = 0.0;
@@ -167,7 +188,7 @@ pub fn analyze_with_profile(request: Request, profile: &str) -> Result<Report, S
             c.dag_backprop_despeculated_values = false;
             (Arc::new(c), "corrected-legacy+h12")
         }
-        _ => return Err("profile must be review_h9_h12 or corrected_legacy_h12".into()),
+        _ => return Err("unknown analysis profile".into()),
     };
 
     for scenario in 0..scenarios {
