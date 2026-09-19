@@ -20,6 +20,7 @@ const profiles=[
   process.env.SLOT1_PROFILE||'corrected_legacy_h12',
 ];
 const tracePath=process.env.TRACE_OUT||null;
+const progressEveryLockSteps=Number(process.env.PROGRESS_EVERY_LOCKS||250);
 
 const out=runSynchronousMatch({
   Engine,
@@ -33,6 +34,10 @@ const out=runSynchronousMatch({
   tetrpRef:process.env.TETRP_REF||null,
   trace:Boolean(tracePath),
   safetyLockSteps:Number(process.env.SAFETY_LOCK_STEPS||5000),
+  progressEveryLockSteps,
+  onProgress:progressEveryLockSteps>0
+    ? (progress)=>process.stderr.write(JSON.stringify(progress)+'\n')
+    : null,
 });
 
 if(tracePath) writeFileSync(tracePath,JSON.stringify(out.trace,null,2)+'\n');
