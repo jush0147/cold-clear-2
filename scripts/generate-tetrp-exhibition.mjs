@@ -20,6 +20,8 @@ const outPath = path.resolve(process.argv[3] || 'bot-exhibition-49000.ttrm');
 const seed = Number(process.env.EXHIBITION_SEED || 49000);
 const nodeBudget = Number(process.env.NODE_BUDGET || 200000);
 const framesPerPiece = Number(process.env.FRAMES_PER_PIECE || 30);
+const stopAfterPieces = process.env.STOP_AFTER_PIECES == null ? null : Number(process.env.STOP_AFTER_PIECES);
+const assertMirror = process.env.ASSERT_MIRROR === '1';
 
 const { Engine } = await import(pathToFileURL(path.join(tetrpRoot, 'src/engine.js')).href);
 const B = await import(pathToFileURL(path.join(tetrpRoot, 'src/board.js')).href);
@@ -228,7 +230,7 @@ function collectOutbox() {
 const diagnostics=[];
 let pieceIndex=0;
 let winner=null;
-const maxPieces=800;
+const maxPieces=stopAfterPieces ?? 800;
 while(pieceIndex<maxPieces) {
   const startFrame=pieceIndex*framesPerPiece;
   const lockFrame=startFrame+framesPerPiece-1;
@@ -301,6 +303,15 @@ while(pieceIndex<maxPieces) {
   });
 
   queuedTransfers=collectOutbox();
+  if(assertMirror) {
+    if(profiles[0]!==profiles[1]) throw new Error('ASSERT_MIRROR requires identical profiles');
+    if(engines[0].serialize()!==engines[1].serialize()) {
+      throw new Error('A/A authority states diverged after piece '+(pieceIndex+1));
+    }
+    if(JSON.stringify(observers[0].snapshot())!==JSON.stringify(observers[1].snapshot())) {
+      throw new Error('A/A SevenBag observers diverged after piece '+(pieceIndex+1));
+    }
+  }
   if(!engines[0].state.playing || !engines[1].state.playing) {
     winner=engines[0].state.playing?0:engines[1].state.playing?1:null;
     pieceIndex++;
@@ -308,7 +319,7 @@ while(pieceIndex<maxPieces) {
   }
   pieceIndex++;
 }
-if(pieceIndex>=maxPieces) throw new Error('exhibition exceeded safety piece cap');
+if(pieceIndex>=maxPieces && stopAfterPieces == null) throw new Error('exhibition exceeded safety piece cap');
 const endFrame=pieceIndex*framesPerPiece;
 deliverTransfers(endFrame);
 
@@ -372,7 +383,9 @@ const file={
     seed,node_budget:nodeBudget,frames_per_piece:framesPerPiece,
     profiles,names,winner:winner===null?'simultaneous-topout':names[winner],
     authority:'jush0147/tetrp engine',
-    warning:'Synthetic exhibition only. Do not pool this match into strategy-strength evidence.',
+    stopped_after_pieces:stopAfterPieces,
+    mirror_assertion:assertMirror,
+    warning:'Synthetic exhibition/control only. Do not pool this match into strategy-strength evidence.',
     final:{
       tuned:{pieces:engines[0].state.stats.pieces,generated:engines[0].state.attack.totals.generated,sent:engines[0].state.attack.totals.sent},
       legacy:{pieces:engines[1].state.stats.pieces,generated:engines[1].state.attack.totals.generated,sent:engines[1].state.attack.totals.sent},
