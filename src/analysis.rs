@@ -174,19 +174,67 @@ pub fn analyze_with_profile(request: Request, profile: &str) -> Result<Report, S
             (Arc::new(c), "review-minus-h9+h12")
         }
         "corrected_legacy_h12" => {
-            let mut c = BotConfig::legacy();
-            c.freestyle_weights.softdrop = 0.0;
-            c.freestyle_weights.pending_safety = 0.0;
-            c.freestyle_weights.useful_attack_reward = 0.0;
+            (Arc::new(BotConfig::corrected_legacy_h12()), "corrected-legacy+h12")
+        }
+        "reset_h1_pending_safety_1_h12" => {
+            let mut c = BotConfig::corrected_legacy_h12();
+            c.freestyle_weights.pending_safety = 1.0;
+            (Arc::new(c), "reset-h1-pending1+h12")
+        }
+        "reset_h2_useful_attack_1_h12" => {
+            let mut c = BotConfig::corrected_legacy_h12();
+            c.freestyle_weights.useful_attack_reward = 1.0;
             c.freestyle_weights.cancellation_reward = 0.0;
-            c.freestyle_weights.h3_b2b_charge_value = 0.0;
+            (Arc::new(c), "reset-h2-useful1+h12")
+        }
+        "reset_h3_b2b_charge_1_5_h12" => {
+            let mut c = BotConfig::corrected_legacy_h12();
+            c.freestyle_weights.h3_b2b_charge_value = 1.5;
             c.freestyle_weights.h3_surge_bank_value = 0.0;
-            c.freestyle_weights.h6_base_holes_scale = 1.0;
-            c.freestyle_weights.h6_base_coveredness_scale = 1.0;
-            c.freestyle_weights.h9_cavity_excavation = 0.0;
-            c.dag_backprop_best_demotion = true;
-            c.dag_backprop_despeculated_values = false;
-            (Arc::new(c), "corrected-legacy+h12")
+            (Arc::new(c), "reset-h3-charge1.5+h12")
+        }
+        "reset_h4_well_half_h12" => {
+            let mut c = BotConfig::corrected_legacy_h12();
+            c.freestyle_weights.tetris_well_depth *= 0.5;
+            (Arc::new(c), "reset-h4-well0.5+h12")
+        }
+        "reset_h5_combo_4_h12" => {
+            let mut c = BotConfig::corrected_legacy_h12();
+            c.freestyle_weights.combo_attack *= 4.0;
+            (Arc::new(c), "reset-h5-combo4+h12")
+        }
+        "reset_h6_height_0_75_h12" => {
+            let mut c = BotConfig::corrected_legacy_h12();
+            c.freestyle_weights.height *= 0.75;
+            (Arc::new(c), "reset-h6-height0.75+h12")
+        }
+        "reset_h6b_holes1_5_covered0_5_h12" => {
+            let mut c = BotConfig::corrected_legacy_h12();
+            c.freestyle_weights.h6_base_holes_scale = 1.5;
+            c.freestyle_weights.h6_base_coveredness_scale = 0.5;
+            (Arc::new(c), "reset-h6b-h1.5-c0.5+h12")
+        }
+        "reset_h6c_row2_5_h12" => {
+            let mut c = BotConfig::corrected_legacy_h12();
+            c.freestyle_weights.row_transitions *= 2.5;
+            (Arc::new(c), "reset-h6c-row2.5+h12")
+        }
+        "reset_h9_cavity_m0_5_h12" => {
+            let mut c = BotConfig::corrected_legacy_h12();
+            c.freestyle_weights.h9_cavity_excavation = -0.5;
+            (Arc::new(c), "reset-h9-cavity-0.5+h12")
+        }
+        "reset_h10_exploitation_0_7985_h12" => {
+            let mut c = BotConfig::corrected_legacy_h12();
+            c.freestyle_exploitation = 0.7985076962177716;
+            c.freestyle_speculated_exploitation = 0.7985076962177716;
+            (Arc::new(c), "reset-h10-exploitation0.7985+h12")
+        }
+        "reset_h11_k40s60_h12" => {
+            let mut c = BotConfig::corrected_legacy_h12();
+            c.freestyle_exploitation = 0.5108256237659907;
+            c.freestyle_speculated_exploitation = 0.916290731874155;
+            (Arc::new(c), "reset-h11-k40s60+h12")
         }
         _ => return Err("unknown analysis profile".into()),
     };
@@ -327,6 +375,28 @@ mod tests {
             garbage_margin_frames: None,
             garbage_increase_per_second: None,
             node_budget: 5000,
+        }
+    }
+
+    #[test]
+    fn reset_profiles_are_accepted() {
+        for profile in [
+            "corrected_legacy_h12",
+            "reset_h1_pending_safety_1_h12",
+            "reset_h2_useful_attack_1_h12",
+            "reset_h3_b2b_charge_1_5_h12",
+            "reset_h4_well_half_h12",
+            "reset_h5_combo_4_h12",
+            "reset_h6_height_0_75_h12",
+            "reset_h6b_holes1_5_covered0_5_h12",
+            "reset_h6c_row2_5_h12",
+            "reset_h9_cavity_m0_5_h12",
+            "reset_h10_exploitation_0_7985_h12",
+            "reset_h11_k40s60_h12",
+        ] {
+            let report = analyze_with_profile(empty_request(), profile).unwrap();
+            assert!(!report.candidates.is_empty(), "profile {profile}");
+            assert!(report.nodes <= report.node_budget as u64, "profile {profile}");
         }
     }
 
