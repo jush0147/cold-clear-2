@@ -1,0 +1,29 @@
+{
+  "policy": "tetrp-pace-robustness",
+  "status": "active",
+  "decision_date": "2026-09-19",
+  "decision": {
+    "primary_pps": 2.5,
+    "low_robustness_pps": 2.0,
+    "future_high_robustness_pps": 3.5,
+    "replace_previous_high_robustness_pps": 3.0
+  },
+  "historical_results": {
+    "preserve_existing_3pps_runs": true,
+    "reason": "Existing 3 PPS runs remain valid historical measurements and exposed a repeatable long-match timing phenomenon. Do not rewrite or reinterpret them as 3.5 PPS results."
+  },
+  "implementation_requirement": {
+    "current_harness_limitation": "runSynchronousMatch currently requires integer framesPerPiece.",
+    "do_not_approximate_as_17_frames": "17 frames per piece is about 3.5294 PPS, not 3.5 PPS.",
+    "required_before_next_high_speed_test": "Support an exact rational 3.5 PPS cadence while preserving integer authority frames and scheduled hard-drop semantics.",
+    "target_average_frames_per_piece": "120/7 ~= 17.142857",
+    "validation": [
+      "authority frame continuity",
+      "placement transport correctness at both 17- and 18-frame piece windows",
+      "deterministic cadence phase",
+      "slot symmetry",
+      "reported PPS derived from the rational cadence rather than a single integer frame count"
+    ]
+  },
+  "research_reason": "Moving the high-speed robustness probe away from the exact 20-frame-per-piece / 20-frame-garbage-travel boundary provides a cleaner check of whether the repeated long-match behavior at 3 PPS is a timing-boundary interaction."
+}
