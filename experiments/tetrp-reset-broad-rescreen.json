@@ -190,7 +190,7 @@
     "cap_timeout_error": "Unscored. Preserve structured failure, continue other pair games, and mark that candidate incomplete if 16 scored games are not available.",
     "no_artificial_winner": true
   },
-  "next_after_screen": "Run fresh 16-pair standalone confirmations for H9/H4/H2. Then build the new lineage sequentially, re-testing each confirmed feature for marginal value against the current incumbent.",
+  "next_after_screen": "After run 35438250546 completes, record it as priority evidence. Then start H9 multi-parameter research first unless the follow-up gives a compelling reason to reorder H9/H2/H4. No H-family is eliminated; each standalone family remains eligible for its own multi-parameter sweep.",
   "stage1_run_id": 35435294614,
   "stage1_result": {
     "all_complete": true,
@@ -558,10 +558,26 @@
       "app_rule": "APP remains diagnostic only."
     },
     "post_confirmation_lineage_order": [
-      "H9 cavity excavation first, if confirmed, because it is a structural evaluator term and had the strongest combined screen (16-8).",
-      "H4 well shaping next, if confirmed, tested for marginal value on the then-current incumbent.",
-      "H2 useful attack last, if confirmed, tested for marginal value on the then-current incumbent because it changes attack objective shaping."
+      "Use the result only to refine which family receives full multi-parameter study first.",
+      "Begin a fresh multi-parameter sweep for the selected family against the current incumbent.",
+      "Do not carry the representative value directly into promotion testing without parameter search."
     ],
-    "note": "Standalone confirmation only creates a confirmed candidate pool. Actual promotion still requires a fresh marginal test against the current incumbent in the fixed order above."
+    "note": "Standalone confirmation only creates a confirmed candidate pool. Actual promotion still requires a fresh marginal test against the current incumbent in the fixed order above.",
+    "original_label": "standalone confirmation",
+    "current_role": "representative_value_priority_followup",
+    "promotion_authority": false,
+    "run_id": 35438250546,
+    "decision_rule_note": "The predeclared 20/32 threshold remains useful for describing this run exactly as designed, but after the v2 policy revision it cannot produce a promoted or formally confirmed feature. Treat outcomes only as stronger ranking/diagnostic evidence."
+  },
+  "policy_revision": {
+    "superseded_interpretation": "The original screen/extension/confirmation labels were written before adopting parameter-search-first lineage v2.",
+    "current_interpretation": [
+      "Stage-1 8-pair results rank family research priority only.",
+      "The 12-pair extension remains ranking evidence only.",
+      "Run 35438250546 (16 fresh pairs / 32 games per H9/H4/H2 representative) is a diagnostic priority follow-up, not promotion confirmation.",
+      "No H-family in this file is eliminated by these representative-value results.",
+      "Actual family evaluation requires a current-incumbent multi-parameter sweep, fresh local refinement, and a large fixed-finalist confirmation."
+    ],
+    "source": "experiments/tetrp-strategy-lineage-reset-policy.json"
   }
 }
