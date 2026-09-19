@@ -2,6 +2,15 @@ import { createRequire } from 'node:module';
 import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import path from 'node:path';
+import {
+  SevenBagObserver,
+  buildAnalysisRequest,
+  captureVisibleState,
+  drawsAdvancedByPlacement,
+  upperPiece,
+  visibleBagSix,
+  visibleFingerprint,
+} from './lib/tetrp-authority-adapter.mjs';
 
 const require = createRequire(import.meta.url);
 const { analyze_pending_profile_json } = require('../pkg-node/cold_clear_2.js');
@@ -10,7 +19,7 @@ const tetrpRoot = path.resolve(process.argv[2] || 'tetrp-reference');
 const outPath = path.resolve(process.argv[3] || 'bot-exhibition-49000.ttrm');
 const seed = Number(process.env.EXHIBITION_SEED || 49000);
 const nodeBudget = Number(process.env.NODE_BUDGET || 200000);
-const framesPerPiece = 30;
+const framesPerPiece = Number(process.env.FRAMES_PER_PIECE || 30);
 
 const { Engine } = await import(pathToFileURL(path.join(tetrpRoot, 'src/engine.js')).href);
 const B = await import(pathToFileURL(path.join(tetrpRoot, 'src/board.js')).href);
@@ -22,14 +31,21 @@ const handling = {
   irs: 'off', ihs: 'off',
 };
 const rules = { g: 0, gincrease: 0 };
-const profiles = ['review_h9_h12', 'corrected_legacy_h12'];
-const names = ['TUNED H9', 'CORRECTED LEGACY'];
+const profiles = [
+  process.env.SLOT0_PROFILE || 'review_h9_h12',
+  process.env.SLOT1_PROFILE || 'corrected_legacy_h12',
+];
+const names = [
+  process.env.SLOT0_NAME || (profiles[0] === 'review_h9_h12' ? 'TUNED H9' : 'CORRECTED LEGACY'),
+  process.env.SLOT1_NAME || (profiles[1] === 'review_h9_h12' ? 'TUNED H9' : 'CORRECTED LEGACY'),
+];
 const gameids = [0, 1];
 
 function makeEngine() {
   return new Engine({ mode: 'tl', seed, rules, handling });
 }
 const engines = [makeEngine(), makeEngine()];
+const observers = engines.map(e => SevenBagObserver.fromGameStart(visibleBagSix(e.state)));
 
 const replayEvents = [
   [{ frame:0, type:'start', data:{}, _order:0 },
@@ -40,46 +56,6 @@ const replayEvents = [
 const nextIgeId = [2, 2];
 const nextRemoteCid = [1, 1];
 let eventOrder = 10;
-
-function upperPiece(p) { return p == null ? null : String(p).toUpperCase(); }
-function ccBoard(state) {
-  return [...state.board.rows].reverse().map(row => row.map(cell => {
-    if (cell == null) return null;
-    if (cell === 'gb' || cell === 'gbd') return 'G';
-    return upperPiece(cell);
-  }));
-}
-function ccBagState(queue) {
-  const left = new Set(['I','O','T','L','J','S','Z']);
-  for (const p of queue) left.delete(p);
-  return [...left];
-}
-function requestFor(engine) {
-  const s = engine.state;
-  const queue = [upperPiece(s.piece.type), ...s.bag.queue.slice(0,5).map(upperPiece)];
-  if (queue.length !== 6) throw new Error('Tetrp authority did not expose current + NEXT5');
-  const incoming = [
-    ...s.attack.are.map(p => ({ lines:p.amt, active:true })),
-    ...s.attack.pending.map(p => ({ lines:p.amt, active:Boolean(p.active) })),
-  ].filter(p => p.lines > 0);
-  return {
-    start: {
-      board: ccBoard(s),
-      queue,
-      hold: upperPiece(s.hold.piece),
-      combo: s.attack.combo,
-      back_to_back: s.attack.btb > 0,
-      b2b_count: Math.max(0, s.attack.btb - 1),
-      randomizer: { type:'seven_bag', bag_state:ccBagState(queue) },
-    },
-    incoming,
-    pieces_placed: s.stats.pieces,
-    garbage_sent: s.attack.totals.sent,
-    frames_per_piece: framesPerPiece,
-    pending_delay_frames: s.rules.garbagespeed_frames,
-    node_budget: nodeBudget,
-  };
-}
 
 const baseCells = {
   I:[[-1,0],[0,0],[1,0],[2,0]],
@@ -263,16 +239,39 @@ while(pieceIndex<maxPieces) {
 
   if(!engines[0].state.playing || !engines[1].state.playing) break;
 
+  // Synchronous decision barrier: capture both visible states before either
+  // bot searches or either new placement is committed.
+  const visible=engines.map(captureVisibleState);
+  const authorityBefore=engines.map(e=>e.serialize());
+  const fingerprints=visible.map(visibleFingerprint);
+
   const plans=[];
   for(let slot=0;slot<2;slot++) {
-    const request=requestFor(engines[slot]);
+    const request=buildAnalysisRequest(visible[slot],observers[slot],{
+      nodeBudget,framesPerPiece
+    });
     const report=JSON.parse(analyze_pending_profile_json(JSON.stringify(request),profiles[slot]));
+    if(!report.per_packet_ready_timing) {
+      throw new Error('formal authority adapter must preserve per-packet garbage timing');
+    }
     if(!report.candidates.length) throw new Error('no bot candidates for slot '+slot);
     const placement=report.candidates[0].placement;
     const pathResult=findPath(engines[slot],placement);
     const inputs=schedulePath(startFrame,lockFrame,pathResult.moves);
     inputs.forEach(e=>addReplayInput(slot,e));
-    plans.push({placement,path:pathResult,inputs,report});
+    plans.push({
+      placement,path:pathResult,inputs,report,
+      drawsAdvanced:drawsAdvancedByPlacement(visible[slot],placement),
+      preDecisionFingerprint:fingerprints[slot],
+    });
+  }
+
+  // Search is external to the authority. If either engine changed while the
+  // two decisions were being produced, the synchronous barrier was violated.
+  for(let slot=0;slot<2;slot++) {
+    if(engines[slot].serialize()!==authorityBefore[slot]) {
+      throw new Error('authority mutated during pre-commit search for slot '+slot);
+    }
   }
 
   for(let frame=startFrame;frame<=lockFrame;frame++) {
@@ -281,12 +280,24 @@ while(pieceIndex<maxPieces) {
     }
   }
 
+  for(let slot=0;slot<2;slot++) {
+    if(engines[slot].state.playing) {
+      observers[slot].advance(visibleBagSix(engines[slot].state),plans[slot].drawsAdvanced);
+    }
+  }
+
   diagnostics.push({
     piece:pieceIndex+1,frame:lockFrame,
-    tuned:{pieces:engines[0].state.stats.pieces,app:engines[0].state.attack.totals.generated/Math.max(1,engines[0].state.stats.pieces),
-      placement:plans[0].placement,path:plans[0].path.moves},
-    legacy:{pieces:engines[1].state.stats.pieces,app:engines[1].state.attack.totals.generated/Math.max(1,engines[1].state.stats.pieces),
-      placement:plans[1].placement,path:plans[1].path.moves},
+    slot0:{profile:profiles[0],pieces:engines[0].state.stats.pieces,
+      app:engines[0].state.attack.totals.generated/Math.max(1,engines[0].state.stats.pieces),
+      placement:plans[0].placement,path:plans[0].path.moves,
+      pre_decision:plans[0].preDecisionFingerprint,
+      bag:observers[0].snapshot()},
+    slot1:{profile:profiles[1],pieces:engines[1].state.stats.pieces,
+      app:engines[1].state.attack.totals.generated/Math.max(1,engines[1].state.stats.pieces),
+      placement:plans[1].placement,path:plans[1].path.moves,
+      pre_decision:plans[1].preDecisionFingerprint,
+      bag:observers[1].snapshot()},
   });
 
   queuedTransfers=collectOutbox();
