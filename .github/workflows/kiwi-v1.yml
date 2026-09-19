@@ -43,7 +43,20 @@ jobs:
         run: |
           set -euo pipefail
           node scripts/wasm-smoke.mjs > kiwi-wasm-smoke.json
-          grep -q '"config_profile":"h9+h12+h13-interactive"' kiwi-wasm-smoke.json
+          node - <<'NODE'
+          const fs = require('fs');
+          const report = JSON.parse(fs.readFileSync('kiwi-wasm-smoke.json', 'utf8'));
+          if (report.status !== 'passed') throw new Error('WASM smoke test did not pass');
+          if (report.capabilities?.config_profile !== 'h9+h12+h13-interactive') {
+            throw new Error('unexpected Kiwi interactive profile');
+          }
+          if (report.capabilities?.hard_node_budget !== true) {
+            throw new Error('hard node budget capability missing');
+          }
+          if (report.capabilities?.persistent_dag !== true) {
+            throw new Error('persistent DAG capability missing');
+          }
+          NODE
 
       - name: Assemble handoff artifact
         shell: bash
