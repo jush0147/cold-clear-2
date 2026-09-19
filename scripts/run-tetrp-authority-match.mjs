@@ -13,6 +13,13 @@ const B=await import(pathToFileURL(path.join(tetrpRoot,'src/board.js')).href);
 const R=await import(pathToFileURL(path.join(tetrpRoot,'src/rotation.js')).href);
 
 const seed=Number(process.env.MATCH_SEED||61000);
+const hasSlotSeeds=process.env.SLOT0_SEED!==undefined || process.env.SLOT1_SEED!==undefined;
+if(hasSlotSeeds && (process.env.SLOT0_SEED===undefined || process.env.SLOT1_SEED===undefined)) {
+  throw new Error('SLOT0_SEED and SLOT1_SEED must be supplied together');
+}
+const authoritySeeds=hasSlotSeeds
+  ? [Number(process.env.SLOT0_SEED),Number(process.env.SLOT1_SEED)]
+  : null;
 const nodeBudget=Number(process.env.NODE_BUDGET||200000);
 const framesPerPiece=Number(process.env.FRAMES_PER_PIECE||30);
 const profiles=[
@@ -32,6 +39,7 @@ const out=runSynchronousMatch({
   rotationModule:R,
   analyzeProfileJson:analyze_pending_profile_json,
   seed,
+  seeds:authoritySeeds,
   nodeBudget,
   framesPerPiece,
   profiles,
