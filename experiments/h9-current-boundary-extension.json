@@ -1,6 +1,6 @@
 {
   "experiment": "H9 current-stack boundary extension",
-  "status": "preregistered",
+  "status": "completed_finalist_selected",
   "decision_date": "2026-09-20",
   "policy_source": "experiments/tetrp-strategy-lineage-reset-policy.json",
   "parent_local_refinement": "experiments/h9-current-local-refinement.json",
@@ -236,5 +236,64 @@
     "no_positive_region": "If no value meets eligibility, pause H9 rather than force a finalist.",
     "no_promotion": "Boundary extension can select a finalist only. It cannot promote H9."
   },
-  "next_if_finalist_selected": "Preregister one fixed H9 finalist against corrected_legacy_h12 for about 200 fresh asymmetric pairs / 400 games. Promotion requires that independent confirmation."
+  "next_if_finalist_selected": "Preregister one fixed H9 finalist against corrected_legacy_h12 for about 200 fresh asymmetric pairs / 400 games. Promotion requires that independent confirmation.",
+  "execution": {
+    "run_id": 35455304896,
+    "source_commit": "73d2aab26b66cfa7d3a964870fbdafb8b646b17a",
+    "conclusion": "success",
+    "all_complete": true,
+    "artifact_id": 10590056651
+  },
+  "outcome": {
+    "results": [
+      {
+        "value": -0.5,
+        "ko": "41-39",
+        "candidate_sweeps": 14,
+        "incumbent_sweeps": 13,
+        "split_pairs": 13,
+        "net_sweeps": 1,
+        "exact_two_sided_sign_p": 1,
+        "eligible_for_finalist": true
+      },
+      {
+        "value": -0.625,
+        "ko": "42-38",
+        "candidate_sweeps": 10,
+        "incumbent_sweeps": 8,
+        "split_pairs": 22,
+        "net_sweeps": 2,
+        "exact_two_sided_sign_p": 0.8145294189453125,
+        "eligible_for_finalist": true
+      },
+      {
+        "value": -0.75,
+        "ko": "43-37",
+        "candidate_sweeps": 13,
+        "incumbent_sweeps": 10,
+        "split_pairs": 17,
+        "net_sweeps": 3,
+        "exact_two_sided_sign_p": 0.6776394844055176,
+        "eligible_for_finalist": true
+      },
+      {
+        "value": -0.875,
+        "ko": "42-38",
+        "candidate_sweeps": 12,
+        "incumbent_sweeps": 10,
+        "split_pairs": 18,
+        "net_sweeps": 2,
+        "exact_two_sided_sign_p": 0.8318119049072266,
+        "eligible_for_finalist": true
+      }
+    ],
+    "preregistered_selection": {
+      "action": "select_fixed_finalist",
+      "finalist_value": -0.75,
+      "finalist_profile": "reset_h9_cavity_m0_75_h12",
+      "reason": "-0.75 had the highest preregistered net paired-sweep result among eligible values in the fresh common-seed boundary grid, and the outward -0.875 boundary did not win."
+    },
+    "interpretation": "The boundary extension resolved the previous boundary hit without another outward extension. -0.75 is now fixed before large confirmation. The modest 43-37 / +3 result is selection evidence only and must not be treated as promotion evidence."
+  },
+  "next_experiment": "experiments/h9-current-final-confirmation.json"
 }
