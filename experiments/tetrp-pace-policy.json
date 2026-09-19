@@ -4,26 +4,26 @@
   "decision_date": "2026-09-19",
   "decision": {
     "primary_pps": 2.5,
-    "low_robustness_pps": 2.0,
-    "future_high_robustness_pps": 3.5,
-    "replace_previous_high_robustness_pps": 3.0
+    "low_robustness_pps": 2,
+    "future_high_robustness_pps": 3.5294117647058822,
+    "replace_previous_high_robustness_pps": 3,
+    "future_high_robustness_label": "3.53 PPS"
   },
   "historical_results": {
     "preserve_existing_3pps_runs": true,
     "reason": "Existing 3 PPS runs remain valid historical measurements and exposed a repeatable long-match timing phenomenon. Do not rewrite or reinterpret them as 3.5 PPS results."
   },
   "implementation_requirement": {
-    "current_harness_limitation": "runSynchronousMatch currently requires integer framesPerPiece.",
-    "do_not_approximate_as_17_frames": "17 frames per piece is about 3.5294 PPS, not 3.5 PPS.",
-    "required_before_next_high_speed_test": "Support an exact rational 3.5 PPS cadence while preserving integer authority frames and scheduled hard-drop semantics.",
-    "target_average_frames_per_piece": "120/7 ~= 17.142857",
+    "high_speed_frames_per_piece": 17,
+    "effective_pps": 3.5294117647058822,
+    "policy": "Use the integer-frame 17 fpp cadence for high-speed robustness. Label it honestly as ~3.53 PPS rather than exact 3.5 PPS.",
+    "reason": "The ~0.84% difference from 3.5 PPS is immaterial for the intended high-speed robustness probe and avoids adding fractional-cadence complexity to both authority and forecast timing.",
     "validation": [
-      "authority frame continuity",
-      "placement transport correctness at both 17- and 18-frame piece windows",
-      "deterministic cadence phase",
-      "slot symmetry",
-      "reported PPS derived from the rational cadence rather than a single integer frame count"
+      "placement transport fits the 17-frame window",
+      "packed taps preserve movement semantics",
+      "hard drop locks on the scheduled frame",
+      "authority/search continue to share the same integer frames_per_piece value"
     ]
   },
-  "research_reason": "Moving the high-speed robustness probe away from the exact 20-frame-per-piece / 20-frame-garbage-travel boundary provides a cleaner check of whether the repeated long-match behavior at 3 PPS is a timing-boundary interaction."
+  "research_reason": "Use 17 fpp (~3.53 PPS) to probe a clearly faster regime while moving away from the exact 20-frame-per-piece / 20-frame-garbage-travel boundary seen at 3 PPS."
 }
