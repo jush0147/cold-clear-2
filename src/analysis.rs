@@ -236,3 +236,52 @@ pub fn analyze_with_profile(request: Request, profile: &str) -> Result<Report, S
         ],
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::data::{Board, Piece};
+    use enumset::EnumSet;
+
+    fn empty_request() -> Request {
+        let mut bag_state = EnumSet::empty();
+        bag_state.insert(Piece::Z);
+        Request {
+            start: Start {
+                board: Board::default(),
+                queue: vec![Piece::I, Piece::O, Piece::T, Piece::L, Piece::J, Piece::S],
+                hold: None,
+                combo: 0,
+                back_to_back: false,
+                b2b_count: 0,
+                randomizer: Randomizer::SevenBag { bag_state },
+            },
+            incoming: vec![],
+            pieces_placed: 0,
+            garbage_sent: 0,
+            frames_per_piece: 30,
+            pending_delay_frames: 20,
+            node_budget: 5000,
+        }
+    }
+
+    #[test]
+    fn repeated_snapshot_analysis_has_identical_rank_order() {
+        let a = analyze_with_profile(empty_request(), "review_h9_h12").unwrap();
+        let b = analyze_with_profile(empty_request(), "review_h9_h12").unwrap();
+        assert_eq!(a.candidates.len(), b.candidates.len());
+        for (x, y) in a.candidates.iter().zip(&b.candidates) {
+            assert_eq!(x.placement, y.placement);
+            assert_eq!(x.mean_score.to_bits(), y.mean_score.to_bits());
+            assert_eq!(x.worst_score.to_bits(), y.worst_score.to_bits());
+            assert_eq!(x.scenarios, y.scenarios);
+        }
+    }
+
+    #[test]
+    fn exact_packet_timing_beats_legacy_fallback_when_present() {
+        let p = IncomingPacket { lines: 4, active: Some(false), ready_in_frames: Some(7) };
+        assert_eq!(p.timing(20).unwrap(), (4, 7));
+    }
+}
+
