@@ -24,15 +24,27 @@ impl Forecast {
     }
 
     pub fn new(packets:&[GarbagePacket], pieces_placed:u32, sent:u32, frames_per_piece:u32, delay:u32, scenario:u32) -> Result<Self,String> {
+        if delay>600 {return Err("invalid explicit timing assumption".into());}
+        let timed: Vec<_> = packets.iter()
+            .map(|p| (p.lines, if p.active { 0 } else { delay }))
+            .collect();
+        Self::new_timed(&timed, pieces_placed, sent, frames_per_piece, scenario)
+    }
+
+    /// Pending-aware forecast with an explicit remaining activation delay per
+    /// already-observable packet. The caller owns the observation boundary;
+    /// hidden future packets and hole coordinates must never be supplied.
+    pub fn new_timed(packets:&[(u32,u32)], pieces_placed:u32, sent:u32, frames_per_piece:u32, scenario:u32) -> Result<Self,String> {
         if packets.len()>16 {return Err("forecast supports at most 16 observable packets".into());}
-        if !(1..=600).contains(&frames_per_piece) || delay>600 {return Err("invalid explicit timing assumption".into());}
+        if !(1..=600).contains(&frames_per_piece) {return Err("invalid explicit timing assumption".into());}
         if sent>1_000_000 || pieces_placed>1_000_000 {return Err("history counter exceeds analysis bound".into());}
         let mut f=Self{enabled:true,pieces_placed,sent,frames_per_piece,..Self::default()};
-        for (i,p) in packets.iter().enumerate() {
-            if p.lines==0 || p.lines>1000 {return Err("packet line count must be 1..1000".into());}
+        for (i,&(lines,ready_in_frames)) in packets.iter().enumerate() {
+            if lines==0 || lines>1000 {return Err("packet line count must be 1..1000".into());}
+            if ready_in_frames>600 {return Err("packet activation delay exceeds analysis bound".into());}
             // Each scenario samples one clean hole per observed packet. Sample
             // columns cover all ten possibilities equally across ten scenarios.
-            f.packets[i]=Packet{lines:p.lines,ready_at:if p.active {0} else {delay},hole:((scenario+3*i as u32)%10) as u8};
+            f.packets[i]=Packet{lines,ready_at:ready_in_frames,hole:((scenario+3*i as u32)%10) as u8};
         }
         f.len=packets.len();Ok(f)
     }
@@ -87,5 +99,20 @@ mod tests {
         let p=[GarbagePacket{lines:3,active:false}];let mut f=Forecast::new(&p,30,0,12,20,0).unwrap();let original=f;let mut b=Board::default();
         f.resolve(&mut b,&[],0);assert_eq!(f.remaining(),3);assert_ne!(f,original);
         f.resolve(&mut b,&[],0);assert_eq!(f.remaining(),0);assert_ne!(b,Board::default());
+    }
+    #[test]
+    fn per_packet_remaining_delays_are_preserved(){
+        let p=[(2,5),(3,13)];
+        let mut f=Forecast::new_timed(&p,30,0,6,4).unwrap();
+        let mut b=Board::default();
+        f.resolve(&mut b,&[],0);
+        assert_eq!(f.remaining(),3);
+        assert_ne!(b,Board::default());
+        let after_first=b;
+        f.resolve(&mut b,&[],0);
+        assert_eq!(f.remaining(),3);
+        assert_eq!(b,after_first);
+        f.resolve(&mut b,&[],0);
+        assert_eq!(f.remaining(),0);
     }
 }
