@@ -1,18 +1,6 @@
 name: Tetrp authority correctness
 
 on:
-  push:
-    branches: [s2-strategy-clean]
-    paths:
-      - 'src/data.rs'
-      - 'src/tetrio.rs'
-      - 'src/analysis.rs'
-      - 'src/forecast.rs'
-      - 'tests/replay_fixtures.rs'
-      - 'tests/fixtures/replay-v19.json'
-      - 'scripts/lib/tetrp-authority-adapter.mjs'
-      - 'scripts/test-tetrp-authority-adapter.mjs'
-      - '.github/workflows/tetrp-authority-correctness.yml'
   workflow_dispatch:
 
 permissions:
