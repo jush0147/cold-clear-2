@@ -22,6 +22,8 @@ export function runSynchronousMatch({
   safetyLockSteps = 5000,
   progressEveryLockSteps = 0,
   onProgress = null,
+  diagnosticMaxLockSteps = null,
+  stopOnFirstDecisionDivergence = false,
 }) {
   if (!Number.isSafeInteger(seed)) throw new Error('seed must be a safe integer');
   if (!Number.isInteger(nodeBudget) || nodeBudget < 1000) throw new Error('invalid node budget');
@@ -32,6 +34,10 @@ export function runSynchronousMatch({
   }
   if (onProgress !== null && typeof onProgress !== 'function') {
     throw new Error('onProgress must be a function or null');
+  }
+  if (diagnosticMaxLockSteps !== null &&
+      (!Number.isInteger(diagnosticMaxLockSteps) || diagnosticMaxLockSteps < 1)) {
+    throw new Error('invalid diagnostic lock limit');
   }
 
   const handling = {
@@ -54,6 +60,8 @@ export function runSynchronousMatch({
   const traces=[];
   const searchNodes=[0,0];
   const startedAtMs=Date.now();
+  let firstDecisionDivergenceLock=null;
+  let diagnosticStopReason=null;
 
   function progressSnapshot(frame) {
     return {
@@ -106,6 +114,10 @@ export function runSynchronousMatch({
   }
 
   while(true) {
+    if(diagnosticMaxLockSteps !== null && lockStep >= diagnosticMaxLockSteps) {
+      diagnosticStopReason='diagnostic_lock_limit';
+      break;
+    }
     if(lockStep >= safetyLockSteps) {
       throw new Error('authority match exceeded safety lock-step cap; do not score this seed');
     }
@@ -147,6 +159,24 @@ export function runSynchronousMatch({
         placement,path,inputs,report,
         drawsAdvanced:drawsAdvancedByPlacement(visible[slot],placement),
       });
+    }
+
+    if(firstDecisionDivergenceLock===null) {
+      const sameVisible=visibleFingerprint(visible[0])===visibleFingerprint(visible[1]);
+      if(!sameVisible) {
+        throw new Error('same-seed authority diverged before the first profile decision divergence');
+      }
+      const decisionKey=(p)=>JSON.stringify({
+        placement:p.placement,
+        drawsAdvanced:p.drawsAdvanced,
+      });
+      if(decisionKey(plans[0])!==decisionKey(plans[1])) {
+        firstDecisionDivergenceLock=lockStep+1;
+        if(stopOnFirstDecisionDivergence) {
+          diagnosticStopReason='first_decision_divergence';
+          break;
+        }
+      }
     }
 
     for(let slot=0;slot<2;slot++) {
@@ -197,7 +227,9 @@ export function runSynchronousMatch({
   }
 
   const alive=engines.map(e=>e.state.playing);
-  const winnerSlot=alive[0]&&!alive[1]?0:alive[1]&&!alive[0]?1:null;
+  const winnerSlot=diagnosticStopReason===null
+    ? (alive[0]&&!alive[1]?0:alive[1]&&!alive[0]?1:null)
+    : null;
   const summarize=(slot)=>{
     const s=engines[slot].state;
     return {
@@ -234,6 +266,9 @@ export function runSynchronousMatch({
       profiles:[...profiles],
       winner_slot:winnerSlot,
       winner_profile:winnerSlot===null?null:profiles[winnerSlot],
+      scored:diagnosticStopReason===null,
+      diagnostic_stop_reason:diagnosticStopReason,
+      first_decision_divergence_lock:firstDecisionDivergenceLock,
       lock_steps:lockStep,
       rules:{
         garbagespeed_frames:ruleState.garbagespeed_frames,
