@@ -9,6 +9,10 @@ on:
       - '.github/workflows/tetrp-authority-runtime-smoke.yml'
   workflow_dispatch:
 
+concurrency:
+  group: tetrp-gate-tetrp-authority-runtime-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
