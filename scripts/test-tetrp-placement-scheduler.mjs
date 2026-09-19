@@ -16,44 +16,28 @@ const handling={
 const makeEngine=seed=>new Engine({mode:'tl',seed,rules:{g:0,gincrease:0},handling});
 const {schedulePath,inputsForFrame}=createPlacementTools({Engine,boardModule:B,rotationModule:R});
 
-function runThrough(engine,inputs,lastFrame) {
-  for(let frame=0;frame<=lastFrame;frame++) engine.step(inputsForFrame(inputs,frame));
-}
-
 // Capacity check: even a deliberately absurd 32-step descent must fit inside
-// a 20-frame (3 PPS) transport window. Only soft-drop segments consume
-// synthetic authority time, so the path is right-aligned near the lock frame.
+// a 20-frame (3 PPS) transport window. CC2 movegen caps path length at 32.
 const packed=schedulePath(0,19,[...Array(32).fill('down'),'hardDrop']);
 const preLock=packed.filter(e=>e.key!=='hardDrop');
-assert.ok(preLock.every(e=>e.frame<=19));
-assert.ok(Math.min(...preLock.map(e=>e.frame))>=16,'32 soft-drop taps should need at most four source frames');
-assert.deepEqual(
-  packed.filter(e=>e.key==='hardDrop').map(e=>[e.frame,e.subframe]),
-  [[19,0.5],[19,0.5]],
-  'hard drop must stay at the scheduled lock instant'
-);
+assert.ok(preLock.every(e=>e.frame<19));
+assert.ok(Math.max(...preLock.map(e=>e.frame))<=6,'32 taps should pack into at most 7 source frames');
 
-// Semantic check against the pinned authority: eight soft-drop taps must move
-// exactly eight rows while gravity remains zero.
+// Semantic check against the pinned authority: eight packed soft-drop taps
+// must move exactly eight rows while gravity remains zero.
 const semantic=schedulePath(0,19,[...Array(8).fill('down'),'hardDrop']);
-const movementOnly=semantic.filter(e=>e.key!=='hardDrop');
-const movementEngine=makeEngine(777);
-const y0=movementEngine.state.piece.y;
-runThrough(movementEngine,movementOnly,19);
-assert.equal(movementEngine.state.stats.pieces,0,'movement-only transport must not lock a piece');
-assert.equal(movementEngine.state.piece.y-y0,8,'soft-drop taps must preserve one-row-per-down semantics');
+const engine=makeEngine(777);
+const y0=engine.state.piece.y;
+for(let frame=0;frame<19;frame++) engine.step(inputsForFrame(semantic,frame));
+assert.equal(engine.state.stats.pieces,0,'hard drop must not happen before the scheduled lock frame');
+assert.equal(engine.state.piece.y-y0,8,'packed soft-drop taps must preserve one-row-per-down semantics');
+engine.step(inputsForFrame(semantic,19));
+assert.equal(engine.state.stats.pieces,1,'piece must lock exactly on the scheduled lock frame');
 
-const lockEngine=makeEngine(777);
-for(let frame=0;frame<19;frame++) lockEngine.step(inputsForFrame(semantic,frame));
-assert.equal(lockEngine.state.stats.pieces,0,'hard drop must not happen before the scheduled lock frame');
-lockEngine.step(inputsForFrame(semantic,19));
-assert.equal(lockEngine.state.stats.pieces,1,'piece must lock exactly on the scheduled lock frame');
-
-// Regression for the H9 +1 / seeds 65206,65207 failure. A grounded finesse can
-// legitimately contain more than 15 synthetic taps in this placement-only
-// transport. Spacing every tap across source time caused Tetrp's reset-exhaustion
-// check to auto-lock the first piece, then the scheduled hard drop locked a
-// second piece. Equal-subframe taps must preserve the path and produce one lock.
+// Regression for H9 +1 / seeds 65206,65207. The ordinary tap spacing can
+// cross Tetrp's 15-reset auto-lock on a grounded, reset-heavy placement. When
+// given the live authority state schedulePath must detect that and use compact
+// equal-subframe transport instead, so the planned hard drop locks exactly one piece.
 const resetEngine=makeEngine(779);
 while(B.legal(resetEngine.state.board,{...resetEngine.state.piece,y:resetEngine.state.piece.y+1})) {
   resetEngine.state.piece.y+=1;
@@ -61,37 +45,37 @@ while(B.legal(resetEngine.state.board,{...resetEngine.state.piece,y:resetEngine.
 resetEngine.state.piece.hy=Math.ceil(resetEngine.state.piece.y);
 const resetMoves=[];
 for(let i=0;i<8;i++) resetMoves.push('moveLeft','moveRight');
-const resetPacked=schedulePath(0,19,[...resetMoves,'hardDrop']);
+const resetPacked=schedulePath(0,19,[...resetMoves,'hardDrop'],resetEngine);
+const resetPreLock=resetPacked.filter(e=>e.key!=='hardDrop');
+assert.ok(resetPreLock.every(e=>e.frame===19 && e.subframe===0.5),
+  'reset-heavy fallback taps must share the scheduled hard-drop subframe');
 for(let frame=0;frame<19;frame++) resetEngine.step(inputsForFrame(resetPacked,frame));
 assert.equal(resetEngine.state.stats.pieces,0,'reset-heavy path must not auto-lock before the scheduled frame');
 resetEngine.step(inputsForFrame(resetPacked,19));
 assert.equal(resetEngine.state.stats.pieces,1,'reset-heavy transport must lock exactly one piece');
 
 // High-speed robustness uses 17 frames/piece = 60/17 ~= 3.529 PPS.
-// Verify the same transport invariants in that narrower window.
+// Verify the same ordinary transport invariants in that narrower window.
+const fastEngine=makeEngine(778);
 const fastPacked=schedulePath(0,16,[...Array(32).fill('down'),'hardDrop']);
-assert.ok(fastPacked.filter(e=>e.key!=='hardDrop').every(e=>e.frame<=16),'3.53 PPS path must fit the lock frame');
+const fastPreLock=fastPacked.filter(e=>e.key!=='hardDrop');
+assert.ok(fastPreLock.every(e=>e.frame<16),'3.53 PPS path taps must precede lock frame');
 
 const fastSemantic=schedulePath(0,16,[...Array(8).fill('down'),'hardDrop']);
-const fastMovement=makeEngine(778);
-const fastY0=fastMovement.state.piece.y;
-runThrough(fastMovement,fastSemantic.filter(e=>e.key!=='hardDrop'),16);
-assert.equal(fastMovement.state.stats.pieces,0,'3.53 PPS movement-only path must not lock');
-assert.equal(fastMovement.state.piece.y-fastY0,8,'3.53 PPS transport must preserve soft-drop semantics');
-
-const fastLock=makeEngine(778);
-for(let frame=0;frame<16;frame++) fastLock.step(inputsForFrame(fastSemantic,frame));
-assert.equal(fastLock.state.stats.pieces,0,'3.53 PPS hard drop must not happen before frame 16');
-fastLock.step(inputsForFrame(fastSemantic,16));
-assert.equal(fastLock.state.stats.pieces,1,'3.53 PPS piece must lock on frame 16');
+const fastY0=fastEngine.state.piece.y;
+for(let frame=0;frame<16;frame++) fastEngine.step(inputsForFrame(fastSemantic,frame));
+assert.equal(fastEngine.state.stats.pieces,0,'3.53 PPS hard drop must not happen before the scheduled lock frame');
+assert.equal(fastEngine.state.piece.y-fastY0,8,'3.53 PPS packed soft-drop taps must preserve movement semantics');
+fastEngine.step(inputsForFrame(fastSemantic,16));
+assert.equal(fastEngine.state.stats.pieces,1,'3.53 PPS piece must lock on frame 16');
 
 console.log(JSON.stringify({
   ok:true,
   checks:[
-    '32-step soft-drop path fits 20-frame transport window',
-    'right-aligned soft-drop taps preserve one-row-per-down semantics',
-    'hard drop stays at the scheduled lock instant',
-    'reset-heavy grounded finesse cannot auto-lock an extra piece',
+    '32-step path fits 20-frame transport window',
+    'subframe soft-drop tap moves exactly one row at g=0/SDF20',
+    'hard drop stays on scheduled lock frame',
+    'reset-heavy grounded finesse falls back to one-lock compact transport',
     '17-frame high-speed transport preserves path and hard-drop semantics'
   ]
 },null,2));
