@@ -5,6 +5,9 @@ on:
     branches: [s2-strategy-clean]
     paths:
       - '.github/workflows/tetrp-bot-exhibition.yml'
+      - 'scripts/generate-tetrp-exhibition.mjs'
+      - 'src/analysis.rs'
+      - 'src/wasm.rs'
   workflow_dispatch:
 
 permissions:
