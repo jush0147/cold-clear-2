@@ -6,6 +6,7 @@ on:
     paths:
       - '.github/workflows/tetrp-bot-exhibition.yml'
       - 'scripts/generate-tetrp-exhibition.mjs'
+      - 'scripts/generate-tetrp-ft7.mjs'
       - 'src/analysis.rs'
       - 'src/wasm.rs'
   workflow_dispatch:
@@ -59,6 +60,22 @@ jobs:
           node tetrp-reference/scripts/validate-replays.mjs \
             exhibition/tuned-vs-legacy-2pps.ttrm \
             --output exhibition/tetrp-validation.json
+
+      - name: Generate complete FT7 exhibition
+        env:
+          EXHIBITION_SEED: '49000'
+          NODE_BUDGET: '200000'
+          TARGET_WINS: '7'
+        run: |
+          set -o pipefail
+          node scripts/generate-tetrp-ft7.mjs tetrp-reference exhibition/tuned-vs-legacy-ft7-2pps.ttrm \
+            | tee exhibition/ft7-generator.log
+
+      - name: Validate complete FT7 through unmodified Tetrp replay pipeline
+        run: |
+          node tetrp-reference/scripts/validate-replays.mjs \
+            exhibition/tuned-vs-legacy-ft7-2pps.ttrm \
+            --output exhibition/tetrp-ft7-validation.json
 
       - uses: actions/upload-artifact@v4
         if: always()
