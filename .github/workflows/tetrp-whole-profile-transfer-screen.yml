@@ -20,6 +20,17 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: jush0147/tetrp
+          ref: 0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2
+          path: tetrp-reference
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify placement transport at 3 PPS
+        run: node scripts/test-tetrp-placement-scheduler.mjs tetrp-reference
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-unknown-unknown
