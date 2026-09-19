@@ -4,6 +4,25 @@
 >
 > This is the canonical document for the current Cold Clear 2 strategy-optimization work. The goal is not to build a replay product. The goal is to make the bot stronger for TETR.IO Tetra League Season 2 and prove or reject strategy changes with direct KO-only bot-vs-bot matches.
 
+## 2026-09-19 protocol migration: Tetrp becomes the target match authority
+
+A major harness limitation was discovered after the first replayable bot exhibitions: historical H1-H14 strength experiments used a simplified **turn-based** KO arena. That arena was fair for A/B comparisons inside itself, but it was not a faithful model of simultaneous TETR.IO TL interaction. In particular, one side could act and expose newly generated garbage before the other side chose its move.
+
+From this point forward:
+
+- historical strategy-strength results are retained as **legacy-arena evidence**, not erased;
+- they do not by themselves establish strength under target TL S2 play;
+- the reverse-engineered deterministic engine in `jush0147/tetrp` is the target authority for board state, piece progression, B2B/Surge/combo, attack, garbage timing/cancellation/tanking, frame timing and KO;
+- Cold Clear should only consume its own player-visible state and choose placements;
+- both bots must choose from pre-commit snapshots before either side's new attack can affect the other's decision;
+- pace is part of match semantics because garbage activation and late-round scaling are frame-based;
+- no further evaluator tuning should be promoted from the legacy turn-based arena.
+
+This migration does **not** invalidate search/correctness infrastructure. H12/H13 correctness fixes, deterministic search, hard evaluator-node accounting, replay reconstruction and browser/WASM latency measurements remain valid unless a separate bug is found.
+
+The machine-readable migration plan is `experiments/tetrp-authority-migration-plan.json`.
+
+
 ## Continuation checkpoint: compute regime and current lineage
 
 > **Important update:** the historical strategy experiments below were primarily run at a 10k evaluator-node budget. H14 later demonstrated that 10k is compute-starved for the review-style search harness. Therefore strategy promotions discovered under 10k should be read as **10k-regime results**, not automatically as compute-invariant global rankings.
@@ -28,12 +47,15 @@ For intended replay-review/WASM behavior, persistent sessions, H13 product relev
 
 ## Objective
 
-Compare two strategies on the same shared TL S2 rules implementation:
+For **new** strength work, compare strategies under the same synchronous Tetrp TL authority:
 
-- **Baseline:** the original Cold Clear 2 strategy/evaluator behavior, adapted only where necessary so both sides run under the same shared rules, information boundary and experiment harness.
-- **Candidate:** a TL S2-oriented strategy derived from that baseline.
+- **Baseline:** corrected legacy Cold Clear 2 strategy/evaluator behavior on the same corrected search core.
+- **Candidate:** the strategy profile being tested.
+- **Authority:** Tetrp owns game rules and state transitions; Cold Clear only sees legal player-visible state and chooses a placement.
 
-A strategy change counts as progress only when direct KO match results support it. APP, total attack, average survival length, evaluator score and similar internal metrics may be diagnostic, but they do not override actual match results.
+A strategy change counts as progress only when direct KO match results under the current target authority support it. APP, total attack, average survival length, evaluator score and similar internal metrics may be diagnostic, but they do not override actual match results.
+
+Historical turn-based KO results remain valid measurements of the legacy arena and should be cited as such.
 
 ## Scope guard
 
@@ -88,35 +110,66 @@ The bot must **not** receive:
 
 After the known preview is exhausted, normal seven-bag probability / Cold Clear speculation may continue search. It must not read the simulator's true future sequence. There is no fixed five-move search cutoff.
 
-## Shared KO protocol
+## Target synchronous KO protocol
 
-Unless an experiment explicitly records a justified protocol revision, Baseline and Candidate must share all of the following:
+Before any scored strategy run, the Tetrp state adapter must pass the migration correctness gates.
 
-- the same TL S2 rules implementation
-- the same piece seed
-- the same search resource / evaluator-node budget per move
-- zero gravity and no placement-speed or soft-drop-time strategy cost
-- the same visible-state adapter
-- the same garbage authority and cancellation rules
-- the same uncertainty treatment for information that is still hidden
+Baseline and Candidate must share:
 
-Every piece seed is played **twice**, swapping the sides assigned to Baseline and Candidate.
+- the same Tetrp TL rules revision;
+- the same match seed within a game;
+- the same hard evaluator-node budget per decision;
+- the same visible-state adapter;
+- the same scheduled pace/timing policy;
+- the same uncertainty treatment for information that is still hidden.
 
-The only scored outcome is **KO**.
+At each lock step:
 
-There is deliberately:
+1. advance the Tetrp authority to a common pre-decision boundary;
+2. snapshot each player's own visible state;
+3. search both bots from those snapshots;
+4. only after **both** choices exist, execute/commit both placements on the authority schedule;
+5. let Tetrp alone resolve attack, cancellation, garbage activation/tanking and KO.
 
-- no piece cap
-- no APP tiebreak
-- no attack tiebreak
-- no cumulative-score tiebreak
-- no artificial winner on timeout, invalid search state or harness error
+Until explicit symmetry controls prove slot identity irrelevant, play paired seeds with Candidate/Baseline slot assignments swapped.
 
-Errors and incomplete jobs are experiment failures/incomplete samples, not wins or draws.
+The only scored outcome is **KO**. APP, raw attack, sent attack and survival length remain diagnostics only.
+
+Pace is a protocol variable, not cosmetic replay speed. Start with equal deterministic pace for controlled tests, then establish robustness across multiple plausible pace regimes or a replay-derived timing distribution before treating a strategy promotion as broadly representative.
+
+### Adapter correctness gate
+
+Do not score strength until all of the following are covered:
+
+- current piece, hold and exactly NEXT5 match Tetrp at each decision;
+- SevenBag state is reconstructed from already observed piece history and validated against CC2 randomizer semantics;
+- snapshots crossing a 7-bag boundary are explicitly tested;
+- combo, B2B count/Surge and board orientation match authority state;
+- pending versus active garbage timing is preserved;
+- NEXT6+, hidden authority RNG, opponent board and future attacks are never exposed;
+- both bots make their decisions before either new placement's outgoing attack becomes observable;
+- representative generated matches round-trip through unmodified Tetrp replay reconstruction.
+
+### Historical legacy-arena protocol
+
+The H1-H14 strategy experiments documented below used the older zero-gravity turn-based arena. Its protocol required same seeds, same node budgets, side swapping and KO-only scoring. Those controls remain meaningful **within that arena**, but the results are now scoped as legacy-arena evidence because its action ordering and garbage authority differ from the target synchronous Tetrp environment.
 
 ## Experiment workflow
 
-Use a sequential champion/incumbent process. Do not combine many dependent strategy changes and then guess which one caused the result.
+### Authority-migration order
+
+Before returning to ordinary hypothesis tuning:
+
+1. finish the Tetrp visible-state adapter and synchronous commit barrier;
+2. pass adapter/no-leak/A-A/replay-round-trip correctness gates;
+3. run a whole-profile transfer test: **current tuned H1+H2+H6C+H9+H12 vs corrected legacy+H12**;
+4. only if that comparison is worth decomposing, run H1/H2/H6C/H9 ablations under the new authority;
+5. reopen historically rejected hypotheses, prioritizing B2B/Surge and combo concepts;
+6. run a small new-authority compute sanity check before interpreting old H14 strength scaling as transferable.
+
+Do **not** rerun every historical experiment merely to recreate the old lineage. The old results are priors for what to test, not obligations.
+
+After the migration gate is satisfied, use a sequential champion/incumbent process. Do not combine many dependent strategy changes and then guess which one caused the result.
 
 1. **Freeze the current comparison version.** Record its commit/configuration.
 2. **State one strategy hypothesis**, or one small tightly related group of changes.
@@ -199,6 +252,20 @@ Expected experiment shape:
 - fresh seeds for later validation/confirmation
 
 Do not record H2 as an improvement until KO results exist.
+
+## Legacy rejected hypotheses after authority migration
+
+H3-H11 should no longer be described as globally rejected. Their correct status is **rejected under the legacy turn-based arena**.
+
+Reopen in roughly this order after the new baseline is established:
+
+1. **H3-family B2B/Surge ideas**, preferably reformulated around avoidable B2B breaks and timing rather than blindly restoring the old terminal reward.
+2. **H5/H7 combo shaping / combo interaction**, because combo blocking and synchronous garbage timing can change their value.
+3. **H6/H6B board safety**, because real pending timing changes the value of height, holes and covered cells.
+4. **H4 structured setup**.
+5. **H8/H10/H11** retuning and search-allocation ideas after the strategy semantics above are settled.
+
+Historical parameter values are starting points, not sacred artifacts. A concept may deserve a new formulation rather than an exact rerun.
 
 ## Candidate research backlog
 
