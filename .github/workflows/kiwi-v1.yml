@@ -1,0 +1,94 @@
+name: Kiwi v1 browser artifact
+
+on:
+  push:
+    branches: [kiwi-v1]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: kiwi-v1-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Native regression tests
+        run: cargo test --lib --bins --tests
+
+      - name: Check wasm target
+        run: cargo check --target wasm32-unknown-unknown --lib
+
+      - name: Install wasm-pack
+        run: cargo install wasm-pack --locked
+
+      - name: Build Kiwi browser package
+        run: wasm-pack build --release --target web --out-dir pkg
+
+      - name: Build Node package for smoke test
+        run: wasm-pack build --release --target nodejs --out-dir pkg-node
+
+      - name: Verify frozen Kiwi browser API
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/wasm-smoke.mjs > kiwi-wasm-smoke.json
+          grep -q '"config_profile":"h9+h12+h13-interactive"' kiwi-wasm-smoke.json
+
+      - name: Assemble handoff artifact
+        shell: bash
+        env:
+          KIWI_SOURCE_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          rm -rf kiwi-v1-browser
+          mkdir -p kiwi-v1-browser/pkg
+          cp -r pkg/. kiwi-v1-browser/pkg/
+          cp scripts/lib/tetrp-authority-adapter.mjs kiwi-v1-browser/
+          cp scripts/lib/tetrp-placement-path.mjs kiwi-v1-browser/
+          cp KIWI_V1_HANDOFF.md kiwi-v1-browser/
+          cp CODEX_TETRP_KIWI_TASK.md kiwi-v1-browser/
+          cp LICENSE-MIT LICENSE-APACHE kiwi-v1-browser/
+          cp kiwi-wasm-smoke.json kiwi-v1-browser/
+          node - <<'NODE'
+          const fs = require('fs');
+          const manifest = {
+            schema: 'tetrp-kiwi-build/1',
+            name: 'Kiwi',
+            product_version: 'kiwi-v1',
+            source_repository: 'jush0147/cold-clear-2',
+            source_branch: 'kiwi-v1',
+            source_commit: process.env.KIWI_SOURCE_SHA,
+            frozen_from: 'e13ec57e7f3795ea0c4dd7e256346d533fcb36e3',
+            strategy_profile: 'review_h9_h12',
+            interactive_profile: 'h9+h12+h13-interactive',
+            default_node_budget: 200000,
+            visible_next: 5,
+            information_boundary: 'own visible state only',
+            authority: 'Tetrp',
+            persistent_api: 'WasmBot',
+            pending_api: 'analyze_pending_json'
+          };
+          fs.writeFileSync(
+            'kiwi-v1-browser/kiwi-build.json',
+            JSON.stringify(manifest, null, 2) + '\n'
+          );
+          NODE
+
+      - name: Upload Kiwi v1 browser artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kiwi-v1-browser
+          path: kiwi-v1-browser/
+          if-no-files-found: error
+          retention-days: 90
