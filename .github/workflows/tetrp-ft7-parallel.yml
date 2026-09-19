@@ -1,0 +1,107 @@
+name: Parallel Tetrp FT7 exhibition
+
+on:
+  push:
+    branches: [s2-strategy-clean]
+    paths:
+      - '.github/workflows/tetrp-ft7-parallel.yml'
+      - 'scripts/combine-tetrp-ft7.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - name: Install wasm-pack
+        run: cargo install wasm-pack --locked
+      - name: Build Node WASM
+        run: wasm-pack build --release --target nodejs --out-dir pkg-node
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ft7-node-wasm
+          path: pkg-node/
+          retention-days: 1
+
+  round:
+    needs: build
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      max-parallel: 13
+      matrix:
+        seed: [49000,49001,49002,49003,49004,49005,49006,49007,49008,49009,49010,49011,49012]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: jush0147/tetrp
+          ref: main
+          path: tetrp-reference
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@v4
+        with:
+          name: ft7-node-wasm
+          path: pkg-node
+      - name: Generate seed round
+        env:
+          EXHIBITION_SEED: ${{ matrix.seed }}
+          NODE_BUDGET: '200000'
+        run: |
+          set -o pipefail
+          mkdir -p round
+          node scripts/generate-tetrp-exhibition.mjs tetrp-reference "round/round-${EXHIBITION_SEED}.ttrm" \
+            | tee "round/round-${EXHIBITION_SEED}.log"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ft7-round-${{ matrix.seed }}
+          path: round/
+          if-no-files-found: error
+          retention-days: 7
+
+  combine:
+    needs: round
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: jush0147/tetrp
+          ref: main
+          path: tetrp-reference
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: ft7-round-*
+          path: rounds
+          merge-multiple: true
+      - name: Combine rounds until first to seven
+        run: |
+          mkdir -p exhibition
+          node scripts/combine-tetrp-ft7.mjs rounds exhibition/tuned-vs-legacy-ft7-2pps.ttrm \
+            | tee exhibition/ft7-summary.log
+      - name: Validate complete FT7 through unmodified Tetrp
+        run: |
+          node tetrp-reference/scripts/validate-replays.mjs \
+            exhibition/tuned-vs-legacy-ft7-2pps.ttrm \
+            --output exhibition/tetrp-ft7-validation.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tetrp-ft7-exhibition
+          path: exhibition/
+          if-no-files-found: error
+          retention-days: 30
