@@ -214,6 +214,23 @@ Do not automatically escalate to 400k. The next research stage is high-compute
 strategy-lineage revalidation at 200k, then the product roadmap continues with
 persistent/pending integration and replay correctness.
 
+### Final H1 uncertainty after 200k lineage revalidation
+
+A direct 100-pair H1-vs-corrected-legacy test at 200k on seeds 48600-48699 did
+not reproduce the historical 10k positive direction:
+
+- H1 won 93-107 games
+- paired sweeps 16-23, with 61 split pairs
+- effective sign-test pairs: 39
+- paired exact sign p = 0.3367836351899314
+- no malformed pairs; all 200 games ended normally by no legal placement
+
+This is not significant evidence that H1 is harmful, but it removes the basis
+for retaining pending_safety=1 merely because of the older 10k result. Because
+H1 can interact with H2/H6C/H9, the decisive product question is now a direct
+final-profile ablation: H2+H6C+H9+H12 with pending_safety 1 versus 0 at 200k.
+That fresh 100-pair run is 35420978082.
+
 ## Canonical product roadmap after compute testing
 
 After the current compute experiments finish, follow this order unless new
