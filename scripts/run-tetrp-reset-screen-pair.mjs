@@ -20,6 +20,7 @@ const framesPerPiece=Number(process.env.FRAMES_PER_PIECE||24);
 const safetyLockSteps=Number(process.env.SAFETY_LOCK_STEPS||5000);
 const progressEveryLockSteps=Number(process.env.PROGRESS_EVERY_LOCKS||250);
 const tetrpRef=process.env.TETRP_REF||null;
+const sourceCommit=process.env.GITHUB_SHA||process.env.SOURCE_COMMIT||null;
 
 if(!Number.isSafeInteger(seedA)||!Number.isSafeInteger(seedB)||seedA===seedB) {
   throw new Error('SEED_A and SEED_B must be distinct safe integers');
@@ -53,6 +54,7 @@ for(const spec of games) {
     candidate_slot:spec.candidate_slot,
     candidate_seed:spec.candidate_seed,
     incumbent_seed:spec.incumbent_seed,
+    source_commit:sourceCommit,
   };
   try {
     const out=runSynchronousMatch({
@@ -80,6 +82,7 @@ for(const spec of games) {
       node_budget_per_decision:nodeBudget,
       frames_per_piece:framesPerPiece,
       tetrp_ref:tetrpRef,
+      source_commit:sourceCommit,
       error:error instanceof Error?error.message:String(error),
     })+'\n');
   }
