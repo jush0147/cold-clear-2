@@ -1,0 +1,194 @@
+{
+  "experiment": "Tetrp current-stack broad strategy rescreen",
+  "status": "preregistered_ready_to_run",
+  "decision_date": "2026-09-19",
+  "policy_source": "experiments/tetrp-strategy-lineage-reset-policy.json",
+  "purpose": "Re-screen representative H1-H11 strategy/search hypotheses under one current Tetrp authority and 200k corrected baseline before building a new sequential incumbent lineage.",
+  "fixed_stack": {
+    "incumbent_profile": "corrected_legacy_h12",
+    "tetrp_ref": "0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2",
+    "authority": "synchronous Tetrp TL",
+    "node_budget_per_decision": 200000,
+    "frames_per_piece": 24,
+    "pps": 2.5,
+    "gravity": 0,
+    "result_rule": "KO only",
+    "safety_lock_steps": 5000,
+    "h12": true,
+    "h13": false
+  },
+  "candidates": [
+    {
+      "id": "h1",
+      "family": "H1 pending garbage safety",
+      "profile": "reset_h1_pending_safety_1_h12",
+      "representative": {
+        "pending_safety": 1
+      },
+      "prior_reason": "Original fixed H1 candidate."
+    },
+    {
+      "id": "h2",
+      "family": "H2 useful outgoing attack",
+      "profile": "reset_h2_useful_attack_1_h12",
+      "representative": {
+        "useful_attack_reward": 1,
+        "cancellation_reward": 0
+      },
+      "prior_reason": "Original promoted H2 setting."
+    },
+    {
+      "id": "h3",
+      "family": "H3 B2B/Surge inventory",
+      "profile": "reset_h3_b2b_charge_1_5_h12",
+      "representative": {
+        "h3_b2b_charge_value": 1.5,
+        "h3_surge_bank_value": 0
+      },
+      "prior_reason": "Original fixed H3 finalist; represents the family without combining it with H1/H2."
+    },
+    {
+      "id": "h4",
+      "family": "H4 structured attack setup",
+      "profile": "reset_h4_well_half_h12",
+      "representative": {
+        "tetris_well_depth_scale": 0.5
+      },
+      "prior_reason": "Halving Quad-well shaping was the strongest repeatable H4 signal."
+    },
+    {
+      "id": "h5",
+      "family": "H5 combo continuation",
+      "profile": "reset_h5_combo_4_h12",
+      "representative": {
+        "combo_attack_scale": 4
+      },
+      "prior_reason": "Old fresh validation winner before weak final confirmation."
+    },
+    {
+      "id": "h6",
+      "family": "H6 base height",
+      "profile": "reset_h6_height_0_75_h12",
+      "representative": {
+        "height_scale": 0.75
+      },
+      "prior_reason": "Moderate old screening survivor; avoids using the extreme zero-height variant as the family representative."
+    },
+    {
+      "id": "h6b",
+      "family": "H6B base holes/coveredness",
+      "profile": "reset_h6b_holes1_5_covered0_5_h12",
+      "representative": {
+        "holes_scale": 1.5,
+        "coveredness_scale": 0.5
+      },
+      "prior_reason": "Old screening leader, later 40-40 on fresh validation."
+    },
+    {
+      "id": "h6c",
+      "family": "H6C row transitions",
+      "profile": "reset_h6c_row2_5_h12",
+      "representative": {
+        "row_transition_scale": 2.5
+      },
+      "prior_reason": "Original promoted H6C setting."
+    },
+    {
+      "id": "h9",
+      "family": "H9 cavity excavation",
+      "profile": "reset_h9_cavity_m0_5_h12",
+      "representative": {
+        "h9_cavity_excavation": -0.5
+      },
+      "prior_reason": "Original promoted light excavation signal."
+    },
+    {
+      "id": "h10",
+      "family": "H10 search exploitation",
+      "profile": "reset_h10_exploitation_0_7985_h12",
+      "representative": {
+        "known_exploitation": 0.7985076962177716,
+        "speculated_exploitation": 0.7985076962177716
+      },
+      "prior_reason": "Old fixed H10 finalist, now retested at 200k."
+    },
+    {
+      "id": "h11",
+      "family": "H11 known-vs-speculative allocation",
+      "profile": "reset_h11_k40s60_h12",
+      "representative": {
+        "known_exploitation": 0.5108256237659907,
+        "speculated_exploitation": 0.916290731874155
+      },
+      "prior_reason": "Old preregistered structural primary k40s60, now integrated into current core and retested at 200k."
+    }
+  ],
+  "excluded_from_stage1": [
+    {
+      "id": "h7",
+      "reason": "Interaction experiment, not a standalone feature. Retest combo interaction only after relevant base features enter the new incumbent."
+    },
+    {
+      "id": "h8",
+      "reason": "Joint attack x row-transition tuning. Preserve as interaction prior rather than pretending it is an independent feature."
+    }
+  ],
+  "sampling": {
+    "paired_units_per_candidate": 8,
+    "games_per_pair": 2,
+    "games_per_candidate": 16,
+    "seed_pool": "65000-65015",
+    "pairs": [
+      [
+        65000,
+        65001
+      ],
+      [
+        65002,
+        65003
+      ],
+      [
+        65004,
+        65005
+      ],
+      [
+        65006,
+        65007
+      ],
+      [
+        65008,
+        65009
+      ],
+      [
+        65010,
+        65011
+      ],
+      [
+        65012,
+        65013
+      ],
+      [
+        65014,
+        65015
+      ]
+    ],
+    "game_a": "candidate slot0/seed A vs incumbent slot1/seed B",
+    "game_b": "incumbent slot0/seed A vs candidate slot1/seed B",
+    "rationale": "Candidate and incumbent each receive both seeds and both slots within the pair, breaking deterministic same-seed mirror lock while controlling seed and slot assignment.",
+    "independence": "Eight seed pairs are the experimental units. The 16 games are not 16 independent observations.",
+    "cross_candidate_note": "All candidate families reuse the same eight seed pairs. Candidate-family results are correlated and must never be pooled as independent evidence."
+  },
+  "screen_rule": {
+    "screened_positive": "candidate wins at least 11 of 16 games (equivalently net sweep advantage at least 3 pairs); advance to fresh confirmation.",
+    "screened_negative": "candidate wins at most 5 of 16 games; stop spending compute for now, but preserve for retest triggers.",
+    "screened_neutral": "candidate wins 6-10 of 16 games; no equivalence claim.",
+    "optional_extension": "Neutral directional results 6-7 or 9-10 wins are eligible for a preregistered extension from 8 to 12 paired units before deciding whether confirmation is worthwhile. 8-8 is simply neutral.",
+    "paired_diagnostic": "Report candidate sweeps, incumbent sweeps, split pairs, and an exact two-sided sign-test p value on non-split pairs. These diagnostics do not override the screen rule.",
+    "app_rule": "Raw/sent APP are diagnostics only and cannot override KO."
+  },
+  "failure_policy": {
+    "cap_timeout_error": "Unscored. Preserve structured failure, continue other pair games, and mark that candidate incomplete if 16 scored games are not available.",
+    "no_artificial_winner": true
+  },
+  "next_after_screen": "Freshly confirm screened-positive families. Build the new incumbent sequentially only from confirmed additions; neutral/negative families remain archived and may be retested after material context changes."
+}
