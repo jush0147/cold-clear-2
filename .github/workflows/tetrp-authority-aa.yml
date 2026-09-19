@@ -1,0 +1,92 @@
+name: Tetrp authority A-A mirror
+
+on:
+  push:
+    branches: [s2-strategy-clean]
+    paths:
+      - 'src/analysis.rs'
+      - 'src/forecast.rs'
+      - 'scripts/lib/tetrp-authority-adapter.mjs'
+      - 'scripts/generate-tetrp-exhibition.mjs'
+      - '.github/workflows/tetrp-authority-aa.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mirror:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/checkout@v4
+        with:
+          repository: jush0147/tetrp
+          ref: 0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2
+          path: tetrp-reference
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Install wasm-pack
+        run: cargo install wasm-pack --locked
+
+      - name: Build Node WASM
+        run: wasm-pack build --release --target nodejs --out-dir pkg-node
+
+      - name: Run tuned A-A mirror
+        env:
+          EXHIBITION_SEED: '60000'
+          NODE_BUDGET: '10000'
+          FRAMES_PER_PIECE: '30'
+          SLOT0_PROFILE: review_h9_h12
+          SLOT1_PROFILE: review_h9_h12
+          SLOT0_NAME: TUNED-A
+          SLOT1_NAME: TUNED-B
+          STOP_AFTER_PIECES: '40'
+          ASSERT_MIRROR: '1'
+        run: |
+          mkdir -p aa
+          node scripts/generate-tetrp-exhibition.mjs tetrp-reference aa/tuned-aa.ttrm \
+            | tee aa/tuned-aa.log
+
+      - name: Validate tuned A-A replay
+        run: |
+          node tetrp-reference/scripts/validate-replays.mjs aa/tuned-aa.ttrm \
+            --output aa/tuned-aa-validation.json
+
+      - name: Run corrected legacy A-A mirror
+        env:
+          EXHIBITION_SEED: '60001'
+          NODE_BUDGET: '10000'
+          FRAMES_PER_PIECE: '30'
+          SLOT0_PROFILE: corrected_legacy_h12
+          SLOT1_PROFILE: corrected_legacy_h12
+          SLOT0_NAME: LEGACY-A
+          SLOT1_NAME: LEGACY-B
+          STOP_AFTER_PIECES: '40'
+          ASSERT_MIRROR: '1'
+        run: |
+          node scripts/generate-tetrp-exhibition.mjs tetrp-reference aa/legacy-aa.ttrm \
+            | tee aa/legacy-aa.log
+
+      - name: Validate corrected legacy A-A replay
+        run: |
+          node tetrp-reference/scripts/validate-replays.mjs aa/legacy-aa.ttrm \
+            --output aa/legacy-aa-validation.json
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tetrp-authority-aa
+          path: aa/
+          if-no-files-found: error
+          retention-days: 14
