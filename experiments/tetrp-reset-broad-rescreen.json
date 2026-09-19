@@ -190,7 +190,7 @@
     "cap_timeout_error": "Unscored. Preserve structured failure, continue other pair games, and mark that candidate incomplete if 16 scored games are not available.",
     "no_artificial_winner": true
   },
-  "next_after_screen": "After run 35438250546 completes, record it as priority evidence. Then start H9 multi-parameter research first unless the follow-up gives a compelling reason to reorder H9/H2/H4. No H-family is eliminated; each standalone family remains eligible for its own multi-parameter sweep.",
+  "next_after_screen": "Begin H9 multi-parameter coarse sweep against corrected_legacy_h12. Include zero plus both negative and positive cavity-excavation values. Use the same fresh asymmetric pairs across H9 parameter values; results select a promising region only.",
   "stage1_run_id": 35435294614,
   "stage1_result": {
     "all_complete": true,
@@ -467,7 +467,7 @@
     ]
   },
   "confirmation": {
-    "status": "preregistered",
+    "status": "completed_reclassified_as_priority_followup",
     "candidates": [
       "h9",
       "h4",
@@ -567,7 +567,64 @@
     "current_role": "representative_value_priority_followup",
     "promotion_authority": false,
     "run_id": 35438250546,
-    "decision_rule_note": "The predeclared 20/32 threshold remains useful for describing this run exactly as designed, but after the v2 policy revision it cannot produce a promoted or formally confirmed feature. Treat outcomes only as stronger ranking/diagnostic evidence."
+    "decision_rule_note": "The predeclared 20/32 threshold remains useful for describing this run exactly as designed, but after the v2 policy revision it cannot produce a promoted or formally confirmed feature. Treat outcomes only as stronger ranking/diagnostic evidence.",
+    "result": {
+      "all_complete": true,
+      "h9": {
+        "ko": "19-13",
+        "sweeps": "5-2",
+        "splits": 9,
+        "paired_sign_p": 0.453125,
+        "old_rule_classification": "confirmation_inconclusive",
+        "current_v2_role": "priority_evidence_only",
+        "raw_app": [
+          1.1181387573140151,
+          1.1286337884276028
+        ],
+        "sent_app": [
+          0.8547413392774218,
+          0.8396953654685614
+        ]
+      },
+      "h4": {
+        "ko": "18-14",
+        "sweeps": "6-4",
+        "splits": 6,
+        "paired_sign_p": 0.75390625,
+        "old_rule_classification": "confirmation_inconclusive",
+        "current_v2_role": "priority_evidence_only",
+        "raw_app": [
+          1.1267456248895173,
+          1.1100406575923634
+        ],
+        "sent_app": [
+          0.8531907371398267,
+          0.8227859289375994
+        ]
+      },
+      "h2": {
+        "ko": "20-12",
+        "sweeps": "6-2",
+        "splits": 8,
+        "paired_sign_p": 0.2890625,
+        "old_rule_classification": "confirmed_candidate",
+        "current_v2_role": "priority_evidence_only",
+        "raw_app": [
+          1.1540672247907036,
+          1.113832312882669
+        ],
+        "sent_app": [
+          0.9181556916156441,
+          0.8093215044358366
+        ]
+      }
+    },
+    "v2_interpretation": [
+      "The old 20/32 label for H2 is retained only as a record of the preregistered run design. It has no promotion authority after adoption of parameter-search-first v2.",
+      "H2, H9, and H4 all retain high research priority.",
+      "The differences 20-12, 19-13, and 18-14 are not treated as a reliable ranking among the three families.",
+      "Proceed to family-level multi-parameter research rather than another representative-value head-to-head."
+    ]
   },
   "policy_revision": {
     "superseded_interpretation": "The original screen/extension/confirmation labels were written before adopting parameter-search-first lineage v2.",
