@@ -1,6 +1,6 @@
 {
   "experiment": "exploratory FT7 APP diagnostic",
-  "status": "prepared",
+  "status": "completed",
   "purpose": "Measure raw attack per piece for the current best 200k review profile against corrected legacy in an FT7-style set. Diagnostic only; do not use APP to score or promote strategy.",
   "candidate": "BotConfig::review_h9_h12() = H1 + H2 + H6C + H9 + H12",
   "legacy": "BotConfig::legacy() with zero-gravity softdrop, H12 on, H1/H2/H6C/H9 off, H13 off",
@@ -20,5 +20,29 @@
     "raw_app": "raw_attack / pieces",
     "sent_app": "sent / pieces"
   },
-  "caveat": "The arena is the same zero-gravity turn-based S2 authority used by lineage experiments, not an official simultaneous TETR.IO server simulation. APP is therefore useful diagnostic context, not a direct reproduction of live TL stats."
+  "caveat": "The arena is the same zero-gravity turn-based S2 authority used by lineage experiments, not an official simultaneous TETR.IO server simulation. APP is therefore useful diagnostic context, not a direct reproduction of live TL stats.",
+  "run": 35403906686,
+  "result": {
+    "format": "FT7",
+    "rounds": 12,
+    "candidate_wins": 5,
+    "legacy_wins": 7,
+    "candidate": {
+      "pieces": 3547,
+      "raw_attack": 4163,
+      "cancelled": 1050,
+      "sent": 3117,
+      "raw_app": 1.1736678883563574,
+      "sent_app": 0.8787707922187764
+    },
+    "legacy": {
+      "pieces": 3548,
+      "raw_attack": 4044,
+      "cancelled": 1442,
+      "sent": 2603,
+      "raw_app": 1.1397970687711387,
+      "sent_app": 0.7336527621195039
+    }
+  },
+  "interpretation": "Exploratory only. The current best profile produced slightly higher raw APP and materially higher sent APP than corrected legacy, but lost the single FT7 set 5-7. This does not override the larger paired KO lineage evidence. It demonstrates that the current profile is not merely low-attack survival play, while also illustrating that APP is not equivalent to KO outcome."
 }
