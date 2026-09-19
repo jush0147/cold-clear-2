@@ -1,6 +1,6 @@
 {
   "experiment": "H9 current-stack local refinement",
-  "status": "preregistered",
+  "status": "completed_boundary_extension_required",
   "decision_date": "2026-09-19",
   "policy_source": "experiments/tetrp-strategy-lineage-reset-policy.json",
   "parent_coarse_experiment": "experiments/h9-current-coarse-sweep.json",
@@ -236,5 +236,73 @@
     "no_positive_region": "If no value meets eligibility, pause H9 rather than force a finalist.",
     "no_promotion": "Local refinement can select a finalist only. It cannot promote H9."
   },
-  "next_if_finalist_selected": "Preregister one fixed H9 finalist against corrected_legacy_h12 for roughly 200 fresh asymmetric pairs / 400 games. Promotion requires that independent confirmation."
+  "next_if_finalist_selected": "Preregister one fixed H9 finalist against corrected_legacy_h12 for roughly 200 fresh asymmetric pairs / 400 games. Promotion requires that independent confirmation.",
+  "execution": {
+    "run_id": 35444191358,
+    "source_commit": "6df96ccbb2f0327031e5502b4587fd3b33c7e21e",
+    "conclusion": "success",
+    "all_complete": true,
+    "artifact_id": 10586937924
+  },
+  "outcome": {
+    "results": [
+      {
+        "value": -0.625,
+        "ko": "54-26",
+        "candidate_sweeps": 18,
+        "incumbent_sweeps": 4,
+        "split_pairs": 18,
+        "net_sweeps": 14,
+        "exact_two_sided_sign_p": 0.004343509674072266,
+        "eligible_for_finalist": true
+      },
+      {
+        "value": -0.5,
+        "ko": "45-35",
+        "candidate_sweeps": 13,
+        "incumbent_sweeps": 8,
+        "split_pairs": 19,
+        "net_sweeps": 5,
+        "exact_two_sided_sign_p": 0.38331031799316406,
+        "eligible_for_finalist": true
+      },
+      {
+        "value": -0.375,
+        "ko": "48-32",
+        "candidate_sweeps": 15,
+        "incumbent_sweeps": 7,
+        "split_pairs": 18,
+        "net_sweeps": 8,
+        "exact_two_sided_sign_p": 0.13380050659179688,
+        "eligible_for_finalist": true
+      },
+      {
+        "value": -0.25,
+        "ko": "40-40",
+        "candidate_sweeps": 11,
+        "incumbent_sweeps": 11,
+        "split_pairs": 18,
+        "net_sweeps": 0,
+        "exact_two_sided_sign_p": 1,
+        "eligible_for_finalist": false
+      },
+      {
+        "value": -0.125,
+        "ko": "35-45",
+        "candidate_sweeps": 9,
+        "incumbent_sweeps": 14,
+        "split_pairs": 17,
+        "net_sweeps": -5,
+        "exact_two_sided_sign_p": 0.4048728942871094,
+        "eligible_for_finalist": false
+      }
+    ],
+    "preregistered_selection": {
+      "action": "extend_boundary",
+      "best_observed_value": -0.625,
+      "reason": "The strongest eligible value was the outward refinement boundary, so the preregistered boundary rule requires fresh outward sampling before fixing a finalist."
+    },
+    "interpretation": "The local refinement strongly shifts the useful H9 region more negative than the coarse readout suggested. This stage has no promotion authority and does not itself select a final H9 value."
+  },
+  "next_experiment": "experiments/h9-current-boundary-extension.json"
 }

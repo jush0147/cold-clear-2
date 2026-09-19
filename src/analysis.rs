@@ -356,6 +356,16 @@ pub fn analyze_with_profile(request: Request, profile: &str) -> Result<Report, S
             c.freestyle_weights.h9_cavity_excavation = -1.0;
             (Arc::new(c), "reset-h9-cavity-1+h12")
         }
+        "reset_h9_cavity_m0_875_h12" => {
+            let mut c = BotConfig::corrected_legacy_h12();
+            c.freestyle_weights.h9_cavity_excavation = -0.875;
+            (Arc::new(c), "reset-h9-cavity-0.875+h12")
+        }
+        "reset_h9_cavity_m0_75_h12" => {
+            let mut c = BotConfig::corrected_legacy_h12();
+            c.freestyle_weights.h9_cavity_excavation = -0.75;
+            (Arc::new(c), "reset-h9-cavity-0.75+h12")
+        }
         "reset_h9_cavity_m0_625_h12" => {
             let mut c = BotConfig::corrected_legacy_h12();
             c.freestyle_weights.h9_cavity_excavation = -0.625;
@@ -575,6 +585,8 @@ mod tests {
             "reset_h6c_row2_5_h12",
             "reset_h9_cavity_m1_5_h12",
             "reset_h9_cavity_m1_h12",
+            "reset_h9_cavity_m0_875_h12",
+            "reset_h9_cavity_m0_75_h12",
             "reset_h9_cavity_m0_625_h12",
             "reset_h9_cavity_m0_5_h12",
             "reset_h9_cavity_m0_375_h12",

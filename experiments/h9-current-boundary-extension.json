@@ -1,0 +1,240 @@
+{
+  "experiment": "H9 current-stack boundary extension",
+  "status": "preregistered",
+  "decision_date": "2026-09-20",
+  "policy_source": "experiments/tetrp-strategy-lineage-reset-policy.json",
+  "parent_local_refinement": "experiments/h9-current-local-refinement.json",
+  "parent_run_id": 35444191358,
+  "family": "H9 cavity excavation",
+  "purpose": "Resolve the outward -0.625 boundary hit from local refinement using a fresh common-random-number comparison that includes an inner anchor and progressively more-negative values.",
+  "incumbent_profile": "corrected_legacy_h12",
+  "fixed_stack": {
+    "tetrp_ref": "0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2",
+    "authority": "synchronous Tetrp TL with authority-validated reset-safe placement transport",
+    "node_budget_per_decision": 200000,
+    "frames_per_piece": 24,
+    "pps": 2.5,
+    "gravity": 0,
+    "h12": true,
+    "h13": false,
+    "result_rule": "KO only"
+  },
+  "grid": [
+    {
+      "value": -0.5,
+      "profile": "reset_h9_cavity_m0_5_h12",
+      "role": "inner_anchor"
+    },
+    {
+      "value": -0.625,
+      "profile": "reset_h9_cavity_m0_625_h12",
+      "role": "previous_boundary"
+    },
+    {
+      "value": -0.75,
+      "profile": "reset_h9_cavity_m0_75_h12",
+      "role": "outward"
+    },
+    {
+      "value": -0.875,
+      "profile": "reset_h9_cavity_m0_875_h12",
+      "role": "outer_boundary"
+    }
+  ],
+  "grid_reason": [
+    "The previous 40-pair refinement selected -0.625 at its outward boundary with 54-26 KO and +14 net paired sweeps.",
+    "-0.5 is repeated on the same new seeds as an inner anchor, so this stage can choose among its values without comparing raw scores across different seed sets.",
+    "-0.75 and -0.875 extend in equal 0.125 steps. The older coarse -1.0 point was weak, so -1.0 is not spent again unless the new -0.875 boundary wins."
+  ],
+  "sampling": {
+    "paired_units_per_value": 40,
+    "games_per_pair": 2,
+    "games_per_value": 80,
+    "fresh_seed_pairs": [
+      [
+        65400,
+        65401
+      ],
+      [
+        65402,
+        65403
+      ],
+      [
+        65404,
+        65405
+      ],
+      [
+        65406,
+        65407
+      ],
+      [
+        65408,
+        65409
+      ],
+      [
+        65410,
+        65411
+      ],
+      [
+        65412,
+        65413
+      ],
+      [
+        65414,
+        65415
+      ],
+      [
+        65416,
+        65417
+      ],
+      [
+        65418,
+        65419
+      ],
+      [
+        65420,
+        65421
+      ],
+      [
+        65422,
+        65423
+      ],
+      [
+        65424,
+        65425
+      ],
+      [
+        65426,
+        65427
+      ],
+      [
+        65428,
+        65429
+      ],
+      [
+        65430,
+        65431
+      ],
+      [
+        65432,
+        65433
+      ],
+      [
+        65434,
+        65435
+      ],
+      [
+        65436,
+        65437
+      ],
+      [
+        65438,
+        65439
+      ],
+      [
+        65440,
+        65441
+      ],
+      [
+        65442,
+        65443
+      ],
+      [
+        65444,
+        65445
+      ],
+      [
+        65446,
+        65447
+      ],
+      [
+        65448,
+        65449
+      ],
+      [
+        65450,
+        65451
+      ],
+      [
+        65452,
+        65453
+      ],
+      [
+        65454,
+        65455
+      ],
+      [
+        65456,
+        65457
+      ],
+      [
+        65458,
+        65459
+      ],
+      [
+        65460,
+        65461
+      ],
+      [
+        65462,
+        65463
+      ],
+      [
+        65464,
+        65465
+      ],
+      [
+        65466,
+        65467
+      ],
+      [
+        65468,
+        65469
+      ],
+      [
+        65470,
+        65471
+      ],
+      [
+        65472,
+        65473
+      ],
+      [
+        65474,
+        65475
+      ],
+      [
+        65476,
+        65477
+      ],
+      [
+        65478,
+        65479
+      ]
+    ],
+    "common_random_numbers": "All four boundary-extension values use the same 40 fresh asymmetric seed pairs.",
+    "pair_design": "Game A candidate gets seed X in slot0 and incumbent seed Y in slot1; Game B swaps profile assignment so candidate gets seed Y in slot1.",
+    "independence": "The 40 asymmetric pairs are the experimental units; 80 games are not 80 independent observations."
+  },
+  "integrity_gates": [
+    "Every value must have 40 complete asymmetric pairs / 80 scored games with no harness failures.",
+    "Each pair must contain candidate once in slot0 and once in slot1.",
+    "The one-lock placement-transport guard must remain enabled.",
+    "Any correctness failure blocks finalist selection until repaired; do not count a malformed game as a loss."
+  ],
+  "finalist_selection": {
+    "primary_metric": "net paired sweeps = candidate_sweeps - incumbent_sweeps",
+    "secondary_metric": "candidate KO wins out of 80",
+    "eligibility": "A value must have positive net paired sweeps and >40/80 candidate KO wins.",
+    "tie_breakers": [
+      "higher net paired sweeps",
+      "higher candidate KO wins",
+      "smaller absolute distance from -0.625",
+      "smaller absolute H9 magnitude"
+    ],
+    "boundary_rule": "If -0.875 is the selected best value, extend outward again with fresh seeds before fixing a finalist. Otherwise the best eligible value in this common-seed grid becomes the fixed H9 finalist.",
+    "no_positive_region": "If no value meets eligibility, pause H9 rather than force a finalist.",
+    "no_promotion": "Boundary extension can select a finalist only. It cannot promote H9."
+  },
+  "next_if_finalist_selected": "Preregister one fixed H9 finalist against corrected_legacy_h12 for about 200 fresh asymmetric pairs / 400 games. Promotion requires that independent confirmation."
+}
