@@ -2,7 +2,7 @@ name: Tetrp authority correctness
 
 on:
   push:
-    branches: [s2-strategy-clean]
+    branches: [tetrp-authority]
     paths:
       - 'src/analysis.rs'
       - 'src/forecast.rs'
