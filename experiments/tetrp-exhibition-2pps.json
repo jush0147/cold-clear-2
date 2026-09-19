@@ -1,0 +1,52 @@
+{
+  "status": "validated",
+  "purpose": "Synthetic visualization only; do not pool into strategy-strength evidence.",
+  "successful_run": 35422505999,
+  "failed_prototype_run": 35422351889,
+  "seed": 49000,
+  "node_budget": 200000,
+  "frames_per_piece": 30,
+  "authority": "jush0147/tetrp engine",
+  "profiles": {
+    "candidate": "review_h9_h12",
+    "baseline": "corrected_legacy_h12"
+  },
+  "result": {
+    "winner": "TUNED H9",
+    "frames": 1170,
+    "pieces_each": 39,
+    "lines_each": 20,
+    "tuned": {
+      "generated": 36,
+      "sent": 33
+    },
+    "legacy": {
+      "generated": 23,
+      "sent": 17
+    }
+  },
+  "validation": {
+    "variant": "ttrm",
+    "rounds": 1,
+    "player0": {
+      "placement_seeks": 80,
+      "forks": 40,
+      "packet_checkpoint": true,
+      "terminal_anchor_differences": []
+    },
+    "player1": {
+      "placement_seeks": 80,
+      "forks": 40,
+      "packet_checkpoint": true,
+      "terminal_anchor_differences": []
+    },
+    "first_divergence": null
+  },
+  "implementation_notes": [
+    "Tetrp repository remains unmodified; it is checked out read-only in the workflow.",
+    "Cold-clear selects placements; Tetrp engine is the exhibition authority for movement, attack, garbage, and replay semantics.",
+    "Synthetic placements are converted to legal key sequences and hard-dropped at a fixed 30 frames per piece (2 PPS).",
+    "The first prototype failed on an unbounded pathfinder state dimension for a T-spin; the visited key was corrected.",
+    "Workflow generation now uses pipefail so tee cannot hide generator failures."
+  ]
+}
