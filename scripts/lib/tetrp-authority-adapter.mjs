@@ -133,6 +133,8 @@ export function captureVisibleState(engine) {
     garbage_sent:s.attack.cumulativeSent,
     garbage_speed_frames:s.rules.garbagespeed_frames,
     authority_attack_multiplier:s.attack.multiplier,
+    garbage_margin_frames:s.rules.garbagemargin_frames,
+    garbage_increase_per_second:s.rules.garbageincrease_per_second,
   };
 }
 
@@ -158,6 +160,10 @@ export function buildAnalysisRequest(visible, bagObserver, {nodeBudget,framesPer
     garbage_sent:visible.garbage_sent,
     frames_per_piece:framesPerPiece,
     pending_delay_frames:visible.garbage_speed_frames,
+    authority_frame:visible.frame,
+    garbage_multiplier:visible.authority_attack_multiplier,
+    garbage_margin_frames:visible.garbage_margin_frames,
+    garbage_increase_per_second:visible.garbage_increase_per_second,
     node_budget:nodeBudget,
   };
 }
@@ -185,5 +191,8 @@ export function visibleFingerprint(visible) {
     incoming:visible.incoming,
     pieces_placed:visible.pieces_placed,
     garbage_sent:visible.garbage_sent,
+    authority_attack_multiplier:visible.authority_attack_multiplier,
+    garbage_margin_frames:visible.garbage_margin_frames,
+    garbage_increase_per_second:visible.garbage_increase_per_second,
   });
 }
