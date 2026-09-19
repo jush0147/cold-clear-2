@@ -105,28 +105,37 @@ export function createPlacementTools({Engine, boardModule:B, rotationModule:R}) 
 
   function schedulePath(startFrame,lockFrame,moves) {
     const inputs=[];
-    let frame=startFrame,slot=0;
-    const subframes=[0,0.2,0.4,0.6,0.8];
-    const tap=key=>{
-      if(slot>=subframes.length){frame++;slot=0;}
-      const down=subframes[slot++];
-      const up=Number((down+0.1).toFixed(1));
-      inputs.push({frame,type:'keydown',key,subframe:down});
-      inputs.push({frame,type:'keyup',key,subframe:up});
+    const pathMoves=moves.filter(move=>move!=='hardDrop');
+    const softDrops=pathMoves.filter(move=>move==='down').length;
+
+    // This is placement transport, not a human input-speed model. Horizontal,
+    // rotation and hold taps consume no authority time; only soft drop needs a
+    // positive segment because Tetrp advances it through fall(). Right-align the
+    // whole path at the scheduled lock frame so a long grounded finesse cannot
+    // trip the 15-reset auto-lock merely because synthetic taps were spaced
+    // across source time. Event ordering at an equal subframe is preserved by
+    // Tetrp, so the final hard drop still occurs after the full path.
+    const lockTick=lockFrame*10+5;
+    let tick=lockTick-softDrops;
+    const firstTick=startFrame*10;
+    if(tick<firstTick) {
+      throw new Error('path needs too much synthetic time: start='+startFrame+' firstTick='+tick+' lock='+lockFrame);
+    }
+    const emit=(type,key,at)=>{
+      const frame=Math.floor(at/10);
+      const subframe=Number(((at%10)/10).toFixed(1));
+      inputs.push({frame,type,key,subframe});
     };
-    for(const move of moves) {
-      if(move==='hardDrop') continue;
-      // With g=0 and SDF=20, a held soft-drop segment advances exactly one
-      // row. Tetrp processes subframe events in insertion order, so down can be
-      // transported as a normal tap instead of wasting one whole source frame.
-      // Placement transport must not impose an artificial PPS-dependent reachability limit.
-      tap(move==='down'?'softDrop':move);
+
+    for(const move of pathMoves) {
+      const key=move==='down'?'softDrop':move;
+      emit('keydown',key,tick);
+      if(move==='down') tick++;
+      emit('keyup',key,tick);
     }
-    if(frame>=lockFrame) {
-      throw new Error('path needs too much synthetic time: start='+startFrame+' pathFrame='+frame+' lock='+lockFrame);
-    }
-    inputs.push({frame:lockFrame,type:'keydown',key:'hardDrop',subframe:0.5});
-    inputs.push({frame:lockFrame,type:'keyup',key:'hardDrop',subframe:0.6});
+    if(tick!==lockTick) throw new Error('internal placement transport tick drift');
+    emit('keydown','hardDrop',lockTick);
+    emit('keyup','hardDrop',lockTick);
     return inputs;
   }
 
