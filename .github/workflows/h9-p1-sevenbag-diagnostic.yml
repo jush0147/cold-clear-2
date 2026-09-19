@@ -32,7 +32,7 @@ jobs:
         run: cargo install wasm-pack --locked
       - name: Build Node WASM
         run: wasm-pack build --release --target nodejs --out-dir pkg-node
-      - name: Reproduce failing H9 +1 pair
+      - name: Verify repaired H9 +1 pair
         env:
           SEED_A: '65206'
           SEED_B: '65207'
@@ -46,7 +46,11 @@ jobs:
         run: |
           set -euo pipefail
           node scripts/run-tetrp-reset-screen-pair.mjs tetrp-reference | tee h9-p1-sevenbag-diagnostic.jsonl
-          grep 'SevenBag observer advance failed' h9-p1-sevenbag-diagnostic.jsonl
+          if grep -q '"type":"tetrp_reset_screen_failure"' h9-p1-sevenbag-diagnostic.jsonl; then
+            echo "unexpected match-harness failure" >&2
+            exit 1
+          fi
+          test "$(grep -c '"type":"tetrp_synchronous_match"' h9-p1-sevenbag-diagnostic.jsonl)" -eq 2
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -55,4 +59,4 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-# diagnostic revision 5
+# diagnostic revision 6
