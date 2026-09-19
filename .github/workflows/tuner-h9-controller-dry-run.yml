@@ -1,0 +1,240 @@
+name: Tuner controller H9 dry run
+
+on:
+  push:
+    branches: [tetrp-authority]
+    paths:
+      - '.github/workflows/tuner-h9-controller-dry-run.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: tuner-h9-controller-dry-run-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  TUNER_CONFIG: experiments/tuner-h9-controller-dry-run.json
+  TETRP_REF: 0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2
+  NODE_BUDGET: '50000'
+  FRAMES_PER_PIECE: '24'
+  INCUMBENT_PROFILE: corrected_legacy_h12
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: jush0147/tetrp
+          ref: 0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2
+          path: tetrp-reference
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test tuner controller
+        run: node scripts/test-tuner-controller.mjs
+      - name: Verify placement transport
+        run: node scripts/test-tetrp-placement-scheduler.mjs tetrp-reference
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: tuner-controller-dry-run
+      - name: Run release library regressions
+        run: cargo test --release --lib
+      - name: Install wasm-pack
+        run: cargo install wasm-pack --locked
+      - name: Build Node WASM
+        run: wasm-pack build --release --target nodejs --out-dir pkg-node
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tuner-controller-node-wasm
+          path: pkg-node/
+          retention-days: 1
+
+  prepare0:
+    runs-on: ubuntu-22.04
+    outputs:
+      matrix: ${{ steps.ask.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - id: ask
+        name: Generate generation 0 candidates
+        run: node scripts/tuner/ask.mjs "$TUNER_CONFIG" - ask0.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tuner-h9-controller-ask0
+          path: ask0.json
+          retention-days: 14
+
+  eval0:
+    needs: [build, prepare0]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix: ${{ fromJSON(needs.prepare0.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: jush0147/tetrp
+          ref: 0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2
+          path: tetrp-reference
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@v4
+        with:
+          name: tuner-controller-node-wasm
+          path: pkg-node
+      - name: Evaluate generation 0 candidate
+        env:
+          CANDIDATE_PROFILE: ${{ matrix.profile }}
+          PAIR_SEED_BASE: ${{ matrix.pair_seed_base }}
+          PAIR_COUNT: ${{ matrix.pair_count }}
+          SAFETY_LOCK_STEPS: '5000'
+          PROGRESS_EVERY_LOCKS: '0'
+        run: |
+          set -euo pipefail
+          mkdir -p results
+          out="results/${{ matrix.candidate_id }}.jsonl"
+          : > "$out"
+          for i in $(seq 0 $((PAIR_COUNT-1))); do
+            a=$((PAIR_SEED_BASE + i*2))
+            b=$((a+1))
+            SEED_A="$a" SEED_B="$b" node scripts/run-tetrp-reset-screen-pair.mjs tetrp-reference | tee -a "$out"
+          done
+          if grep -q '"type":"tetrp_reset_screen_failure"' "$out"; then exit 1; fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tuner-h9-g0-${{ matrix.candidate_id }}
+          path: results/
+          if-no-files-found: error
+          retention-days: 14
+
+  aggregate0:
+    needs: [prepare0, eval0]
+    if: always()
+    runs-on: ubuntu-22.04
+    outputs:
+      matrix: ${{ steps.ask1.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@v4
+        with:
+          name: tuner-h9-controller-ask0
+          path: controller
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: tuner-h9-g0-*
+          path: results0
+          merge-multiple: true
+      - name: Aggregate generation 0
+        run: node scripts/tuner/tell.mjs "$TUNER_CONFIG" controller/ask0.json results0 state1.json summary0.json
+      - id: ask1
+        name: Generate generation 1 candidates
+        run: node scripts/tuner/ask.mjs "$TUNER_CONFIG" state1.json ask1.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tuner-h9-controller-g0-aggregate
+          path: |
+            state1.json
+            summary0.json
+            ask1.json
+          retention-days: 14
+
+  eval1:
+    needs: [build, aggregate0]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix: ${{ fromJSON(needs.aggregate0.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: jush0147/tetrp
+          ref: 0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2
+          path: tetrp-reference
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@v4
+        with:
+          name: tuner-controller-node-wasm
+          path: pkg-node
+      - name: Evaluate generation 1 candidate
+        env:
+          CANDIDATE_PROFILE: ${{ matrix.profile }}
+          PAIR_SEED_BASE: ${{ matrix.pair_seed_base }}
+          PAIR_COUNT: ${{ matrix.pair_count }}
+          SAFETY_LOCK_STEPS: '5000'
+          PROGRESS_EVERY_LOCKS: '0'
+        run: |
+          set -euo pipefail
+          mkdir -p results
+          out="results/${{ matrix.candidate_id }}.jsonl"
+          : > "$out"
+          for i in $(seq 0 $((PAIR_COUNT-1))); do
+            a=$((PAIR_SEED_BASE + i*2))
+            b=$((a+1))
+            SEED_A="$a" SEED_B="$b" node scripts/run-tetrp-reset-screen-pair.mjs tetrp-reference | tee -a "$out"
+          done
+          if grep -q '"type":"tetrp_reset_screen_failure"' "$out"; then exit 1; fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tuner-h9-g1-${{ matrix.candidate_id }}
+          path: results/
+          if-no-files-found: error
+          retention-days: 14
+
+  aggregate1:
+    needs: [aggregate0, eval1]
+    if: always()
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@v4
+        with:
+          name: tuner-h9-controller-g0-aggregate
+          path: controller
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: tuner-h9-g1-*
+          path: results1
+          merge-multiple: true
+      - name: Aggregate generation 1
+        run: node scripts/tuner/tell.mjs "$TUNER_CONFIG" controller/ask1.json results1 state2.json summary1.json
+      - name: Produce unevaluated generation 2 proposal
+        run: node scripts/tuner/ask.mjs "$TUNER_CONFIG" state2.json proposal2.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tuner-h9-controller-dry-run-final
+          path: |
+            state2.json
+            summary1.json
+            proposal2.json
+          retention-days: 30

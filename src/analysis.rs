@@ -73,6 +73,129 @@ pub struct Request {
     pub node_budget: u32,
 }
 
+#[derive(Deserialize, Debug, Default)]
+#[serde(deny_unknown_fields)]
+struct TunerOverrides {
+    #[serde(default)]
+    pending_safety: Option<f32>,
+    #[serde(default)]
+    useful_attack_reward: Option<f32>,
+    #[serde(default)]
+    cancellation_reward: Option<f32>,
+    #[serde(default)]
+    h3_b2b_charge_value: Option<f32>,
+    #[serde(default)]
+    h3_surge_bank_value: Option<f32>,
+    #[serde(default)]
+    h6_base_holes_scale: Option<f32>,
+    #[serde(default)]
+    h6_base_coveredness_scale: Option<f32>,
+    #[serde(default)]
+    h9_cavity_excavation: Option<f32>,
+    #[serde(default)]
+    row_transitions_scale: Option<f32>,
+    #[serde(default)]
+    height_scale: Option<f32>,
+    #[serde(default)]
+    tetris_well_depth_scale: Option<f32>,
+    #[serde(default)]
+    combo_attack_scale: Option<f32>,
+    #[serde(default)]
+    freestyle_exploitation: Option<f64>,
+    #[serde(default)]
+    freestyle_speculated_exploitation: Option<f64>,
+}
+
+fn bounded_f32(name: &str, value: f32, min: f32, max: f32) -> Result<f32, String> {
+    if !value.is_finite() || value < min || value > max {
+        return Err(format!("{name} must be finite and within [{min}, {max}]"));
+    }
+    Ok(value)
+}
+
+fn bounded_f64(name: &str, value: f64, min: f64, max: f64) -> Result<f64, String> {
+    if !value.is_finite() || value < min || value > max {
+        return Err(format!("{name} must be finite and within [{min}, {max}]"));
+    }
+    Ok(value)
+}
+
+/// Dynamic evaluator overrides used only by the external black-box tuner.
+/// The base is corrected_legacy_h12, so H12 remains a correctness invariant
+/// while H13 stays off for scored snapshot comparisons.
+fn tuner_config_from_profile(profile: &str) -> Result<Option<BotConfig>, String> {
+    let Some(json) = profile.strip_prefix("tuner:") else { return Ok(None); };
+    if json.len() > 4096 {
+        return Err("tuner profile exceeds 4096 bytes".into());
+    }
+    let o: TunerOverrides = serde_json::from_str(json)
+        .map_err(|e| format!("invalid tuner profile JSON: {e}"))?;
+    if [
+        o.pending_safety.is_some(),
+        o.useful_attack_reward.is_some(),
+        o.cancellation_reward.is_some(),
+        o.h3_b2b_charge_value.is_some(),
+        o.h3_surge_bank_value.is_some(),
+        o.h6_base_holes_scale.is_some(),
+        o.h6_base_coveredness_scale.is_some(),
+        o.h9_cavity_excavation.is_some(),
+        o.row_transitions_scale.is_some(),
+        o.height_scale.is_some(),
+        o.tetris_well_depth_scale.is_some(),
+        o.combo_attack_scale.is_some(),
+        o.freestyle_exploitation.is_some(),
+        o.freestyle_speculated_exploitation.is_some(),
+    ].into_iter().all(|v| !v) {
+        return Err("tuner profile must contain at least one override".into());
+    }
+
+    let mut c = BotConfig::corrected_legacy_h12();
+    if let Some(v) = o.pending_safety {
+        c.freestyle_weights.pending_safety = bounded_f32("pending_safety", v, -100.0, 100.0)?;
+    }
+    if let Some(v) = o.useful_attack_reward {
+        c.freestyle_weights.useful_attack_reward = bounded_f32("useful_attack_reward", v, -100.0, 100.0)?;
+    }
+    if let Some(v) = o.cancellation_reward {
+        c.freestyle_weights.cancellation_reward = bounded_f32("cancellation_reward", v, -100.0, 100.0)?;
+    }
+    if let Some(v) = o.h3_b2b_charge_value {
+        c.freestyle_weights.h3_b2b_charge_value = bounded_f32("h3_b2b_charge_value", v, -100.0, 100.0)?;
+    }
+    if let Some(v) = o.h3_surge_bank_value {
+        c.freestyle_weights.h3_surge_bank_value = bounded_f32("h3_surge_bank_value", v, -100.0, 100.0)?;
+    }
+    if let Some(v) = o.h6_base_holes_scale {
+        c.freestyle_weights.h6_base_holes_scale = bounded_f32("h6_base_holes_scale", v, 0.0, 20.0)?;
+    }
+    if let Some(v) = o.h6_base_coveredness_scale {
+        c.freestyle_weights.h6_base_coveredness_scale = bounded_f32("h6_base_coveredness_scale", v, 0.0, 20.0)?;
+    }
+    if let Some(v) = o.h9_cavity_excavation {
+        c.freestyle_weights.h9_cavity_excavation = bounded_f32("h9_cavity_excavation", v, -100.0, 100.0)?;
+    }
+    if let Some(v) = o.row_transitions_scale {
+        c.freestyle_weights.row_transitions *= bounded_f32("row_transitions_scale", v, 0.0, 20.0)?;
+    }
+    if let Some(v) = o.height_scale {
+        c.freestyle_weights.height *= bounded_f32("height_scale", v, 0.0, 20.0)?;
+    }
+    if let Some(v) = o.tetris_well_depth_scale {
+        c.freestyle_weights.tetris_well_depth *= bounded_f32("tetris_well_depth_scale", v, 0.0, 20.0)?;
+    }
+    if let Some(v) = o.combo_attack_scale {
+        c.freestyle_weights.combo_attack *= bounded_f32("combo_attack_scale", v, 0.0, 20.0)?;
+    }
+    if let Some(v) = o.freestyle_exploitation {
+        c.freestyle_exploitation = bounded_f64("freestyle_exploitation", v, 0.01, 5.0)?;
+    }
+    if let Some(v) = o.freestyle_speculated_exploitation {
+        c.freestyle_speculated_exploitation =
+            bounded_f64("freestyle_speculated_exploitation", v, 0.01, 5.0)?;
+    }
+    Ok(Some(c))
+}
+
 #[derive(Serialize)]
 pub struct Candidate {
     pub placement: Placement,
@@ -150,7 +273,11 @@ pub fn analyze_with_profile(request: Request, profile: &str) -> Result<Report, S
     let scenarios: u32 = if request.incoming.is_empty() { 1 } else { 10 };
     let mut scores: HashMap<Placement, (f64, f32, u32)> = HashMap::new();
     let mut nodes = 0u64;
-    let (config, profile_label): (Arc<BotConfig>, &'static str) = match profile {
+    let tuner_config = tuner_config_from_profile(profile)?;
+    let (config, profile_label): (Arc<BotConfig>, &'static str) = if let Some(c) = tuner_config {
+        (Arc::new(c), "tuner-overrides+h12")
+    } else {
+        match profile {
         "review_h9_h12" => (Arc::new(BotConfig::review_h9_h12()), "h9+h12-review"),
         "review_minus_h1_h12" => {
             let mut c = BotConfig::review_h9_h12();
@@ -292,6 +419,7 @@ pub fn analyze_with_profile(request: Request, profile: &str) -> Result<Report, S
             (Arc::new(c), "reset-h11-k40s60+h12")
         }
         _ => return Err("unknown analysis profile".into()),
+        }
     };
 
     for scenario in 0..scenarios {
@@ -464,6 +592,37 @@ mod tests {
             assert!(!report.candidates.is_empty(), "profile {profile}");
             assert!(report.nodes <= report.node_budget as u64, "profile {profile}");
         }
+    }
+
+    #[test]
+    fn tuner_profile_applies_dynamic_h9_override_on_corrected_baseline() {
+        let c = tuner_config_from_profile(
+            r#"tuner:{"h9_cavity_excavation":-0.375,"row_transitions_scale":1.25}"#
+        ).unwrap().unwrap();
+        let legacy = BotConfig::legacy();
+        assert_eq!(c.freestyle_weights.h9_cavity_excavation, -0.375);
+        assert_eq!(
+            c.freestyle_weights.row_transitions,
+            legacy.freestyle_weights.row_transitions * 1.25
+        );
+        assert!(c.dag_backprop_best_demotion);
+        assert!(!c.dag_backprop_despeculated_values);
+    }
+
+    #[test]
+    fn tuner_profile_rejects_unknown_or_empty_overrides() {
+        assert!(tuner_config_from_profile(r#"tuner:{"made_up":1}"#).is_err());
+        assert!(tuner_config_from_profile("tuner:{}").is_err());
+    }
+
+    #[test]
+    fn tuner_profile_runs_through_snapshot_analysis() {
+        let report = analyze_with_profile(
+            empty_request(),
+            r#"tuner:{"h9_cavity_excavation":-0.375}"#,
+        ).unwrap();
+        assert_eq!(report.config_profile, "tuner-overrides+h12");
+        assert!(!report.candidates.is_empty());
     }
 
     #[test]
