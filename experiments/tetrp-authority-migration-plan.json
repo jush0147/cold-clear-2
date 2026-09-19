@@ -1,6 +1,6 @@
 {
   "experiment": "tetrp-authority-migration",
-  "status": "active_protocol_migration",
+  "status": "correctness_gates_in_progress",
   "discovered": "2026-09-19",
   "reason": [
     "Historical KO strength experiments used a simplified zero-gravity turn-based arena rather than the reverse-engineered Tetrp/TETR.IO synchronous authority.",
@@ -56,7 +56,8 @@
     "fairness": [
       "Both players use the same match seed within a game.",
       "Candidate and baseline use the same hard node budget and visible-state adapter.",
-      "Keep A/B slot swapping until the new harness proves slot/gameid symmetry with explicit controls.",
+      "Slot-swap symmetry was explicitly verified by run 35427035469. A swapped rerun of the same seed is therefore a deterministic mirror, not a second independent strength sample.",
+      "For new synchronous strength tests use one scored match per independent seed unless a future authority change invalidates the symmetry proof.",
       "KO remains the only scored match outcome; APP/attack are diagnostics only."
     ]
   },
@@ -159,5 +160,36 @@
     "result_observed": "The synchronous Tetrp exhibition produced materially different match behavior from the legacy FT7.",
     "inference_limit": "The exhibition is not formal strength evidence because the initial SevenBag snapshot adapter was simplified and the authority/protocol changed."
   },
-  "next_action": "Implement and verify the synchronous Tetrp authority adapter before any further evaluator tuning."
+  "next_action": "Finish lean synchronous runtime smoke, then pre-register and run a small whole-profile transfer screen under pinned Tetrp authority before any feature tuning.",
+  "correctness_evidence": {
+    "visible_state_adapter": {
+      "status": "passed",
+      "runs": [
+        35426669716,
+        35426845179,
+        35426912774
+      ],
+      "checks": [
+        "SevenBag history crosses bag boundaries without hidden queue/RNG access",
+        "first empty hold advances the observed draw window by two",
+        "hidden NEXT tail, bag RNG and garbage-hole RNG do not affect visible capture",
+        "observable pending packets preserve per-packet remaining activation frames"
+      ]
+    },
+    "aa_mirror": {
+      "status": "passed",
+      "run": 35426860435,
+      "details": "Both tuned-vs-tuned and corrected-legacy-vs-corrected-legacy remained authority-state identical for 40 lock steps and both synthetic replays passed unmodified pinned-Tetrp validation."
+    },
+    "slot_swap_symmetry": {
+      "status": "passed",
+      "run": 35427035469,
+      "tetrp_ref": "0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2",
+      "details": "Tuned/legacy trajectories were identical after swapping slot0/slot1 over 80 lock steps; both AB and BA replays passed pinned-Tetrp seek/fork validation with first=null."
+    },
+    "runtime_smoke": {
+      "status": "running",
+      "run": 35427163348
+    }
+  }
 }
