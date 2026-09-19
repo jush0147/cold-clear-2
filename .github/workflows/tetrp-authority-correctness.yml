@@ -1,0 +1,30 @@
+name: Tetrp authority correctness
+
+on:
+  push:
+    branches: [s2-strategy-clean]
+    paths:
+      - 'src/analysis.rs'
+      - 'src/forecast.rs'
+      - 'scripts/lib/tetrp-authority-adapter.mjs'
+      - 'scripts/test-tetrp-authority-adapter.mjs'
+      - '.github/workflows/tetrp-authority-correctness.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  correctness:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Run core tests
+        run: cargo test --release --lib
+      - name: Test visible-state adapter
+        run: node scripts/test-tetrp-authority-adapter.mjs
