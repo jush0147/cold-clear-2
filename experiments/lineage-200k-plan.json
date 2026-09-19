@@ -1,6 +1,6 @@
 {
   "experiment": "200k promoted strategy lineage revalidation",
-  "status": "final_profile_h1_ablation_running",
+  "status": "superseded_by_tetrp_authority_migration",
   "compute_regime": {
     "nodes_per_move": 200000,
     "reason": "provisional product default after H14 200k-vs-100k"
@@ -273,17 +273,21 @@
     }
   ],
   "guardrails": [
-    "Use fresh seeds for each link.",
-    "Use H12 corrected DAG on both sides.",
-    "Do not pool old 10k results with 200k samples as independent evidence.",
-    "Do not run lower lineage links until the upper link result is known.",
-    "Do not revive rejected H3-H11 hypotheses unless the promoted chain changes."
+    "Do not launch new strategy tuning on this legacy turn-based lineage harness.",
+    "Preserve these results as historical priors and regression evidence.",
+    "Use H12 corrected DAG on both sides when comparing historical results.",
+    "Do not pool old 10k and 200k samples as independent evidence.",
+    "For new strength work follow experiments/tetrp-authority-migration-plan.json.",
+    "Historical H3-H11 rejections mean rejected under the legacy arena, not globally disproven."
   ],
   "active_run": {
     "id": "final-profile-H1-ablation",
     "run": 35420978082,
     "workflow_commit": "e3f75f4b77bccd6552d0a2b961f18d70a30e53c2",
-    "status": "running"
+    "status": "cancelled",
+    "conclusion": "cancelled",
+    "decision_status": "superseded_before_completion",
+    "note": "Run 35420978082 was cancelled after discovery that the legacy turn-based authority was not the target synchronous TL authority."
   },
   "failed_runs": [
     {
@@ -442,7 +446,11 @@
     "paired_seeds": 100,
     "games": 200,
     "run": 35420978082,
-    "status": "running",
-    "decision_rule": "Use this direct interaction-aware ablation, not the standalone H1-vs-legacy result, to decide whether pending_safety belongs in the final promoted evaluator."
-  }
+    "status": "cancelled_superseded",
+    "decision_rule": "Do not use this legacy-arena run to decide the target evaluator. Resolve H1 only after the synchronous Tetrp authority transfer test and, if warranted, a new-authority ablation."
+  },
+  "authority_scope": "legacy_simplified_turn_based_ko_arena",
+  "strength_interpretation": "Historical 200k lineage evidence remains valid only within the legacy turn-based authority. It does not decide target TETR.IO-like synchronous strength after the 2026-09-19 authority migration.",
+  "superseded_by": "experiments/tetrp-authority-migration-plan.json",
+  "superseded_on": "2026-09-19"
 }
