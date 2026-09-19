@@ -161,7 +161,7 @@ export function runSynchronousMatch({
       searchNodes[slot]+=report.nodes;
       const placement=report.candidates[0].placement;
       const path=findPath(engines[slot],placement);
-      const inputs=schedulePath(startFrame,lockFrame,path.moves);
+      const inputs=schedulePath(startFrame,lockFrame,path.moves,engines[slot]);
       plans.push({
         placement,path,inputs,report,
         drawsAdvanced:drawsAdvancedByPlacement(visible[slot],placement),
