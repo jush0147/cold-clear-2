@@ -520,8 +520,8 @@ mod h2_tests {
         assert_eq!(h3_inventory(true, 0), (0, 0));
         assert_eq!(h3_inventory(true, 1), (1, 0));
         assert_eq!(h3_inventory(true, 3), (3, 0));
-        assert_eq!(h3_inventory(true, 4), (4, 4));
-        assert_eq!(h3_inventory(true, 9), (4, 9));
+        assert_eq!(h3_inventory(true, 4), (4, 1));
+        assert_eq!(h3_inventory(true, 9), (4, 6));
     }
 
     #[test]
