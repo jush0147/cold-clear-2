@@ -10,20 +10,54 @@ use crate::{
     forecast::Forecast,
     ko_support::with_search_seed,
     tbp::{Randomizer, Start},
-    tetrio::garbage::GarbagePacket,
     try_create_bot,
 };
+
+#[derive(Deserialize, Clone, Copy, Debug)]
+#[serde(deny_unknown_fields)]
+pub struct IncomingPacket {
+    pub lines: u32,
+    /// Backward-compatible snapshot transport. New authority adapters should
+    /// prefer ready_in_frames so packet age is not flattened.
+    #[serde(default)]
+    pub active: Option<bool>,
+    /// Remaining frames until this already-observable packet can become active.
+    /// Zero means active now. This is timing derivable from own observed history,
+    /// not a hidden future arrival.
+    #[serde(default)]
+    pub ready_in_frames: Option<u32>,
+}
+
+impl IncomingPacket {
+    fn timing(self, fallback_delay: u32) -> Result<(u32,u32), String> {
+        if self.lines == 0 || self.lines > 1000 {
+            return Err("packet line count must be 1..1000".into());
+        }
+        match (self.active, self.ready_in_frames) {
+            (Some(true), Some(0)) => Ok((self.lines, 0)),
+            (Some(true), Some(_)) => Err("active packet cannot have a positive ready_in_frames".into()),
+            (Some(false), Some(0)) => Err("inactive packet cannot have zero ready_in_frames".into()),
+            (_, Some(delay)) if delay <= 600 => Ok((self.lines, delay)),
+            (_, Some(_)) => Err("packet activation delay exceeds analysis bound".into()),
+            (Some(true), None) => Ok((self.lines, 0)),
+            (Some(false), None) if fallback_delay <= 600 => Ok((self.lines, fallback_delay)),
+            (Some(false), None) => Err("pending_delay_frames exceeds analysis bound".into()),
+            (None, None) => Err("incoming packet needs active or ready_in_frames".into()),
+        }
+    }
+}
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Request {
     pub start: Start,
-    pub incoming: Vec<GarbagePacket>,
+    pub incoming: Vec<IncomingPacket>,
     pub pieces_placed: u32,
     pub garbage_sent: u32,
     /// Explicit pace assumption, not actual future replay timing.
     pub frames_per_piece: u32,
-    /// Explicit delay assumption for currently inactive packets.
+    /// Legacy fallback for callers that provide only active=false. New Tetrp
+    /// authority adapters provide ready_in_frames on every packet.
     pub pending_delay_frames: u32,
     /// Total evaluator-node budget across the modeled hole scenarios.
     pub node_budget: u32,
@@ -48,6 +82,7 @@ pub struct Report {
     pub rules_parity_verified: bool,
     pub frames_per_piece: u32,
     pub pending_delay_frames: u32,
+    pub per_packet_ready_timing: bool,
     pub assumptions: Vec<&'static str>,
 }
 
@@ -72,6 +107,10 @@ pub fn analyze_with_profile(request: Request, profile: &str) -> Result<Report, S
     if !(1000..=2_000_000).contains(&request.node_budget) {
         return Err("node_budget must be 1000..2000000 evaluator nodes".into());
     }
+    let per_packet_ready_timing = request.incoming.iter().all(|p| p.ready_in_frames.is_some());
+    let timed_incoming: Vec<(u32,u32)> = request.incoming.iter().copied()
+        .map(|p| p.timing(request.pending_delay_frames))
+        .collect::<Result<_,_>>()?;
 
     let scenarios: u32 = if request.incoming.is_empty() { 1 } else { 10 };
     let mut scores: HashMap<Placement, (f64, f32, u32)> = HashMap::new();
@@ -106,12 +145,11 @@ pub fn analyze_with_profile(request: Request, profile: &str) -> Result<Report, S
             b2b_count: request.start.b2b_count,
             randomizer: copy_randomizer(&request.start.randomizer),
         };
-        let forecast = Forecast::new(
-            &request.incoming,
+        let forecast = Forecast::new_timed(
+            &timed_incoming,
             request.pieces_placed,
             request.garbage_sent,
             request.frames_per_piece,
-            request.pending_delay_frames,
             scenario,
         )?;
         let mut bot = try_create_bot(start, config.clone())?;
@@ -174,10 +212,11 @@ pub fn analyze_with_profile(request: Request, profile: &str) -> Result<Report, S
         rules_parity_verified: false,
         frames_per_piece: request.frames_per_piece,
         pending_delay_frames: request.pending_delay_frames,
+        per_packet_ready_timing,
         assumptions: vec![
             "Only already observable incoming packets are modeled; no opponent board or future attacks.",
             "Unknown holes use ten equally weighted clean-hole scenarios when incoming garbage exists.",
-            "All inactive packets use the supplied delay estimate; placements use the supplied fixed pace.",
+            "Per-packet ready_in_frames is used when supplied; active-only callers fall back to pending_delay_frames.",
             "The caller must derive SevenBag bag_state only from information already visible in replay history.",
             "The hard evaluator-node budget is divided across modeled hole scenarios.",
             "Per-scenario future search can be optimistic about information revealed later; scores are heuristic, not win probabilities.",
