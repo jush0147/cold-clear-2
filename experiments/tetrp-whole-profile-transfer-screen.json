@@ -1,6 +1,6 @@
 {
   "experiment": "tetrp-whole-profile-transfer-screen",
-  "status": "running",
+  "status": "rerunning_after_transport_scheduler_fix",
   "authority": {
     "repository": "jush0147/tetrp",
     "commit": "0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2",
@@ -82,8 +82,20 @@
     "runtime_smoke": 35427380454,
     "branch": "tetrp-authority"
   },
-  "run_id": 35428534588,
+  "run_id": 35428960442,
   "workflow": "Tetrp whole-profile transfer screen",
   "branch": "tetrp-authority",
-  "head_sha": "8972db38998daa914c76bb0cfaac0277f1ae0c09"
+  "head_sha": "1177c66b280cd0bc68481905654e4daa5b3243d0",
+  "invalidated_runs": [
+    {
+      "run_id": 35428534588,
+      "head_sha": "8972db38998daa914c76bb0cfaac0277f1ae0c09",
+      "reason": "3 PPS batches hit an artificial placement-transport limit because each synthetic soft-drop row consumed one whole source frame. This is a harness transport bug, not a scored strategy loss. Partial outcomes from this run are not used."
+    }
+  ],
+  "transport_fix": {
+    "commit": "7c5e05c9a94f101cb00e86ceb28a49b5073c0746",
+    "regression_test": "scripts/test-tetrp-placement-scheduler.mjs",
+    "semantics": "Pack down/shift/rotation/hold as legal Tetrp subframe taps while preserving the scheduled hard-drop lock frame. PPS continues to control authority time, not artificial path reachability."
+  }
 }
