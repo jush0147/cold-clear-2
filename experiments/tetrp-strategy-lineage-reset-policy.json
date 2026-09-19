@@ -1,0 +1,123 @@
+{
+  "experiment": "Tetrp strategy lineage reset policy",
+  "status": "active",
+  "decision_date": "2026-09-19",
+  "motivation": [
+    "The old H1-H11 strategy results were produced under materially different conditions, including the legacy alternating-lock arena and mostly 10k-node search.",
+    "The current stack uses Tetrp synchronous authority, corrected placement transport and garbage timing, H12-corrected DAG behavior, and a 200k-node review budget.",
+    "Therefore old H1-H11 results are treated as historical priors and hypothesis-generation evidence, not as current promotion or rejection verdicts."
+  ],
+  "fixed_current_stack": {
+    "authority": "Tetrp synchronous authority",
+    "tetrp_ref": "0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2",
+    "primary_pace_pps": 2.5,
+    "primary_frames_per_piece": 24,
+    "node_budget_per_decision": 200000,
+    "gravity": 0,
+    "winner_rule": "KO only",
+    "observation_boundary": "own board/current/hold/exactly Next5/combo/B2B-Surge/observable pending garbage and own timing history only",
+    "corrected_core": "H12 best-child demotion correction enabled",
+    "h13_snapshot_strength_tests": false,
+    "h13_product_note": "Keep H13 correctness support for persistent interactive bot paths; do not use snapshot KO tests to judge H13 strength.",
+    "compute_policy": "H14 evidence is retained only as the basis for the provisional 200k product/search budget."
+  },
+  "baseline_and_benchmark": {
+    "starting_incumbent": "corrected_legacy_h12",
+    "fixed_reference_benchmark": "review_h9_h12",
+    "benchmark_role": "Reference checkpoint only. It is not the automatic promotion opponent.",
+    "promotion_opponent": "The current confirmed incumbent."
+  },
+  "old_hypothesis_policy": {
+    "H1_to_H11": "Re-screen under the current stack. Old good/bad labels do not carry forward as verdicts.",
+    "old_results_use": [
+      "Prioritize which hypothesis families to test first.",
+      "Narrow sensible parameter ranges and avoid repeating obviously unproductive regions.",
+      "Identify plausible interactions and context-dependent redesigns.",
+      "Provide historical comparison only; do not pool old and new outcomes as one evidence set."
+    ],
+    "correctness_and_compute_exceptions": {
+      "H12": "Keep as corrected core behavior, not a strategy feature requiring re-promotion.",
+      "H13": "Keep as correctness/product-path work; snapshot harness cannot provide meaningful strength evidence for it.",
+      "H14": "Keep 200k as the provisional compute regime; H14 is not an evaluator feature."
+    }
+  },
+  "stage_1_broad_rescreen": {
+    "purpose": "Give old strategy hypothesis families a fair current-stack screen before constructing a new sequential lineage.",
+    "candidate_families": [
+      "H1 pending-garbage safety",
+      "H2 useful outgoing attack / cancellation value",
+      "H3 B2B charge / Surge state value",
+      "H4 structured attack setup shaping",
+      "H5 combo-continuation shaping",
+      "H6 base height",
+      "H6B base holes / coveredness",
+      "H6C row transitions",
+      "H9 cavity excavation",
+      "H10 search exploration/exploitation",
+      "H11 known-vs-speculative search allocation"
+    ],
+    "interaction_only_history": [
+      "H7 combo interaction",
+      "H8 useful-attack x row-transition joint tuning"
+    ],
+    "interaction_policy": "H7/H8 are not treated as standalone promoted features. Preserve them as interaction clues and revisit when the relevant base features exist in the new incumbent.",
+    "default_screen_design": {
+      "paired_units": 8,
+      "games_per_candidate": 16,
+      "seed_policy": "fresh asymmetric paired seed assignments",
+      "pairing": "Game A: candidate uses seed X, incumbent uses seed Y. Game B: candidate uses seed Y, incumbent uses seed X.",
+      "independence_note": "The two games in one asymmetric pair form one paired unit and must not be counted as two independent observations.",
+      "same_seed_symmetric_self_play": false,
+      "reason": "Avoid deterministic mirror locking such as the 5000-lock H1 cap behavior observed in run 35431278966."
+    },
+    "optional_extension": "A borderline 8-pair result may be extended to 12 paired units before deciding whether fresh confirmation is worth the compute. Extension must be recorded before inspecting the added outcomes."
+  },
+  "screen_status_policy": {
+    "screened_positive": "Current small-sample evidence is promising enough to justify fresh confirmation.",
+    "screened_neutral": "Current small-sample evidence is weak or mixed. Pause; do not infer equivalence or permanent uselessness.",
+    "screened_negative": "Current small-sample evidence is sufficiently negative to stop spending compute for now.",
+    "confirmed": "Fresh confirmation supports adding the feature to the current incumbent.",
+    "rejected_for_now": "Fresh evidence does not support promotion under the current incumbent and stack.",
+    "retest_if_context_changes": "Archived candidate that may be reconsidered when the incumbent, authority, search budget, or a strongly interacting feature changes."
+  },
+  "small_sample_rule": {
+    "principle": "Small-sample failure controls current compute allocation, not the permanent truth value of a feature.",
+    "never_do": [
+      "Do not delete or forget screened-neutral or screened-negative candidates.",
+      "Do not label a small-sample loss as proof that the feature is universally bad.",
+      "Do not promote or reject based on APP when KO points the other way."
+    ],
+    "always_record": [
+      "feature definition and parameters",
+      "incumbent",
+      "authority and Tetrp ref",
+      "node budget and pace",
+      "asymmetric seed pairs",
+      "KO result",
+      "APP and other diagnostics",
+      "source commit and workflow run"
+    ],
+    "retest_triggers": [
+      "The incumbent evaluator changes materially.",
+      "Search budget or search algorithm changes materially.",
+      "Authority, garbage timing, or observation boundary changes.",
+      "A newly promoted feature has a plausible interaction with the archived candidate.",
+      "The prior screen was close or internally mixed.",
+      "KO and diagnostics strongly disagree in a way that suggests a mechanism worth revisiting."
+    ],
+    "deep_freeze_guidance": "Repeated, strongly negative current-stack results across sensible parameter choices may be assigned very low priority, but the evidence remains preserved rather than deleted."
+  },
+  "stage_2_confirmation_and_lineage_growth": {
+    "entry": "Only stage-1 candidates with a credible positive signal proceed immediately.",
+    "confirmation": "Use fresh asymmetric paired seeds; choose the confirmation sample size and decision rule before inspecting outcomes.",
+    "promotion": "A confirmed candidate becomes part of the new incumbent.",
+    "next_candidate_rule": "Every later feature is tested for marginal value against the current incumbent, not forever against corrected legacy.",
+    "re_screen_after_promotion": "Previously neutral/negative candidates may be revisited when there is a plausible interaction with the newly changed incumbent.",
+    "reference_check": "Periodically compare a mature new incumbent against the frozen review_h9_h12 benchmark and corrected_legacy_h12, without using those reference matches as substitutes for per-feature promotion evidence."
+  },
+  "historical_run_handling": {
+    "whole_profile_transfer_and_confirmation": "Retain as evidence that the old tuned package contains useful signal under Tetrp authority, but not as proof that each old component remains beneficial.",
+    "single_component_ablation_run_35431278966": "Retain as partial historical evidence and as the reason to avoid symmetric same-seed evaluation. Do not use the four H1 caps as wins, losses, or draws."
+  },
+  "next_action": "Design the current-stack broad rescreen workflow from corrected_legacy_h12 using fresh asymmetric paired seeds. Do not continue the old reverse-ablation lineage as the primary strategy-selection path."
+}
