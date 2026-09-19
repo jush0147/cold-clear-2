@@ -50,10 +50,11 @@ impl Mode for Freestyle {
         let mut new_stats = Statistics::default();
         new_stats.selections += 1;
 
-        if let Some(node) = self
-            .dag
-            .select(options.speculate, options.config.freestyle_exploitation)
-        {
+        if let Some(node) = self.dag.select(
+            options.speculate,
+            options.config.freestyle_exploitation,
+            options.config.freestyle_speculated_exploitation,
+        ) {
             new_stats.max_depth = node.depth();
             let (state, next) = node.state();
             new_stats.speculative_expansions = u64::from(next.is_none());
