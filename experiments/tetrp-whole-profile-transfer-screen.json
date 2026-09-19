@@ -1,0 +1,85 @@
+{
+  "experiment": "tetrp-whole-profile-transfer-screen",
+  "status": "preregistered_ready_to_run",
+  "authority": {
+    "repository": "jush0147/tetrp",
+    "commit": "0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2",
+    "mode": "tl",
+    "overrides": {
+      "g": 0,
+      "gincrease": 0
+    },
+    "reason": "Tetrp is the reverse-engineered deterministic match authority. Gravity is neutralized so placement speed does not influence strategy; frame timing remains active for garbage semantics."
+  },
+  "candidate": "review_h9_h12 = H1+H2+H6C+H9+H12",
+  "baseline": "corrected_legacy_h12 = legacy evaluator on corrected H12 core",
+  "search": {
+    "evaluator_nodes_per_decision": 200000,
+    "current_hold_next_visibility": "current + hold + exactly NEXT5",
+    "seven_bag": "observed-history reconstruction only",
+    "pending_garbage": "per-packet remaining activation timing",
+    "opponent_information": "none"
+  },
+  "synchronous_protocol": {
+    "decision_barrier": "both visible snapshots and both choices are produced before either placement is committed",
+    "same_seed_within_match": true,
+    "slot_swapping": false,
+    "slot_swap_reason": "Canonical tetrp-authority run 35427392644 verified deterministic slot symmetry; swapping the same seed duplicates the same profile trajectories.",
+    "scored_outcome": "KO only",
+    "diagnostics": [
+      "raw APP",
+      "sent APP",
+      "generated/cancelled/sent/tanked/received",
+      "pieces",
+      "final attack multiplier"
+    ]
+  },
+  "screen": {
+    "seed_range": "62000-62007",
+    "unique_piece_seeds": 8,
+    "paces": [
+      {
+        "frames_per_piece": 30,
+        "pps": 2
+      },
+      {
+        "frames_per_piece": 24,
+        "pps": 2.5
+      },
+      {
+        "frames_per_piece": 20,
+        "pps": 3
+      }
+    ],
+    "matches": 24,
+    "design": "Each of the eight seeds is replayed at all three equal-player paces. Pace blocks are repeated-measures robustness probes, not 24 fully independent seed observations.",
+    "safety_lock_steps": 5000,
+    "safety_cap_policy": "Exceeding the safety cap is a harness failure and is not scored."
+  },
+  "interpretation": {
+    "purpose": "Directional transfer screen only. Determine whether the legacy-arena tuned package shows a robust useful direction under the synchronous Tetrp authority before expensive confirmation or feature archaeology.",
+    "report": [
+      "candidate/baseline KO wins separately at each pace",
+      "per-seed outcomes across all three paces",
+      "whether direction reverses by pace",
+      "match-length and APP diagnostics without using them as tiebreakers"
+    ],
+    "no_pooled_significance": "Do not compute a naive 24-match binomial p-value because each seed appears in three pace conditions.",
+    "next_if_consistent_positive": "Use fresh seeds for a larger new-authority confirmation, then decompose H1/H2/H6C/H9.",
+    "next_if_mixed": "Investigate pace interaction and state-model mismatch before feature ablation.",
+    "next_if_negative": "Do not resurrect the old lineage by inertia; use corrected legacy/new-authority evidence as the new starting point."
+  },
+  "gates_required_before_run": [
+    "visible-state adapter correctness workflow green",
+    "tuned and legacy A/A mirror controls green",
+    "slot-swap trace symmetry green",
+    "lean synchronous runtime deterministic smoke green"
+  ],
+  "canonical_gate_runs": {
+    "adapter": 35427017042,
+    "aa_mirror": 35427019103,
+    "slot_symmetry": 35427392644,
+    "runtime_smoke": 35427380454,
+    "branch": "tetrp-authority"
+  }
+}
