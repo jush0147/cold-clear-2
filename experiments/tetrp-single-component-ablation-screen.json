@@ -1,0 +1,61 @@
+{
+  "experiment": "tetrp-single-component-ablation-screen",
+  "status": "planned",
+  "authority": {
+    "repository": "jush0147/tetrp",
+    "commit": "0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2",
+    "mode": "tl",
+    "overrides": {"g": 0, "gincrease": 0}
+  },
+  "incumbent": "review_h9_h12 = H1+H2+H6C+H9+H12",
+  "ablations": [
+    {
+      "name": "minus_h1",
+      "profile": "review_minus_h1_h12",
+      "change": "pending_safety 1.0 -> 0.0"
+    },
+    {
+      "name": "minus_h2",
+      "profile": "review_minus_h2_h12",
+      "change": "useful_attack_reward 1.0 -> 0.0; cancellation_reward remains 0.0"
+    },
+    {
+      "name": "minus_h6c",
+      "profile": "review_minus_h6c_h12",
+      "change": "row_transitions 2.5x -> legacy row-transition weight"
+    },
+    {
+      "name": "minus_h9",
+      "profile": "review_minus_h9_h12",
+      "change": "h9_cavity_excavation -0.5 -> 0.0"
+    }
+  ],
+  "frozen_core": {
+    "h12_best_child_demotion": true,
+    "h13_despeculation_backprop": false,
+    "reason": "Keep the corrected scored H9+H12 search core fixed so each comparison changes one strategy component only."
+  },
+  "protocol": {
+    "pps": 2.5,
+    "frames_per_piece": 24,
+    "node_budget_per_decision": 200000,
+    "seeds": "64000-64007",
+    "fresh_seeds_per_ablation": 8,
+    "matches_per_ablation": 8,
+    "total_matches": 32,
+    "same_seed_across_ablations": true,
+    "slot_swapping": false,
+    "slot_swap_reason": "Canonical Tetrp authority slot-symmetry gate is already green; deterministic swapping duplicates the same trajectories.",
+    "winner_condition": "KO only",
+    "safety_lock_steps": 5000
+  },
+  "preregistered_interpretation": {
+    "full_wins_6_to_8": "retain_signal",
+    "full_wins_5": "weak_retain_signal",
+    "full_wins_4": "inconclusive",
+    "full_wins_0_to_3": "removal_not_worse_signal",
+    "guard": "This is a screening ablation, not final feature significance. Do not pool the four ablations as 32 independent trials for a single claim, and do not use APP to override KO."
+  },
+  "rationale": "Fresh confirmation already established whole-profile transfer and robustness at 2/2.5/3 PPS. Use the primary 2.5 PPS pace for component archaeology first; only re-run pace robustness for components whose removal/retention decision needs confirmation.",
+  "next_after_screen": "Confirm any consequential or ambiguous component result on additional fresh seeds before changing the incumbent package."
+}
