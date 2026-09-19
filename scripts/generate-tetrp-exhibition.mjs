@@ -217,7 +217,9 @@ function deliverTransfers(frame) {
   for(const t of transfers) {
     const receiver=engines[t.to];
     const localCid=receiver.receive({from:'P2',iid:t.iid,ackiid:t.ackiid,amt:t.amt});
-    if(localCid===null) continue;
+    // Even a fully-passthrough interaction must remain in the replay because
+    // receive() applies ack bookkeeping to our outstanding outgoing packets.
+    // A confirm mapped to null is intentionally a no-op in Reconstruction.
     receiver.confirm(localCid);
 
     const remoteCid=nextRemoteCid[t.to]++;
