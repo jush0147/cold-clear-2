@@ -1,5 +1,7 @@
 # Repository continuation instructions
 
+**Active strategy branch: `tetrp-authority`.** Treat `s2-strategy-clean` as legacy-arena history unless explicitly doing archaeology.
+
 For any work on TETR.IO TL S2 strategy, KO experiments, replay review, Cold Clear search behavior, or browser/WASM integration:
 
 1. **Read `docs/strategy-experiments.md` first.**
