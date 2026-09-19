@@ -103,6 +103,8 @@ When the user advances Kiwi:
 - keep the same `WasmBot` and refill it with `new_piece()` when the persistent path remains valid
 - search the next 200k-node decision
 
+Use the shipped reset-safe placement helper. Call `schedulePath(startFrame, lockFrame, moves, hypotheticalEngine)` with the live hypothetical Tetrp engine so the helper can validate ordinary transport against an isolated authority clone and fall back only when synthetic tap spacing would auto-lock early or lock multiple pieces. Do not simplify this back to an unvalidated fixed tap scheduler.
+
 Do not directly write cells onto the board.
 
 ### F. Incoming-garbage path
@@ -143,10 +145,11 @@ At minimum cover:
 7. deterministic suggestion for identical state + budget.
 8. replay Reconstruction is unchanged after starting/advancing/stopping Kiwi.
 9. a Kiwi placement is transported through Tetrp rules and reaches the intended final placement.
-10. pending garbage never falls through the no-pending persistent path.
-11. existing unit tests stay green.
-12. existing Chromium/WebKit viewer + PWA tests stay green.
-13. add a synthetic browser flow for invoke Kiwi -> suggestion -> advance -> second suggestion -> return to replay.
+10. a grounded/reset-heavy path with more than 15 movement/rotation resets still produces exactly one lock at the scheduled authority instant; no early auto-lock followed by a second hard-drop lock.
+11. pending garbage never falls through the no-pending persistent path.
+12. existing unit tests stay green.
+13. existing Chromium/WebKit viewer + PWA tests stay green.
+14. add a synthetic browser flow for invoke Kiwi -> suggestion -> advance -> second suggestion -> return to replay.
 
 Do not use private replay fixtures in CI.
 
