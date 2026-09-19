@@ -12,6 +12,11 @@ pub struct Forecast {
     pub pieces_placed:u32,
     pub sent:u32,
     frames_per_piece:u32,
+    authority_clock:bool,
+    authority_frame:u32,
+    garbage_margin_frames:u32,
+    garbage_multiplier_bits:u64,
+    garbage_increase_per_second_bits:u64,
     len:usize,
     packets:[Packet;16],
 }
@@ -48,6 +53,54 @@ impl Forecast {
         }
         f.len=packets.len();Ok(f)
     }
+
+    pub fn new_timed_with_clock(
+        packets:&[(u32,u32)],
+        pieces_placed:u32,
+        sent:u32,
+        frames_per_piece:u32,
+        authority_frame:u32,
+        garbage_multiplier:f64,
+        garbage_margin_frames:u32,
+        garbage_increase_per_second:f64,
+        scenario:u32,
+    ) -> Result<Self,String> {
+        if !garbage_multiplier.is_finite() || garbage_multiplier <= 0.0 || garbage_multiplier > 100.0 {
+            return Err("invalid authority garbage multiplier".into());
+        }
+        if !garbage_increase_per_second.is_finite() || garbage_increase_per_second < 0.0 || garbage_increase_per_second > 10.0 {
+            return Err("invalid authority garbage increase rate".into());
+        }
+        let mut f=Self::new_timed(packets,pieces_placed,sent,frames_per_piece,scenario)?;
+        f.authority_clock=true;
+        f.authority_frame=authority_frame;
+        f.garbage_margin_frames=garbage_margin_frames;
+        f.garbage_multiplier_bits=garbage_multiplier.to_bits();
+        f.garbage_increase_per_second_bits=garbage_increase_per_second.to_bits();
+        Ok(f)
+    }
+
+    pub fn next_attack_multiplier(&self)->f64 {
+        if !self.authority_clock {
+            return 1.0;
+        }
+        let current=f64::from_bits(self.garbage_multiplier_bits);
+        if self.frames_per_piece==0 {
+            return current;
+        }
+        let lock_frame=self.authority_frame
+            .saturating_add(self.elapsed_frames)
+            .saturating_add(self.frames_per_piece.saturating_sub(1));
+        let threshold=self.garbage_margin_frames.saturating_add(1);
+        let active_at_snapshot=self.authority_frame.saturating_sub(threshold);
+        let active_at_lock=lock_frame.saturating_sub(threshold);
+        let extra_frames=active_at_lock.saturating_sub(active_at_snapshot);
+        let rate=f64::from_bits(self.garbage_increase_per_second_bits);
+        current + extra_frames as f64 * rate / 60.0
+    }
+
+    pub fn authority_clock_enabled(&self)->bool { self.authority_clock }
+
     pub fn remaining(&self)->u32 {self.packets[..self.len].iter().map(|p|p.lines).sum()}
     fn consume(&mut self,mut lines:u32)->u32 {
         let mut consumed=0;
@@ -114,5 +167,24 @@ mod tests {
         assert_eq!(b,after_first);
         f.resolve(&mut b,&[],0);
         assert_eq!(f.remaining(),0);
+    }
+    #[test]
+    fn authority_clock_scales_at_the_lock_frame() {
+        let mut f=Forecast::new_timed_with_clock(&[],30,0,30,10800,1.0,10800,0.008,0).unwrap();
+        // Snapshot at frame 10800, next lock at 10829. Tetrp starts increasing
+        // after frame 10801, so 28 increments have occurred by the lock frame.
+        let expected=1.0 + 28.0 * 0.008 / 60.0;
+        assert!((f.next_attack_multiplier()-expected).abs()<1e-12);
+        f.resolve(&mut Board::default(),&[],0);
+        let expected2=1.0 + 58.0 * 0.008 / 60.0;
+        assert!((f.next_attack_multiplier()-expected2).abs()<1e-12);
+    }
+
+    #[test]
+    fn authority_clock_uses_snapshot_multiplier_after_margin() {
+        let f=Forecast::new_timed_with_clock(&[],30,0,20,12000,1.0265333333333333,10800,0.008,0).unwrap();
+        let expected=1.0265333333333333 + 19.0 * 0.008 / 60.0;
+        assert!((f.next_attack_multiplier()-expected).abs()<1e-12);
+        assert!(f.authority_clock_enabled());
     }
 }
