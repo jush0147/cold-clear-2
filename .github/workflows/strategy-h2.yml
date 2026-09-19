@@ -1,12 +1,7 @@
 name: H2 useful attack and cancellation screening
 on:
-  push:
-    branches: [s2-strategy-clean]
-    paths:
-      - 'src/bot/freestyle.rs'
-      - 'src/bin/strategy_h2.rs'
-      - '.github/workflows/strategy-h2.yml'
   workflow_dispatch:
+
 permissions:
   contents: read
   actions: read
