@@ -1,0 +1,25 @@
+name: ntfy test
+
+on:
+  push:
+    branches:
+      - tetrp-authority
+    paths:
+      - '.github/workflows/ntfy-test.yml'
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Send ntfy test
+        env:
+          NTFY_URL: ${{ secrets.NTFY_URL }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          test -n "$NTFY_URL"
+          curl --fail-with-body --silent --show-error \
+            -H "Title: Tetrp ntfy test" \
+            -H "Click: $RUN_URL" \
+            -d "GitHub Actions -> ntfy works." \
+            "$NTFY_URL"
