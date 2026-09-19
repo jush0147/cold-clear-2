@@ -286,7 +286,9 @@ impl GameState {
             perfect_clear,
         };
         if self.forecast.enabled {
-            self.forecast.resolve(&mut self.board, &crate::tetrio::attack(&info).packets(), lines_cleared);
+            let multiplier=self.forecast.next_attack_multiplier();
+            let packets=crate::tetrio::attack_with_multiplier(&info,multiplier).packets();
+            self.forecast.resolve(&mut self.board,&packets,lines_cleared);
         }
         info
     }
