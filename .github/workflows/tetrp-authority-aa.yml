@@ -11,6 +11,10 @@ on:
       - '.github/workflows/tetrp-authority-aa.yml'
   workflow_dispatch:
 
+concurrency:
+  group: tetrp-gate-tetrp-authority-aa-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
