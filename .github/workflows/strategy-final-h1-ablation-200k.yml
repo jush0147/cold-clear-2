@@ -1,0 +1,162 @@
+name: 200k final H1 ablation
+
+on:
+  push:
+    branches: [s2-strategy-clean]
+    paths:
+      - '.github/workflows/strategy-final-h1-ablation-200k.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Generate final-profile H1 ablation harness
+        run: python3 scripts/wire-final-h1-ablation-200k.py
+      - name: Verify corrected core and harness
+        run: |
+          cargo test --release --lib
+          cargo test --release --bin strategy_final_h1_ablation
+      - name: Build frozen engine
+        run: |
+          cargo build --release --bin strategy_final_h1_ablation
+          mkdir -p engine
+          cp target/release/strategy_final_h1_ablation engine/
+          cp src/bin/strategy_final_h1_ablation.rs engine/
+          sha256sum engine/strategy_final_h1_ablation engine/strategy_final_h1_ablation.rs > engine/manifest.sha256
+      - name: Run 200k A/A control
+        run: |
+          mkdir -p control
+          engine/strategy_final_h1_ablation \
+            --pending-safety 0 \
+            --incumbent-pending-safety 0 \
+            --nodes 200000 \
+            --start 49090 \
+            --seeds 2 | tee control/aa.jsonl
+      - uses: actions/upload-artifact@v4
+        with:
+          name: final-h1-ablation-engine
+          path: |
+            engine/
+            control/
+          if-no-files-found: error
+          retention-days: 7
+
+  batch:
+    needs: build
+    runs-on: ubuntu-22.04
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        include:
+          - { id: b00, start: 49100 }
+          - { id: b01, start: 49110 }
+          - { id: b02, start: 49120 }
+          - { id: b03, start: 49130 }
+          - { id: b04, start: 49140 }
+          - { id: b05, start: 49150 }
+          - { id: b06, start: 49160 }
+          - { id: b07, start: 49170 }
+          - { id: b08, start: 49180 }
+          - { id: b09, start: 49190 }
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: final-h1-ablation-engine
+          path: frozen
+      - name: Verify frozen engine
+        run: |
+          (cd frozen && sha256sum -c engine/manifest.sha256)
+          chmod +x frozen/engine/strategy_final_h1_ablation
+      - name: Run ten fresh paired seeds at 200k
+        env:
+          ID: ${{ matrix.id }}
+          START: ${{ matrix.start }}
+        run: |
+          mkdir -p results
+          frozen/engine/strategy_final_h1_ablation \
+            --pending-safety 1.0 \
+            --incumbent-pending-safety 0.0 \
+            --nodes 200000 \
+            --start "$START" \
+            --seeds 10 | tee "results/${ID}.jsonl"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: final-h1-ablation-${{ matrix.id }}
+          path: results/
+          if-no-files-found: error
+          retention-days: 7
+
+  summarize:
+    needs: [build, batch]
+    if: always() && needs.build.result == 'success' && needs.batch.result == 'success'
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: final-h1-ablation-b*
+          path: combined
+          merge-multiple: true
+      - name: Summarize final-profile H1 ablation
+        run: |
+          python3 - <<'PY'
+          import json, math
+          from pathlib import Path
+          games=[]
+          for path in sorted(Path('combined').glob('*.jsonl')):
+              for line in path.read_text().splitlines():
+                  obj=json.loads(line)
+                  if obj.get('type')=='game':
+                      games.append(obj)
+          pairs={}
+          for g in games:
+              pairs.setdefault(g['seed'], []).append(g)
+          cs=isw=split=malformed=0
+          for seed, gs in sorted(pairs.items()):
+              if len(gs)!=2:
+                  malformed+=1
+                  continue
+              wins=sum(g['winner']=='candidate' for g in gs)
+              if wins==2: cs+=1
+              elif wins==0: isw+=1
+              else: split+=1
+          n=cs+isw
+          k=min(cs,isw)
+          tail=sum(math.comb(n,i) for i in range(k+1))/(2**n) if n else 0.5
+          p=min(1.0,2*tail) if n else 1.0
+          summary={
+              'experiment':'final-profile H1 ablation at 200k',
+              'candidate':'H2+H6C+H9+H12 with pending_safety=1',
+              'incumbent':'H2+H6C+H9+H12 with pending_safety=0',
+              'nodes_per_move':200000,
+              'seed_start':49100,
+              'paired_seeds':len(pairs),
+              'games':len(games),
+              'candidate_wins':sum(g['winner']=='candidate' for g in games),
+              'incumbent_wins':sum(g['winner']=='incumbent' for g in games),
+              'candidate_sweeps':cs,
+              'incumbent_sweeps':isw,
+              'split_pairs':split,
+              'effective_sign_pairs':n,
+              'paired_exact_sign_p':p,
+              'malformed_pairs':malformed,
+              'all_reason_no_legal_placement':all(g.get('reason')=='no_legal_placement' for g in games),
+          }
+          Path('summary.json').write_text(json.dumps(summary,indent=2)+'\n')
+          print(json.dumps(summary,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: final-h1-ablation-summary
+          path: summary.json
+          if-no-files-found: error
+          retention-days: 30
