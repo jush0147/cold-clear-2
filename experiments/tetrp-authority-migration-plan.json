@@ -1,6 +1,6 @@
 {
   "experiment": "tetrp-authority-migration",
-  "status": "active_protocol_migration",
+  "status": "correctness_gates_passed_runtime_validation_in_progress",
   "discovered": "2026-09-19",
   "reason": [
     "Historical KO strength experiments used a simplified zero-gravity turn-based arena rather than the reverse-engineered Tetrp/TETR.IO synchronous authority.",
@@ -56,7 +56,8 @@
     "fairness": [
       "Both players use the same match seed within a game.",
       "Candidate and baseline use the same hard node budget and visible-state adapter.",
-      "Keep A/B slot swapping until the new harness proves slot/gameid symmetry with explicit controls.",
+      "A/A mirror control passed on tetrp-authority run 35427019103.",
+      "Slot-swap symmetry was independently demonstrated on legacy-branch migration run 35427035469; the same gate is being rerun on tetrp-authority after migration.",
       "KO remains the only scored match outcome; APP/attack are diagnostics only."
     ]
   },
@@ -159,5 +160,40 @@
     "result_observed": "The synchronous Tetrp exhibition produced materially different match behavior from the legacy FT7.",
     "inference_limit": "The exhibition is not formal strength evidence because the initial SevenBag snapshot adapter was simplified and the authority/protocol changed."
   },
-  "next_action": "Implement and verify the synchronous Tetrp authority adapter before any further evaluator tuning."
+  "next_action": "Finish the canonical slot-symmetry and synchronous-runtime reruns on tetrp-authority, then pre-register a small whole-profile transfer screen before any feature tuning.",
+  "correctness_evidence": {
+    "visible_state_adapter": {
+      "status": "passed",
+      "run": 35427017042,
+      "branch": "tetrp-authority",
+      "checks": [
+        "SevenBag history crosses bag boundaries without hidden queue/RNG access",
+        "first empty hold advances the observed draw window by two",
+        "hidden NEXT tail, bag RNG and garbage-hole RNG do not affect visible capture",
+        "observable pending packets preserve per-packet remaining activation frames"
+      ]
+    },
+    "aa_mirror": {
+      "status": "passed",
+      "run": 35427019103,
+      "branch": "tetrp-authority",
+      "details": "Tuned-vs-tuned and corrected-legacy-vs-corrected-legacy remained authority-state identical for 40 lock steps; both synthetic replays passed unmodified pinned-Tetrp validation with first=null."
+    },
+    "slot_swap_symmetry": {
+      "status": "migration_evidence_passed_canonical_rerun_in_progress",
+      "prior_run": 35427035469,
+      "prior_branch": "s2-strategy-clean",
+      "canonical_run": 35427392644,
+      "canonical_branch": "tetrp-authority",
+      "tetrp_ref": "0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2"
+    },
+    "runtime_smoke": {
+      "status": "migration_evidence_passed_canonical_rerun_in_progress",
+      "prior_run": 35427163348,
+      "prior_branch": "s2-strategy-clean",
+      "canonical_run": 35427380454,
+      "canonical_branch": "tetrp-authority",
+      "prior_result": "deterministic duplicate runs matched; seed 61000 reached unique KO in 49 lock steps; winner profile review_h9_h12"
+    }
+  }
 }
