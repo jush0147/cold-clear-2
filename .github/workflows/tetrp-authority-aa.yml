@@ -1,17 +1,6 @@
 name: Tetrp authority A-A mirror
 
 on:
-  push:
-    branches: [s2-strategy-clean]
-    paths:
-      - 'src/data.rs'
-      - 'src/tetrio.rs'
-      - 'src/analysis.rs'
-      - 'src/forecast.rs'
-      - 'scripts/lib/tetrp-authority-adapter.mjs'
-      - 'scripts/lib/tetrp-placement-path.mjs'
-      - 'scripts/generate-tetrp-exhibition.mjs'
-      - '.github/workflows/tetrp-authority-aa.yml'
   workflow_dispatch:
 
 permissions:
