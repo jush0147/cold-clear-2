@@ -34,11 +34,28 @@ assert.equal(engine.state.piece.y-y0,8,'packed soft-drop taps must preserve one-
 engine.step(inputsForFrame(semantic,19));
 assert.equal(engine.state.stats.pieces,1,'piece must lock exactly on the scheduled lock frame');
 
+// High-speed robustness uses 17 frames/piece = 60/17 ~= 3.529 PPS.
+// Verify the same transport invariants in that narrower window.
+const fastEngine=new Engine({mode:'tl',seed:778,rules:{g:0,gincrease:0},handling});
+const fastPacked=schedulePath(0,16,[...Array(32).fill('down'),'hardDrop']);
+const fastPreLock=fastPacked.filter(e=>e.key!=='hardDrop');
+assert.ok(fastPreLock.every(e=>e.frame<16),'3.53 PPS path taps must precede lock frame');
+
+const fastSemantic=schedulePath(0,16,[...Array(8).fill('down'),'hardDrop']);
+const fastY0=fastEngine.state.piece.y;
+for(let frame=0;frame<16;frame++) fastEngine.step(inputsForFrame(fastSemantic,frame));
+assert.equal(fastEngine.state.stats.pieces,0,'3.53 PPS hard drop must not happen before lock frame');
+assert.equal(fastEngine.state.piece.y-fastY0,8,'3.53 PPS packed soft-drop taps must preserve movement semantics');
+fastEngine.step(inputsForFrame(fastSemantic,16));
+assert.equal(fastEngine.state.stats.pieces,1,'3.53 PPS piece must lock on frame 16');
+
+
 console.log(JSON.stringify({
   ok:true,
   checks:[
     '32-step path fits 20-frame transport window',
     'subframe soft-drop tap moves exactly one row at g=0/SDF20',
-    'hard drop stays on scheduled lock frame'
+    'hard drop stays on scheduled lock frame',
+    '17-frame high-speed transport preserves path and hard-drop semantics'
   ]
 },null,2));
