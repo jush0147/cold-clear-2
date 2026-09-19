@@ -220,7 +220,9 @@ export function runSynchronousMatch({
             post_hold:engines[slot].state.hold.piece,
             pieces:engines[slot].state.stats.pieces,
             holds:engines[slot].state.stats.holds,
-            recent_trace:engines[slot].trace.slice(-60),
+            planned_moves:plans[slot].path.moves,
+            scheduled_inputs:plans[slot].inputs,
+            recent_trace:engines[slot].trace.slice(-140),
             observer:observers[slot].snapshot(),
             cause:error instanceof Error?error.message:String(error),
           }));
