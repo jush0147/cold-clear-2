@@ -105,23 +105,22 @@ export function createPlacementTools({Engine, boardModule:B, rotationModule:R}) 
 
   function schedulePath(startFrame,lockFrame,moves) {
     const inputs=[];
-    let frame=startFrame,sub=0.05;
+    let frame=startFrame,slot=0;
+    const subframes=[0,0.2,0.4,0.6,0.8];
     const tap=key=>{
-      if(sub>0.75){frame++;sub=0.05;}
-      inputs.push({frame,type:'keydown',key,subframe:sub});
-      inputs.push({frame,type:'keyup',key,subframe:sub+0.05});
-      sub+=0.15;
+      if(slot>=subframes.length){frame++;slot=0;}
+      const down=subframes[slot++];
+      const up=Number((down+0.1).toFixed(1));
+      inputs.push({frame,type:'keydown',key,subframe:down});
+      inputs.push({frame,type:'keyup',key,subframe:up});
     };
     for(const move of moves) {
       if(move==='hardDrop') continue;
-      if(move==='down') {
-        if(sub>0.05){frame++;sub=0.05;}
-        inputs.push({frame,type:'keydown',key:'softDrop',subframe:0});
-        inputs.push({frame:frame+1,type:'keyup',key:'softDrop',subframe:0});
-        frame++;sub=0.05;
-      } else {
-        tap(move);
-      }
+      // With g=0 and SDF=20, a held soft-drop segment advances exactly one
+      // row. Tetrp processes subframe events in insertion order, so down can be
+      // transported as a normal tap instead of wasting one whole source frame.
+      // Placement transport must not impose an artificial PPS-dependent reachability limit.
+      tap(move==='down'?'softDrop':move);
     }
     if(frame>=lockFrame) {
       throw new Error('path needs too much synthetic time: start='+startFrame+' pathFrame='+frame+' lock='+lockFrame);
