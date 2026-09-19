@@ -1,0 +1,65 @@
+name: Tetrp bot exhibition
+
+on:
+  push:
+    branches: [s2-strategy-clean]
+    paths:
+      - '.github/workflows/tetrp-bot-exhibition.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  exhibition:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/checkout@v4
+        with:
+          repository: jush0147/tetrp
+          ref: main
+          path: tetrp-reference
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Verify native analysis profiles
+        run: cargo test --release --lib
+
+      - name: Install wasm-pack
+        run: cargo install wasm-pack --locked
+
+      - name: Build Node WASM
+        run: wasm-pack build --release --target nodejs --out-dir pkg-node
+
+      - name: Generate fixed-2-PPS Tetrp exhibition
+        env:
+          EXHIBITION_SEED: '49000'
+          NODE_BUDGET: '200000'
+        run: |
+          mkdir -p exhibition
+          node scripts/generate-tetrp-exhibition.mjs tetrp-reference exhibition/tuned-vs-legacy-2pps.ttrm \
+            | tee exhibition/generator.log
+
+      - name: Validate through unmodified Tetrp replay pipeline
+        run: |
+          node tetrp-reference/scripts/validate-replays.mjs \
+            exhibition/tuned-vs-legacy-2pps.ttrm \
+            --output exhibition/tetrp-validation.json
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tetrp-bot-exhibition
+          path: exhibition/
+          if-no-files-found: error
+          retention-days: 30
