@@ -13,7 +13,8 @@ export function runSynchronousMatch({
   boardModule,
   rotationModule,
   analyzeProfileJson,
-  seed,
+  seed = null,
+  seeds = null,
   nodeBudget,
   framesPerPiece,
   profiles,
@@ -25,7 +26,11 @@ export function runSynchronousMatch({
   diagnosticMaxLockSteps = null,
   stopOnFirstDecisionDivergence = false,
 }) {
-  if (!Number.isSafeInteger(seed)) throw new Error('seed must be a safe integer');
+  const authoritySeeds = seeds === null ? [seed, seed] : seeds;
+  if (!Array.isArray(authoritySeeds) || authoritySeeds.length !== 2 ||
+      !authoritySeeds.every(Number.isSafeInteger)) {
+    throw new Error('exactly two safe integer authority seeds are required');
+  }
   if (!Number.isInteger(nodeBudget) || nodeBudget < 1000) throw new Error('invalid node budget');
   if (!Number.isInteger(framesPerPiece) || framesPerPiece < 1) throw new Error('invalid frames per piece');
   if (!Array.isArray(profiles) || profiles.length !== 2) throw new Error('exactly two profiles are required');
@@ -48,8 +53,8 @@ export function runSynchronousMatch({
   // Placement speed/gravity is deliberately neutralized. Frame time remains
   // authoritative for garbage travel and late-round attack scaling.
   const rules = {g:0,gincrease:0};
-  const makeEngine=()=>new Engine({mode:'tl',seed,rules,handling});
-  const engines=[makeEngine(),makeEngine()];
+  const makeEngine=(authoritySeed)=>new Engine({mode:'tl',seed:authoritySeed,rules,handling});
+  const engines=authoritySeeds.map(makeEngine);
   const observers=engines.map(e=>SevenBagObserver.fromGameStart(visibleBagSix(e.state)));
   const {findPath,schedulePath,inputsForFrame}=createPlacementTools({
     Engine,boardModule,rotationModule
@@ -66,7 +71,8 @@ export function runSynchronousMatch({
   function progressSnapshot(frame) {
     return {
       type:'tetrp_match_progress',
-      seed,
+      seed: authoritySeeds[0]===authoritySeeds[1] ? authoritySeeds[0] : null,
+      seeds:[...authoritySeeds],
       lock_steps:lockStep,
       frame,
       wall_time_ms:Date.now()-startedAtMs,
@@ -255,7 +261,8 @@ export function runSynchronousMatch({
   return {
     result:{
       type:'tetrp_synchronous_match',
-      seed,
+      seed:authoritySeeds[0]===authoritySeeds[1]?authoritySeeds[0]:null,
+      seeds:[...authoritySeeds],
       tetrp_ref:tetrpRef,
       node_budget_per_decision:nodeBudget,
       frames_per_piece:framesPerPiece,
