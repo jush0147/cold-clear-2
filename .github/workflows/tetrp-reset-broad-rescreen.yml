@@ -1,0 +1,178 @@
+name: Tetrp reset broad strategy rescreen
+
+on:
+  push:
+    branches: [tetrp-authority]
+    paths:
+      - '.github/workflows/tetrp-reset-broad-rescreen.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: tetrp-reset-broad-rescreen-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: jush0147/tetrp
+          ref: 0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2
+          path: tetrp-reference
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify placement transport
+        run: node scripts/test-tetrp-placement-scheduler.mjs tetrp-reference
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: tetrp-reset-broad-rescreen
+      - name: Run release library regressions
+        run: cargo test --release --lib
+      - name: Install wasm-pack
+        run: cargo install wasm-pack --locked
+      - name: Build Node WASM
+        run: wasm-pack build --release --target nodejs --out-dir pkg-node
+      - uses: actions/upload-artifact@v4
+        with:
+          name: reset-screen-node-wasm
+          path: pkg-node/
+          retention-days: 1
+
+  batch:
+    needs: build
+    runs-on: ubuntu-22.04
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      max-parallel: 12
+      matrix:
+        include:
+          - { id: h1, profile: reset_h1_pending_safety_1_h12, pair_start: 0, pair_end: 1, block: 'a' }
+          - { id: h1, profile: reset_h1_pending_safety_1_h12, pair_start: 2, pair_end: 3, block: 'b' }
+          - { id: h1, profile: reset_h1_pending_safety_1_h12, pair_start: 4, pair_end: 5, block: 'c' }
+          - { id: h1, profile: reset_h1_pending_safety_1_h12, pair_start: 6, pair_end: 7, block: 'd' }
+          - { id: h2, profile: reset_h2_useful_attack_1_h12, pair_start: 0, pair_end: 1, block: 'a' }
+          - { id: h2, profile: reset_h2_useful_attack_1_h12, pair_start: 2, pair_end: 3, block: 'b' }
+          - { id: h2, profile: reset_h2_useful_attack_1_h12, pair_start: 4, pair_end: 5, block: 'c' }
+          - { id: h2, profile: reset_h2_useful_attack_1_h12, pair_start: 6, pair_end: 7, block: 'd' }
+          - { id: h3, profile: reset_h3_b2b_charge_1_5_h12, pair_start: 0, pair_end: 1, block: 'a' }
+          - { id: h3, profile: reset_h3_b2b_charge_1_5_h12, pair_start: 2, pair_end: 3, block: 'b' }
+          - { id: h3, profile: reset_h3_b2b_charge_1_5_h12, pair_start: 4, pair_end: 5, block: 'c' }
+          - { id: h3, profile: reset_h3_b2b_charge_1_5_h12, pair_start: 6, pair_end: 7, block: 'd' }
+          - { id: h4, profile: reset_h4_well_half_h12, pair_start: 0, pair_end: 1, block: 'a' }
+          - { id: h4, profile: reset_h4_well_half_h12, pair_start: 2, pair_end: 3, block: 'b' }
+          - { id: h4, profile: reset_h4_well_half_h12, pair_start: 4, pair_end: 5, block: 'c' }
+          - { id: h4, profile: reset_h4_well_half_h12, pair_start: 6, pair_end: 7, block: 'd' }
+          - { id: h5, profile: reset_h5_combo_4_h12, pair_start: 0, pair_end: 1, block: 'a' }
+          - { id: h5, profile: reset_h5_combo_4_h12, pair_start: 2, pair_end: 3, block: 'b' }
+          - { id: h5, profile: reset_h5_combo_4_h12, pair_start: 4, pair_end: 5, block: 'c' }
+          - { id: h5, profile: reset_h5_combo_4_h12, pair_start: 6, pair_end: 7, block: 'd' }
+          - { id: h6, profile: reset_h6_height_0_75_h12, pair_start: 0, pair_end: 1, block: 'a' }
+          - { id: h6, profile: reset_h6_height_0_75_h12, pair_start: 2, pair_end: 3, block: 'b' }
+          - { id: h6, profile: reset_h6_height_0_75_h12, pair_start: 4, pair_end: 5, block: 'c' }
+          - { id: h6, profile: reset_h6_height_0_75_h12, pair_start: 6, pair_end: 7, block: 'd' }
+          - { id: h6b, profile: reset_h6b_holes1_5_covered0_5_h12, pair_start: 0, pair_end: 1, block: 'a' }
+          - { id: h6b, profile: reset_h6b_holes1_5_covered0_5_h12, pair_start: 2, pair_end: 3, block: 'b' }
+          - { id: h6b, profile: reset_h6b_holes1_5_covered0_5_h12, pair_start: 4, pair_end: 5, block: 'c' }
+          - { id: h6b, profile: reset_h6b_holes1_5_covered0_5_h12, pair_start: 6, pair_end: 7, block: 'd' }
+          - { id: h6c, profile: reset_h6c_row2_5_h12, pair_start: 0, pair_end: 1, block: 'a' }
+          - { id: h6c, profile: reset_h6c_row2_5_h12, pair_start: 2, pair_end: 3, block: 'b' }
+          - { id: h6c, profile: reset_h6c_row2_5_h12, pair_start: 4, pair_end: 5, block: 'c' }
+          - { id: h6c, profile: reset_h6c_row2_5_h12, pair_start: 6, pair_end: 7, block: 'd' }
+          - { id: h9, profile: reset_h9_cavity_m0_5_h12, pair_start: 0, pair_end: 1, block: 'a' }
+          - { id: h9, profile: reset_h9_cavity_m0_5_h12, pair_start: 2, pair_end: 3, block: 'b' }
+          - { id: h9, profile: reset_h9_cavity_m0_5_h12, pair_start: 4, pair_end: 5, block: 'c' }
+          - { id: h9, profile: reset_h9_cavity_m0_5_h12, pair_start: 6, pair_end: 7, block: 'd' }
+          - { id: h10, profile: reset_h10_exploitation_0_7985_h12, pair_start: 0, pair_end: 1, block: 'a' }
+          - { id: h10, profile: reset_h10_exploitation_0_7985_h12, pair_start: 2, pair_end: 3, block: 'b' }
+          - { id: h10, profile: reset_h10_exploitation_0_7985_h12, pair_start: 4, pair_end: 5, block: 'c' }
+          - { id: h10, profile: reset_h10_exploitation_0_7985_h12, pair_start: 6, pair_end: 7, block: 'd' }
+          - { id: h11, profile: reset_h11_k40s60_h12, pair_start: 0, pair_end: 1, block: 'a' }
+          - { id: h11, profile: reset_h11_k40s60_h12, pair_start: 2, pair_end: 3, block: 'b' }
+          - { id: h11, profile: reset_h11_k40s60_h12, pair_start: 4, pair_end: 5, block: 'c' }
+          - { id: h11, profile: reset_h11_k40s60_h12, pair_start: 6, pair_end: 7, block: 'd' }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: jush0147/tetrp
+          ref: 0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2
+          path: tetrp-reference
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@v4
+        with:
+          name: reset-screen-node-wasm
+          path: pkg-node
+      - name: Run asymmetric paired screen block
+        env:
+          NODE_BUDGET: '200000'
+          FRAMES_PER_PIECE: '24'
+          TETRP_REF: 0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2
+          INCUMBENT_PROFILE: corrected_legacy_h12
+          CANDIDATE_PROFILE: ${{ matrix.profile }}
+          SAFETY_LOCK_STEPS: '5000'
+          PROGRESS_EVERY_LOCKS: '250'
+        run: |
+          set -euo pipefail
+          mkdir -p results
+          out="results/${{ matrix.id }}-${{ matrix.block }}.jsonl"
+          : > "$out"
+          for pair in $(seq ${{ matrix.pair_start }} ${{ matrix.pair_end }}); do
+            a=$((65000 + pair * 2))
+            b=$((a + 1))
+            echo "candidate=${{ matrix.id }} pair=$pair seeds=$a,$b" >&2
+            SEED_A="$a" SEED_B="$b" \
+              node scripts/run-tetrp-reset-screen-pair.mjs tetrp-reference \
+              | tee -a "$out"
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: reset-screen-${{ matrix.id }}-${{ matrix.block }}
+          path: results/
+          if-no-files-found: error
+          retention-days: 14
+
+  summarize:
+    needs: [batch]
+    if: always()
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: reset-screen-*
+          path: reset-screen-results
+          merge-multiple: true
+      - name: Summarize broad rescreen
+        run: |
+          set -o pipefail
+          mkdir -p summary
+          node scripts/summarize-tetrp-reset-broad-rescreen.mjs \
+            reset-screen-results summary/reset-broad-rescreen-summary.json \
+            | tee summary/reset-broad-rescreen-summary.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tetrp-reset-broad-rescreen-summary
+          path: summary/
+          if-no-files-found: error
+          retention-days: 30
