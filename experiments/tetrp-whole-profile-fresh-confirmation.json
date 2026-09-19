@@ -1,0 +1,74 @@
+{
+  "experiment": "tetrp-whole-profile-fresh-confirmation",
+  "status": "completed_strong_confirmation",
+  "authority": {
+    "repository": "jush0147/tetrp",
+    "commit": "0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2",
+    "mode": "tl",
+    "overrides": {"g": 0, "gincrease": 0}
+  },
+  "candidate": "review_h9_h12 = H1+H2+H6C+H9+H12",
+  "baseline": "corrected_legacy_h12",
+  "node_budget_per_decision": 200000,
+  "run_id": 35430234998,
+  "branch": "tetrp-authority",
+  "head_sha": "d6a7a8fedd45d65698497e860f24798853988fdf",
+  "design": {
+    "primary": {
+      "pps": 2.5,
+      "frames_per_piece": 24,
+      "seeds": "63000-63015",
+      "independent_seed_count": 16,
+      "preregistered_strong_threshold": "Tuned >= 12 wins out of 16"
+    },
+    "robustness": [
+      {"pps": 2.0, "frames_per_piece": 30, "seeds": [63000,63001,63002,63003]},
+      {"pps": 3.0, "frames_per_piece": 20, "seeds": [63004,63005,63006,63007]}
+    ],
+    "robustness_rule": "Each robustness block is non-negative if Tuned wins at least 2 of 4. Robustness matches are not pooled with the primary confirmation."
+  },
+  "result": {
+    "primary_2p5_pps": {
+      "tuned_wins": 13,
+      "legacy_wins": 3,
+      "legacy_win_seeds": [63000,63001,63010],
+      "avg_lock_steps": 425.9375,
+      "median_lock_steps": 504.5,
+      "min_lock_steps": 74,
+      "max_lock_steps": 626,
+      "tuned_raw_app": 1.1879677182685253,
+      "legacy_raw_app": 1.1137030516431925,
+      "tuned_sent_app": 0.9518708730741012,
+      "legacy_sent_app": 0.8161678403755869
+    },
+    "robustness_2_pps": {
+      "tuned_wins": 4,
+      "legacy_wins": 0,
+      "avg_lock_steps": 439.0,
+      "tuned_raw_app": 1.3120728929384966,
+      "legacy_raw_app": 1.2004555808656037,
+      "tuned_sent_app": 1.0415717539863325,
+      "legacy_sent_app": 0.8490888382687927
+    },
+    "robustness_3_pps": {
+      "tuned_wins": 4,
+      "legacy_wins": 0,
+      "avg_lock_steps": 786.0,
+      "median_lock_steps": 821.0,
+      "min_lock_steps": 444,
+      "max_lock_steps": 1058,
+      "tuned_raw_app": 1.2334605597964376,
+      "legacy_raw_app": 1.1510814249363868,
+      "tuned_sent_app": 0.910941475826972,
+      "legacy_sent_app": 0.7907124681933843
+    }
+  },
+  "interpretation": {
+    "primary_classification": "strong_confirmation",
+    "robustness_non_negative": true,
+    "gate_pass_for_ablation": true,
+    "pace_note": "The unusually long 3 PPS matches replicated: 786 average lock steps here versus 783.625 in the earlier transfer screen. This repeatability makes a pace/protocol interaction more plausible than a one-off anomaly, while not affecting the positive transfer direction.",
+    "next": "Run single-component ablations of H1, H2, H6C and H9 against the full H1+H2+H6C+H9+H12 package under the same synchronous Tetrp authority. Keep H12 fixed as corrected core behavior."
+  },
+  "guard": "The 13-3 primary result is the confirmation evidence. The 2 PPS and 3 PPS blocks are robustness probes and must not be pooled with the primary seeds as independent confirmation trials."
+}
