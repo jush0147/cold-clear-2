@@ -1,11 +1,6 @@
 name: Parallel Tetrp FT7 exhibition
 
 on:
-  push:
-    branches: [s2-strategy-clean]
-    paths:
-      - '.github/workflows/tetrp-ft7-parallel.yml'
-      - 'scripts/combine-tetrp-ft7.mjs'
   workflow_dispatch:
 
 permissions:
