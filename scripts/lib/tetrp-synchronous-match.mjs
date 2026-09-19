@@ -203,10 +203,27 @@ export function runSynchronousMatch({
 
     for(let slot=0;slot<2;slot++) {
       if(engines[slot].state.playing) {
-        observers[slot].advance(
-          visibleBagSix(engines[slot].state),
-          plans[slot].drawsAdvanced
-        );
+        const postVisible=visibleBagSix(engines[slot].state);
+        try {
+          observers[slot].advance(postVisible,plans[slot].drawsAdvanced);
+        } catch(error) {
+          throw new Error('SevenBag observer advance failed '+JSON.stringify({
+            slot,
+            lock_step:lockStep+1,
+            profile:profiles[slot],
+            draws_advanced:plans[slot].drawsAdvanced,
+            use_hold:plans[slot].path.useHold,
+            placement:plans[slot].placement,
+            before_queue:visible[slot].queue,
+            before_hold:visible[slot].hold,
+            post_queue:postVisible,
+            post_hold:engines[slot].state.hold.piece,
+            pieces:engines[slot].state.stats.pieces,
+            holds:engines[slot].state.stats.holds,
+            observer:observers[slot].snapshot(),
+            cause:error instanceof Error?error.message:String(error),
+          }));
+        }
       }
     }
 
