@@ -1,12 +1,6 @@
 name: Tetrp synchronous runtime smoke
 
 on:
-  push:
-    branches: [s2-strategy-clean]
-    paths:
-      - 'scripts/lib/tetrp-synchronous-match.mjs'
-      - 'scripts/run-tetrp-authority-match.mjs'
-      - '.github/workflows/tetrp-authority-runtime-smoke.yml'
   workflow_dispatch:
 
 permissions:
