@@ -137,6 +137,9 @@ while(pieceIndex<maxPieces) {
     if(!report.per_packet_ready_timing) {
       throw new Error('formal authority adapter must preserve per-packet garbage timing');
     }
+    if(!report.authority_attack_clock) {
+      throw new Error('formal authority adapter must preserve Tetrp attack scaling clock');
+    }
     if(!report.candidates.length) throw new Error('no bot candidates for slot '+slot);
     const placement=report.candidates[0].placement;
     const pathResult=findPath(engines[slot],placement);
