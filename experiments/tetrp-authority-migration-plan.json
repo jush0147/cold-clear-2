@@ -1,6 +1,6 @@
 {
   "experiment": "tetrp-authority-migration",
-  "status": "correctness_gates_passed_runtime_validation_in_progress",
+  "status": "correctness_gates_passed_ready_for_transfer_screen",
   "discovered": "2026-09-19",
   "reason": [
     "Historical KO strength experiments used a simplified zero-gravity turn-based arena rather than the reverse-engineered Tetrp/TETR.IO synchronous authority.",
@@ -160,7 +160,7 @@
     "result_observed": "The synchronous Tetrp exhibition produced materially different match behavior from the legacy FT7.",
     "inference_limit": "The exhibition is not formal strength evidence because the initial SevenBag snapshot adapter was simplified and the authority/protocol changed."
   },
-  "next_action": "Finish the canonical slot-symmetry and synchronous-runtime reruns on tetrp-authority, then pre-register a small whole-profile transfer screen before any feature tuning.",
+  "next_action": "Pre-register and run a small whole-profile transfer screen on tetrp-authority: current tuned H1+H2+H6C+H9+H12 vs corrected legacy+H12 under pinned synchronous Tetrp authority. No feature tuning before this screen.",
   "correctness_evidence": {
     "visible_state_adapter": {
       "status": "passed",
@@ -180,7 +180,7 @@
       "details": "Tuned-vs-tuned and corrected-legacy-vs-corrected-legacy remained authority-state identical for 40 lock steps; both synthetic replays passed unmodified pinned-Tetrp validation with first=null."
     },
     "slot_swap_symmetry": {
-      "status": "migration_evidence_passed_canonical_rerun_in_progress",
+      "status": "passed",
       "prior_run": 35427035469,
       "prior_branch": "s2-strategy-clean",
       "canonical_run": 35427392644,
@@ -188,7 +188,7 @@
       "tetrp_ref": "0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2"
     },
     "runtime_smoke": {
-      "status": "migration_evidence_passed_canonical_rerun_in_progress",
+      "status": "passed",
       "prior_run": 35427163348,
       "prior_branch": "s2-strategy-clean",
       "canonical_run": 35427380454,
