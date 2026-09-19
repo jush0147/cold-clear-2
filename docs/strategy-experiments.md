@@ -1,6 +1,6 @@
 # TL S2 strategy experiment framework
 
-> **Read this first before changing bot strategy on `s2-strategy-clean`.**
+> **Read this first before changing bot strategy on `tetrp-authority`.**
 >
 > This is the canonical document for the current Cold Clear 2 strategy-optimization work. The goal is not to build a replay product. The goal is to make the bot stronger for TETR.IO Tetra League Season 2 and prove or reject strategy changes with direct KO-only bot-vs-bot matches.
 
@@ -131,7 +131,7 @@ At each lock step:
 4. only after **both** choices exist, execute/commit both placements on the authority schedule;
 5. let Tetrp alone resolve attack, cancellation, garbage activation/tanking and KO.
 
-Until explicit symmetry controls prove slot identity irrelevant, play paired seeds with Candidate/Baseline slot assignments swapped.
+Authority A/A mirror control passed on `tetrp-authority` run `35427019103`. A slot-swap symmetry gate also passed during migration on run `35427035469`; the same gate is rerunning on `tetrp-authority` before strength scoring. Until that canonical rerun completes, keep slot identity as an explicit protocol concern.
 
 The only scored outcome is **KO**. APP, raw attack, sent attack and survival length remain diagnostics only.
 
