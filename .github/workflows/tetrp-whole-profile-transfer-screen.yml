@@ -1,0 +1,120 @@
+name: Tetrp whole-profile transfer screen
+
+on:
+  push:
+    branches: [tetrp-authority]
+    paths:
+      - '.github/workflows/tetrp-whole-profile-transfer-screen.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: tetrp-whole-profile-transfer-screen-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - name: Install wasm-pack
+        run: cargo install wasm-pack --locked
+      - name: Build Node WASM
+        run: wasm-pack build --release --target nodejs --out-dir pkg-node
+      - uses: actions/upload-artifact@v4
+        with:
+          name: transfer-node-wasm
+          path: pkg-node/
+          retention-days: 1
+
+  batch:
+    needs: build
+    runs-on: ubuntu-22.04
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      max-parallel: 12
+      matrix:
+        include:
+          - { frames: 30, start: 62000, end: 62001, label: '2pps-a' }
+          - { frames: 30, start: 62002, end: 62003, label: '2pps-b' }
+          - { frames: 30, start: 62004, end: 62005, label: '2pps-c' }
+          - { frames: 30, start: 62006, end: 62007, label: '2pps-d' }
+          - { frames: 24, start: 62000, end: 62001, label: '2p5pps-a' }
+          - { frames: 24, start: 62002, end: 62003, label: '2p5pps-b' }
+          - { frames: 24, start: 62004, end: 62005, label: '2p5pps-c' }
+          - { frames: 24, start: 62006, end: 62007, label: '2p5pps-d' }
+          - { frames: 20, start: 62000, end: 62001, label: '3pps-a' }
+          - { frames: 20, start: 62002, end: 62003, label: '3pps-b' }
+          - { frames: 20, start: 62004, end: 62005, label: '3pps-c' }
+          - { frames: 20, start: 62006, end: 62007, label: '3pps-d' }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: jush0147/tetrp
+          ref: 0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2
+          path: tetrp-reference
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@v4
+        with:
+          name: transfer-node-wasm
+          path: pkg-node
+      - name: Run two-seed synchronous batch
+        env:
+          NODE_BUDGET: '200000'
+          FRAMES_PER_PIECE: ${{ matrix.frames }}
+          TETRP_REF: 0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2
+          SLOT0_PROFILE: review_h9_h12
+          SLOT1_PROFILE: corrected_legacy_h12
+          SAFETY_LOCK_STEPS: '5000'
+        run: |
+          set -euo pipefail
+          mkdir -p results
+          : > "results/${{ matrix.label }}.jsonl"
+          for seed in $(seq ${{ matrix.start }} ${{ matrix.end }}); do
+            MATCH_SEED="$seed" node scripts/run-tetrp-authority-match.mjs tetrp-reference \
+              | tee -a "results/${{ matrix.label }}.jsonl"
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: transfer-${{ matrix.label }}
+          path: results/
+          if-no-files-found: error
+          retention-days: 14
+
+  summarize:
+    needs: batch
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: transfer-*
+          path: transfer-results
+          merge-multiple: true
+      - name: Summarize repeated-measures transfer screen
+        run: |
+          mkdir -p summary
+          node scripts/summarize-tetrp-transfer-screen.mjs transfer-results summary/transfer-summary.json \
+            | tee summary/transfer-summary.log
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tetrp-whole-profile-transfer-screen
+          path: summary/
+          if-no-files-found: error
+          retention-days: 30
