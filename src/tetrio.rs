@@ -24,8 +24,9 @@ impl AttackBreakdown {
 }
 pub fn base_attack(spin: Spin, lines: u32) -> u32 {
     match spin {
-        Spin::None => match lines { 0 | 1 => 0, 2 => 1, 3 => 2, 4 => 4, _ => lines },
-        Spin::Mini => match lines { 0 | 1 => 0, 2 => 1, 3 => 2, 4 => 10, _ => 2 * lines + 2 },
+        // Pinned Tetrp v19: recognized minis receive spin/B2B semantics but
+        // retain the non-full base attack table.
+        Spin::None | Spin::Mini => match lines { 0 | 1 => 0, 2 => 1, 3 => 2, 4 => 4, _ => lines },
         Spin::Full => match lines { 0 => 0, 1 => 2, 2 => 4, 3 => 6, 4 => 10, _ => 2 * lines + 2 },
     }
 }
@@ -34,7 +35,9 @@ pub fn multiplier_attack(base_plus_b2b: u32, combo: u32) -> u32 {
     let minimum = if combo > 1 { (1.25 * combo as f64).ln_1p() } else { 0.0 };
     scaled.max(minimum).floor() as u32
 }
-pub fn surge_size(count: u32) -> u32 { if count >= 4 { count } else { 0 } }
+/// `count` is CC2's displayed B2B x-count (Tetrp raw counter minus one).
+/// Tetrp v19 releases max(0, raw - 4), therefore displayed x4 banks one line.
+pub fn surge_size(count: u32) -> u32 { count.saturating_sub(3) }
 pub fn attack(info: &PlacementInfo) -> AttackBreakdown {
     if info.lines_cleared == 0 { return AttackBreakdown::default(); }
     let base = base_attack(info.placement.spin, info.lines_cleared);
@@ -82,12 +85,20 @@ mod tests {
         for n in 4..100 {
             let mut i=info(Spin::None,2,0,false);i.b2b_broken=true;i.b2b_count_before=n;
             let a=attack(&i);let packets=a.packets();
-            assert_eq!(packets.iter().sum::<u32>(),n+1);
+            assert_eq!(a.surge_released,n-3);
+            assert_eq!(packets.iter().sum::<u32>(),(n-3)+1);
             assert_eq!(packets.last(),Some(&1));
         }
     }
+
     #[test]
-    fn mini_table_includes_i_mini_quad() { assert_eq!(base_attack(Spin::Mini,4),10); }
+    fn pinned_tetrp_v19_surge_threshold_examples() {
+        assert_eq!(surge_size(3),0);
+        assert_eq!(surge_size(4),1);
+        assert_eq!(surge_size(9),6);
+    }
+    #[test]
+    fn mini_uses_non_full_base_table() { assert_eq!(base_attack(Spin::Mini,4),4); }
     #[test]
     fn nonclear_never_sends_even_with_stale_flags() {
         let mut i=info(Spin::Full,0,50,true); i.perfect_clear=true;i.b2b_broken=true;i.b2b_count_before=30;i.garbage_cleared=4;
