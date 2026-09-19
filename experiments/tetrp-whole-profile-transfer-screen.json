@@ -1,6 +1,6 @@
 {
   "experiment": "tetrp-whole-profile-transfer-screen",
-  "status": "rerunning_after_transport_scheduler_fix",
+  "status": "completed_directionally_positive",
   "authority": {
     "repository": "jush0147/tetrp",
     "commit": "0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2",
@@ -67,7 +67,11 @@
     "no_pooled_significance": "Do not compute a naive 24-match binomial p-value because each seed appears in three pace conditions.",
     "next_if_consistent_positive": "Use fresh seeds for a larger new-authority confirmation, then decompose H1/H2/H6C/H9.",
     "next_if_mixed": "Investigate pace interaction and state-model mismatch before feature ablation.",
-    "next_if_negative": "Do not resurrect the old lineage by inertia; use corrected legacy/new-authority evidence as the new starting point."
+    "next_if_negative": "Do not resurrect the old lineage by inertia; use corrected legacy/new-authority evidence as the new starting point.",
+    "observed": "The tuned H1+H2+H6C+H9+H12 package transferred strongly in direction under the synchronous Tetrp authority: 7-1 at 2 PPS, 6-2 at 2.5 PPS, and 8-0 at 3 PPS.",
+    "caution": "This remains a directional screen on only eight unique seeds repeated across three pace conditions. Do not treat 21-3 as 24 independent trials.",
+    "pace_note": "3 PPS produced much longer matches in piece count (average 783.625 lock steps) than 2/2.5 PPS. This may be a real consequence of the 20-frame garbage-travel boundary, but should be treated as a protocol behavior worth preserving and checking rather than silently averaging away.",
+    "next": "Run a larger confirmation on fresh seeds before feature ablation. Use one primary pace plus smaller robustness blocks at the other paces, then ablate H1/H2/H6C/H9 only if the fresh-seed confirmation remains positive."
   },
   "gates_required_before_run": [
     "visible-state adapter correctness workflow green",
@@ -97,5 +101,53 @@
     "commit": "7c5e05c9a94f101cb00e86ceb28a49b5073c0746",
     "regression_test": "scripts/test-tetrp-placement-scheduler.mjs",
     "semantics": "Pack down/shift/rotation/hold as legal Tetrp subframe taps while preserving the scheduled hard-drop lock frame. PPS continues to control authority time, not artificial path reachability."
+  },
+  "completed_run": 35428960442,
+  "completed_head_sha": "1177c66b280cd0bc68481905654e4daa5b3243d0",
+  "result": {
+    "matches": 24,
+    "tuned_wins": 21,
+    "legacy_wins": 3,
+    "by_pace": {
+      "2.0_pps": {
+        "tuned": 7,
+        "legacy": 1,
+        "avg_lock_steps": 330.75
+      },
+      "2.5_pps": {
+        "tuned": 6,
+        "legacy": 2,
+        "avg_lock_steps": 403.875
+      },
+      "3.0_pps": {
+        "tuned": 8,
+        "legacy": 0,
+        "avg_lock_steps": 783.625
+      }
+    },
+    "pace_reversal_seeds": [
+      62002,
+      62007
+    ],
+    "diagnostics": {
+      "2.0_pps": {
+        "tuned_raw_app": 1.218442932728647,
+        "legacy_raw_app": 1.1118669690098262,
+        "tuned_sent_app": 0.9943310657596371,
+        "legacy_sent_app": 0.8080120937263794
+      },
+      "2.5_pps": {
+        "tuned_raw_app": 1.2460538532961931,
+        "legacy_raw_app": 1.1491798204890127,
+        "tuned_sent_app": 1.0037140204271124,
+        "legacy_sent_app": 0.8551532033426184
+      },
+      "3.0_pps": {
+        "tuned_raw_app": 1.1643005263997448,
+        "legacy_raw_app": 1.0985803158398468,
+        "tuned_sent_app": 0.8589886744297336,
+        "legacy_sent_app": 0.764555750518424
+      }
+    }
   }
 }
