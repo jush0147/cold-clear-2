@@ -177,6 +177,10 @@ Kiwi returns a final placement, not Tetrp input events.
 
 Do not directly paint the tetromino onto the board. Apply the move through Tetrp authority so line clears, B2B, combo, garbage and timing remain Tetrp-owned.
 
+When scheduling a path, pass the live hypothetical Tetrp `Engine` into `schedulePath(startFrame, lockFrame, moves, engine)`. The helper first preserves the ordinary transport, validates it against an isolated authority clone, and only uses compact equal-subframe transport if ordinary synthetic tap spacing would auto-lock early or lock more than one piece. This guards reset-heavy high-stack finesse without changing the scheduled lock frame or Tetrp rules.
+
+This is a correctness fix discovered by the H9 coarse-sweep failure on seeds 65206/65207: the old transport spaced a 17-reset path across source time, Tetrp auto-locked the intended Z early, and the later scheduled hard drop locked the following I as a second piece. Do not reintroduce an unvalidated scheduler.
+
 The research harness used fixed pace only to advance authority time. Placement reachability must not depend on PPS or gravity.
 
 ## Recommended Tetrp architecture
