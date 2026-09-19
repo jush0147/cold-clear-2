@@ -31,6 +31,7 @@ export function runSynchronousMatch({
       !authoritySeeds.every(Number.isSafeInteger)) {
     throw new Error('exactly two safe integer authority seeds are required');
   }
+  const sameSeedAuthority = authoritySeeds[0] === authoritySeeds[1];
   if (!Number.isInteger(nodeBudget) || nodeBudget < 1000) throw new Error('invalid node budget');
   if (!Number.isInteger(framesPerPiece) || framesPerPiece < 1) throw new Error('invalid frames per piece');
   if (!Array.isArray(profiles) || profiles.length !== 2) throw new Error('exactly two profiles are required');
@@ -71,7 +72,7 @@ export function runSynchronousMatch({
   function progressSnapshot(frame) {
     return {
       type:'tetrp_match_progress',
-      seed: authoritySeeds[0]===authoritySeeds[1] ? authoritySeeds[0] : null,
+      seed: sameSeedAuthority ? authoritySeeds[0] : null,
       seeds:[...authoritySeeds],
       lock_steps:lockStep,
       frame,
@@ -167,7 +168,7 @@ export function runSynchronousMatch({
       });
     }
 
-    if(firstDecisionDivergenceLock===null) {
+    if(sameSeedAuthority && firstDecisionDivergenceLock===null) {
       const sameVisible=visibleFingerprint(visible[0])===visibleFingerprint(visible[1]);
       if(!sameVisible) {
         throw new Error('same-seed authority diverged before the first profile decision divergence');
@@ -261,7 +262,7 @@ export function runSynchronousMatch({
   return {
     result:{
       type:'tetrp_synchronous_match',
-      seed:authoritySeeds[0]===authoritySeeds[1]?authoritySeeds[0]:null,
+      seed:sameSeedAuthority?authoritySeeds[0]:null,
       seeds:[...authoritySeeds],
       tetrp_ref:tetrpRef,
       node_budget_per_decision:nodeBudget,
