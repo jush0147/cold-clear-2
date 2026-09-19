@@ -1,14 +1,6 @@
 name: Tetrp bot exhibition
 
 on:
-  push:
-    branches: [s2-strategy-clean]
-    paths:
-      - '.github/workflows/tetrp-bot-exhibition.yml'
-      - 'scripts/generate-tetrp-exhibition.mjs'
-      - 'scripts/generate-tetrp-ft7.mjs'
-      - 'src/analysis.rs'
-      - 'src/wasm.rs'
   workflow_dispatch:
 
 permissions:
