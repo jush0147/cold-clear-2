@@ -1,18 +1,6 @@
 name: Tetrp authority slot symmetry
 
 on:
-  push:
-    branches: [s2-strategy-clean]
-    paths:
-      - 'src/data.rs'
-      - 'src/tetrio.rs'
-      - 'src/analysis.rs'
-      - 'src/forecast.rs'
-      - 'scripts/lib/tetrp-authority-adapter.mjs'
-      - 'scripts/lib/tetrp-placement-path.mjs'
-      - 'scripts/generate-tetrp-exhibition.mjs'
-      - 'scripts/compare-tetrp-slot-swap.mjs'
-      - '.github/workflows/tetrp-authority-slot-symmetry.yml'
   workflow_dispatch:
 
 permissions:
