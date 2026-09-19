@@ -1,6 +1,6 @@
 {
   "experiment": "tetrp-whole-profile-transfer-screen",
-  "status": "preregistered_ready_to_run",
+  "status": "running",
   "authority": {
     "repository": "jush0147/tetrp",
     "commit": "0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2",
@@ -81,5 +81,9 @@
     "slot_symmetry": 35427392644,
     "runtime_smoke": 35427380454,
     "branch": "tetrp-authority"
-  }
+  },
+  "run_id": 35428534588,
+  "workflow": "Tetrp whole-profile transfer screen",
+  "branch": "tetrp-authority",
+  "head_sha": "8972db38998daa914c76bb0cfaac0277f1ae0c09"
 }
