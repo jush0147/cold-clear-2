@@ -131,7 +131,7 @@ At each lock step:
 4. only after **both** choices exist, execute/commit both placements on the authority schedule;
 5. let Tetrp alone resolve attack, cancellation, garbage activation/tanking and KO.
 
-Until explicit symmetry controls prove slot identity irrelevant, play paired seeds with Candidate/Baseline slot assignments swapped.
+Slot identity has now been checked explicitly. Run `35427035469` reproduced the same tuned and legacy trajectories after swapping slot 0/1 for 80 lock steps, and both swapped replays passed the pinned Tetrp reconstruction validator. Therefore a swapped rerun of the **same seed** is a deterministic mirror, not a fresh sample. New synchronous strength tests use **one scored match per independent seed** unless a future authority change invalidates this symmetry result.
 
 The only scored outcome is **KO**. APP, raw attack, sent attack and survival length remain diagnostics only.
 
