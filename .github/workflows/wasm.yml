@@ -2,7 +2,7 @@ name: wasm
 
 on:
   push:
-    branches: [main, wasm-port, tetrio-s2, s2-strategy-clean]
+    branches: [main, wasm-port, tetrio-s2]
     paths:
       - 'src/**'
       - 'tests/**'
