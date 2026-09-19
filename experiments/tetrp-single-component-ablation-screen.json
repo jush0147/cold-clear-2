@@ -1,11 +1,14 @@
 {
   "experiment": "tetrp-single-component-ablation-screen",
-  "status": "planned",
+  "status": "partial_h1_capped",
   "authority": {
     "repository": "jush0147/tetrp",
     "commit": "0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2",
     "mode": "tl",
-    "overrides": {"g": 0, "gincrease": 0}
+    "overrides": {
+      "g": 0,
+      "gincrease": 0
+    }
   },
   "incumbent": "review_h9_h12 = H1+H2+H6C+H9+H12",
   "ablations": [
@@ -57,5 +60,56 @@
     "guard": "This is a screening ablation, not final feature significance. Do not pool the four ablations as 32 independent trials for a single claim, and do not use APP to override KO."
   },
   "rationale": "Fresh confirmation already established whole-profile transfer and robustness at 2/2.5/3 PPS. Use the primary 2.5 PPS pace for component archaeology first; only re-run pace robustness for components whose removal/retention decision needs confirmation.",
-  "next_after_screen": "Confirm any consequential or ambiguous component result on additional fresh seeds before changing the incumbent package."
+  "next_after_screen": "First diagnose H1 same-seed decision divergence at 200k without running to KO. Then confirm consequential/ambiguous components on fresh seeds; consider paired asymmetric slot seeds if same-seed mirror locking prevents identification.",
+  "run_id": 35431278966,
+  "observed": {
+    "h1": {
+      "scored_matches": 0,
+      "capped_unscored_seeds": [
+        64000,
+        64002,
+        64004,
+        64006
+      ],
+      "unstarted_seeds": [
+        64001,
+        64003,
+        64005,
+        64007
+      ],
+      "cap_lock_steps": 5000,
+      "reason": "Each two-seed batch aborted on its first seed after the Full vs -H1 match reached the 5000-lock safety cap. No H1 KO result is scored.",
+      "interpretation": "Do not infer H1 strength from the cap. Because both slots use the same seed under deterministic synchronous authority, a long or exact mirror trajectory can make same-seed head-to-head non-identifying for a subtle feature."
+    },
+    "h2": {
+      "full_wins": 3,
+      "ablated_wins": 5,
+      "classification": "removal_not_worse_signal",
+      "avg_lock_steps": 501.125,
+      "full_raw_app": 1.2022948366176103,
+      "ablated_raw_app": 1.1596408081815914,
+      "full_sent_app": 0.9523571963083063,
+      "ablated_sent_app": 0.8530805687203792
+    },
+    "h6c": {
+      "full_wins": 4,
+      "ablated_wins": 4,
+      "classification": "inconclusive",
+      "avg_lock_steps": 393.25,
+      "full_raw_app": 1.2234583598219961,
+      "ablated_raw_app": 1.2161474888747617,
+      "full_sent_app": 0.9831532104259377,
+      "ablated_sent_app": 0.9043229497774953
+    },
+    "h9": {
+      "full_wins": 4,
+      "ablated_wins": 4,
+      "classification": "inconclusive",
+      "avg_lock_steps": 461.875,
+      "full_raw_app": 1.198917456021651,
+      "ablated_raw_app": 1.222192151556157,
+      "full_sent_app": 0.9242219215155616,
+      "ablated_sent_app": 0.9426251691474966
+    }
+  }
 }
