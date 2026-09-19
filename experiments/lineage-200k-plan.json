@@ -1,6 +1,6 @@
 {
   "experiment": "200k promoted strategy lineage revalidation",
-  "status": "h1_vs_legacy_100pair_running",
+  "status": "h1_base_link_failed_positive_revalidation_final_profile_ablation_next",
   "compute_regime": {
     "nodes_per_move": 200000,
     "reason": "provisional product default after H14 200k-vs-100k"
@@ -226,7 +226,7 @@
     },
     {
       "id": "H1-vs-legacy",
-      "status": "running_100pair_confirmation",
+      "status": "completed_no_positive_revalidation",
       "candidate": {
         "pending_safety": 1,
         "useful_attack_reward": 0,
@@ -252,7 +252,24 @@
         "games": 200,
         "batches": 10,
         "max_parallel": 5
-      }
+      },
+      "result": {
+        "run": 35403426381,
+        "seed_range": "48600-48699",
+        "paired_seeds": 100,
+        "games": 200,
+        "candidate_wins": 93,
+        "incumbent_wins": 107,
+        "candidate_sweeps": 16,
+        "incumbent_sweeps": 23,
+        "split_pairs": 61,
+        "effective_sign_pairs": 39,
+        "paired_exact_sign_p": 0.3367836351899314,
+        "malformed_pairs": 0,
+        "all_reason_no_legal_placement": true
+      },
+      "interpretation": "H1 pending_safety=1.0 did not revalidate positively at 200k against corrected legacy. The fresh 100-pair sample slightly favored legacy (93-107 games; 16-23 sweeps; p=0.33678). This is not significant evidence that H1 is harmful, but it removes the basis for carrying H1 into the final 200k evaluator solely from the historical 10k result.",
+      "next_step": "Run a direct final-profile H1 ablation with H2/H6C/H9/H12 fixed, because H1 may interact with the promoted higher-level terms."
     }
   ],
   "guardrails": [
@@ -262,12 +279,7 @@
     "Do not run lower lineage links until the upper link result is known.",
     "Do not revive rejected H3-H11 hypotheses unless the promoted chain changes."
   ],
-  "active_run": {
-    "id": "H1-vs-legacy",
-    "run": 35403426381,
-    "workflow_commit": "25cbbf7acc404611d75a6a675535a7bc3700495f",
-    "status": "running"
-  },
+  "active_run": null,
   "failed_runs": [
     {
       "run": 35357634194,
