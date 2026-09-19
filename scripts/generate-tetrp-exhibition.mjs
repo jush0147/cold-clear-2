@@ -298,9 +298,35 @@ while(pieceIndex<maxPieces) {
 if(pieceIndex>=maxPieces) throw new Error('exhibition exceeded safety piece cap');
 const endFrame=pieceIndex*framesPerPiece;
 deliverTransfers(endFrame);
+
+function endData(slot, reason) {
+  const s=engines[slot].state, p=s.piece;
+  let flags=128; // Reconstruction terminal semantics force the falling piece asleep.
+  if(p.wall) flags|=64;
+  if(p.forceLock) flags|=2048;
+  if(p.softDropped) flags|=4096;
+  if(p.spin==='full') flags|=8;
+  else if(p.spin==='mini') flags|=24;
+  return {
+    gameoverreason:reason,
+    stats:{lines:s.stats.lines,holds:s.stats.holds,piecesplaced:s.stats.pieces},
+    game:{
+      board:structuredClone(s.board.rows),
+      bag:[...s.bag.queue],
+      hold:structuredClone(s.hold),
+      g:s.g,
+      playing:false,
+      falling:{
+        type:p.type,x:p.x,y:p.y,r:p.r,hy:p.hy,kick:p.kick,keys:p.keys,
+        safelock:p.safelock,locking:p.locking,lockresets:p.resets,
+        rotresets:p.rotationResets,flags
+      }
+    }
+  };
+}
 for(let slot=0;slot<2;slot++) {
   const reason=engines[slot].state.reason || (winner===slot?'winner':'synthetic-end');
-  replayEvents[slot].push({frame:endFrame,type:'end',data:{reason},_order:999999+slot});
+  replayEvents[slot].push({frame:endFrame,type:'end',data:endData(slot,reason),_order:999999+slot});
 }
 
 function stream(slot) {
