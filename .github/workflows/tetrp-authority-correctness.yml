@@ -15,6 +15,10 @@ on:
       - '.github/workflows/tetrp-authority-correctness.yml'
   workflow_dispatch:
 
+concurrency:
+  group: tetrp-gate-tetrp-authority-correctness-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
