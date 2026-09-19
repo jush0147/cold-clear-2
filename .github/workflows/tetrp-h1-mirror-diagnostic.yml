@@ -1,0 +1,89 @@
+name: Tetrp H1 mirror diagnostic
+
+on:
+  push:
+    branches: [tetrp-authority]
+    paths:
+      - '.github/workflows/tetrp-h1-mirror-diagnostic.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: tetrp-h1-mirror-diagnostic-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: jush0147/tetrp
+          ref: 0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2
+          path: tetrp-reference
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - name: Install wasm-pack
+        run: cargo install wasm-pack --locked
+      - name: Build Node WASM
+        run: wasm-pack build --release --target nodejs --out-dir pkg-node
+      - uses: actions/upload-artifact@v4
+        with:
+          name: h1-diagnostic-node-wasm
+          path: pkg-node/
+          retention-days: 1
+
+  diagnose:
+    needs: build
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        seed: [64000, 64002, 64004, 64006]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: jush0147/tetrp
+          ref: 0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2
+          path: tetrp-reference
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@v4
+        with:
+          name: h1-diagnostic-node-wasm
+          path: pkg-node
+      - name: Find first H1 decision divergence
+        env:
+          NODE_BUDGET: '200000'
+          FRAMES_PER_PIECE: '24'
+          TETRP_REF: 0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2
+          SLOT0_PROFILE: review_h9_h12
+          SLOT1_PROFILE: review_minus_h1_h12
+          MATCH_SEED: ${{ matrix.seed }}
+          SAFETY_LOCK_STEPS: '5000'
+          DIAGNOSTIC_MAX_LOCKS: '500'
+          STOP_ON_FIRST_DECISION_DIVERGENCE: '1'
+          PROGRESS_EVERY_LOCKS: '100'
+        run: |
+          mkdir -p results
+          node scripts/run-tetrp-authority-match.mjs tetrp-reference \
+            | tee "results/h1-mirror-${{ matrix.seed }}.jsonl"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: h1-mirror-${{ matrix.seed }}
+          path: results/
+          if-no-files-found: error
+          retention-days: 14
