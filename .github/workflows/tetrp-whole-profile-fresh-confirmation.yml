@@ -1,0 +1,132 @@
+name: Tetrp whole-profile fresh confirmation
+
+on:
+  push:
+    branches: [tetrp-authority]
+    paths:
+      - '.github/workflows/tetrp-whole-profile-fresh-confirmation.yml'
+      - 'scripts/summarize-tetrp-fresh-confirmation.mjs'
+  workflow_dispatch:
+
+concurrency:
+  group: tetrp-whole-profile-fresh-confirmation-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: jush0147/tetrp
+          ref: 0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2
+          path: tetrp-reference
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify placement transport at 3 PPS
+        run: node scripts/test-tetrp-placement-scheduler.mjs tetrp-reference
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - name: Install wasm-pack
+        run: cargo install wasm-pack --locked
+      - name: Build Node WASM
+        run: wasm-pack build --release --target nodejs --out-dir pkg-node
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fresh-confirm-node-wasm
+          path: pkg-node/
+          retention-days: 1
+
+  batch:
+    needs: build
+    runs-on: ubuntu-22.04
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      max-parallel: 12
+      matrix:
+        include:
+          - { frames: 24, start: 63000, end: 63001, label: '2p5pps-a' }
+          - { frames: 24, start: 63002, end: 63003, label: '2p5pps-b' }
+          - { frames: 24, start: 63004, end: 63005, label: '2p5pps-c' }
+          - { frames: 24, start: 63006, end: 63007, label: '2p5pps-d' }
+          - { frames: 24, start: 63008, end: 63009, label: '2p5pps-e' }
+          - { frames: 24, start: 63010, end: 63011, label: '2p5pps-f' }
+          - { frames: 24, start: 63012, end: 63013, label: '2p5pps-g' }
+          - { frames: 24, start: 63014, end: 63015, label: '2p5pps-h' }
+          - { frames: 30, start: 63000, end: 63001, label: '2pps-a' }
+          - { frames: 30, start: 63002, end: 63003, label: '2pps-b' }
+          - { frames: 20, start: 63004, end: 63005, label: '3pps-a' }
+          - { frames: 20, start: 63006, end: 63007, label: '3pps-b' }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: jush0147/tetrp
+          ref: 0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2
+          path: tetrp-reference
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@v4
+        with:
+          name: fresh-confirm-node-wasm
+          path: pkg-node
+      - name: Run fresh-seed synchronous batch
+        env:
+          NODE_BUDGET: '200000'
+          FRAMES_PER_PIECE: ${{ matrix.frames }}
+          TETRP_REF: 0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2
+          SLOT0_PROFILE: review_h9_h12
+          SLOT1_PROFILE: corrected_legacy_h12
+          SAFETY_LOCK_STEPS: '5000'
+        run: |
+          set -euo pipefail
+          mkdir -p results
+          : > "results/${{ matrix.label }}.jsonl"
+          for seed in $(seq ${{ matrix.start }} ${{ matrix.end }}); do
+            MATCH_SEED="$seed" node scripts/run-tetrp-authority-match.mjs tetrp-reference \
+              | tee -a "results/${{ matrix.label }}.jsonl"
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fresh-confirm-${{ matrix.label }}
+          path: results/
+          if-no-files-found: error
+          retention-days: 14
+
+  summarize:
+    needs: batch
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: fresh-confirm-*
+          path: fresh-confirm-results
+          merge-multiple: true
+      - name: Summarize fresh-seed confirmation
+        run: |
+          mkdir -p summary
+          node scripts/summarize-tetrp-fresh-confirmation.mjs fresh-confirm-results summary/fresh-confirmation-summary.json \
+            | tee summary/fresh-confirmation-summary.log
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tetrp-whole-profile-fresh-confirmation
+          path: summary/
+          if-no-files-found: error
+          retention-days: 30
