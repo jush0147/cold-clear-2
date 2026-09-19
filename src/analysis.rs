@@ -219,10 +219,50 @@ pub fn analyze_with_profile(request: Request, profile: &str) -> Result<Report, S
             c.freestyle_weights.row_transitions *= 2.5;
             (Arc::new(c), "reset-h6c-row2.5+h12")
         }
+        "reset_h9_cavity_m1_5_h12" => {
+            let mut c = BotConfig::corrected_legacy_h12();
+            c.freestyle_weights.h9_cavity_excavation = -1.5;
+            (Arc::new(c), "reset-h9-cavity-1.5+h12")
+        }
+        "reset_h9_cavity_m1_h12" => {
+            let mut c = BotConfig::corrected_legacy_h12();
+            c.freestyle_weights.h9_cavity_excavation = -1.0;
+            (Arc::new(c), "reset-h9-cavity-1+h12")
+        }
         "reset_h9_cavity_m0_5_h12" => {
             let mut c = BotConfig::corrected_legacy_h12();
             c.freestyle_weights.h9_cavity_excavation = -0.5;
             (Arc::new(c), "reset-h9-cavity-0.5+h12")
+        }
+        "reset_h9_cavity_m0_25_h12" => {
+            let mut c = BotConfig::corrected_legacy_h12();
+            c.freestyle_weights.h9_cavity_excavation = -0.25;
+            (Arc::new(c), "reset-h9-cavity-0.25+h12")
+        }
+        "reset_h9_cavity_0_h12" => {
+            let mut c = BotConfig::corrected_legacy_h12();
+            c.freestyle_weights.h9_cavity_excavation = 0.0;
+            (Arc::new(c), "reset-h9-cavity0+h12")
+        }
+        "reset_h9_cavity_p0_25_h12" => {
+            let mut c = BotConfig::corrected_legacy_h12();
+            c.freestyle_weights.h9_cavity_excavation = 0.25;
+            (Arc::new(c), "reset-h9-cavity+0.25+h12")
+        }
+        "reset_h9_cavity_p0_5_h12" => {
+            let mut c = BotConfig::corrected_legacy_h12();
+            c.freestyle_weights.h9_cavity_excavation = 0.5;
+            (Arc::new(c), "reset-h9-cavity+0.5+h12")
+        }
+        "reset_h9_cavity_p1_h12" => {
+            let mut c = BotConfig::corrected_legacy_h12();
+            c.freestyle_weights.h9_cavity_excavation = 1.0;
+            (Arc::new(c), "reset-h9-cavity+1+h12")
+        }
+        "reset_h9_cavity_p1_5_h12" => {
+            let mut c = BotConfig::corrected_legacy_h12();
+            c.freestyle_weights.h9_cavity_excavation = 1.5;
+            (Arc::new(c), "reset-h9-cavity+1.5+h12")
         }
         "reset_h10_exploitation_0_7985_h12" => {
             let mut c = BotConfig::corrected_legacy_h12();
@@ -390,7 +430,15 @@ mod tests {
             "reset_h6_height_0_75_h12",
             "reset_h6b_holes1_5_covered0_5_h12",
             "reset_h6c_row2_5_h12",
+            "reset_h9_cavity_m1_5_h12",
+            "reset_h9_cavity_m1_h12",
             "reset_h9_cavity_m0_5_h12",
+            "reset_h9_cavity_m0_25_h12",
+            "reset_h9_cavity_0_h12",
+            "reset_h9_cavity_p0_25_h12",
+            "reset_h9_cavity_p0_5_h12",
+            "reset_h9_cavity_p1_h12",
+            "reset_h9_cavity_p1_5_h12",
             "reset_h10_exploitation_0_7985_h12",
             "reset_h11_k40s60_h12",
         ] {
