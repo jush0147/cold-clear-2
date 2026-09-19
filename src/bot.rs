@@ -33,6 +33,10 @@ pub struct PlayerPieces {
 pub struct BotConfig {
     pub freestyle_weights: freestyle::Weights,
     pub freestyle_exploitation: f64,
+    /// H11: allow a different child-selection exploitation value after the
+    /// visible preview ends and search enters speculative SevenBag layers.
+    #[serde(default = "default_freestyle_speculated_exploitation")]
+    pub freestyle_speculated_exploitation: f64,
     /// H12: propagate when the previously-best child is demoted below another child.
     /// False preserves legacy CC2 behavior.
     #[serde(default)]
@@ -43,6 +47,10 @@ pub struct BotConfig {
     #[serde(default)]
     pub dag_backprop_despeculated_values: bool,
 }
+fn default_freestyle_speculated_exploitation() -> f64 {
+    std::f64::consts::LN_2
+}
+
 impl Default for BotConfig {
     fn default() -> Self {
         static DEFAULT: Lazy<BotConfig> = Lazy::new(|| serde_json::from_str(include_str!("default.json")).unwrap());
@@ -65,6 +73,26 @@ impl BotConfig {
         config
     }
 
+    /// Corrected neutral starting point for the post-migration strategy reset.
+    /// This keeps legacy evaluator weights, zeroes experimental H1/H2/H3/H6B/H9
+    /// terms, removes softdrop placement cost, enables H12, and leaves H13 off.
+    pub fn corrected_legacy_h12() -> Self {
+        let mut config = Self::legacy();
+        config.freestyle_weights.softdrop = 0.0;
+        config.freestyle_weights.pending_safety = 0.0;
+        config.freestyle_weights.useful_attack_reward = 0.0;
+        config.freestyle_weights.cancellation_reward = 0.0;
+        config.freestyle_weights.h3_b2b_charge_value = 0.0;
+        config.freestyle_weights.h3_surge_bank_value = 0.0;
+        config.freestyle_weights.h6_base_holes_scale = 1.0;
+        config.freestyle_weights.h6_base_coveredness_scale = 1.0;
+        config.freestyle_weights.h9_cavity_excavation = 0.0;
+        config.freestyle_speculated_exploitation = std::f64::consts::LN_2;
+        config.dag_backprop_best_demotion = true;
+        config.dag_backprop_despeculated_values = false;
+        config
+    }
+
     /// Canonical scored H14 configuration. Keep H13 off here so historical
     /// compute-strength evidence remains comparable.
     pub fn review_h9_h12() -> Self {
@@ -79,6 +107,7 @@ impl BotConfig {
         config.freestyle_weights.h6_base_coveredness_scale = 1.0;
         config.freestyle_weights.row_transitions *= 2.5;
         config.freestyle_weights.h9_cavity_excavation = -0.5;
+        config.freestyle_speculated_exploitation = std::f64::consts::LN_2;
         config.dag_backprop_best_demotion = true;
         config
     }
@@ -253,9 +282,29 @@ mod config_tests {
         assert_eq!(review.freestyle_weights.cancellation_reward, 0.0);
         assert_eq!(review.freestyle_weights.row_transitions, legacy.freestyle_weights.row_transitions * 2.5);
         assert_eq!(review.freestyle_weights.h9_cavity_excavation, -0.5);
+        assert_eq!(review.freestyle_exploitation, std::f64::consts::LN_2);
+        assert_eq!(review.freestyle_speculated_exploitation, std::f64::consts::LN_2);
         assert!(review.dag_backprop_best_demotion);
         assert!(!review.dag_backprop_despeculated_values);
         assert!(!review.freestyle_weights.tetrio_s2);
+    }
+
+    #[test]
+    fn corrected_legacy_h12_is_neutral_reset_baseline() {
+        let legacy = BotConfig::legacy();
+        let reset = BotConfig::corrected_legacy_h12();
+        assert_eq!(reset.freestyle_weights.row_transitions, legacy.freestyle_weights.row_transitions);
+        assert_eq!(reset.freestyle_weights.height, legacy.freestyle_weights.height);
+        assert_eq!(reset.freestyle_weights.combo_attack, legacy.freestyle_weights.combo_attack);
+        assert_eq!(reset.freestyle_weights.pending_safety, 0.0);
+        assert_eq!(reset.freestyle_weights.useful_attack_reward, 0.0);
+        assert_eq!(reset.freestyle_weights.h3_b2b_charge_value, 0.0);
+        assert_eq!(reset.freestyle_weights.h3_surge_bank_value, 0.0);
+        assert_eq!(reset.freestyle_weights.h9_cavity_excavation, 0.0);
+        assert_eq!(reset.freestyle_exploitation, std::f64::consts::LN_2);
+        assert_eq!(reset.freestyle_speculated_exploitation, std::f64::consts::LN_2);
+        assert!(reset.dag_backprop_best_demotion);
+        assert!(!reset.dag_backprop_despeculated_values);
     }
 
     #[test]
