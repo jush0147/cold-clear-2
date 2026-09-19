@@ -211,3 +211,12 @@ pub fn analyze_pending_json(input_json:&str)->Result<String,JsValue>{
     let input=serde_json::from_value(parse_json(input_json)?).map_err(js_error)?;
     serde_json::to_string(&crate::analysis::analyze(input).map_err(js_error)?).map_err(js_error)
 }
+
+/// Snapshot-only exhibition helper. Keeps the normal review API unchanged while
+/// allowing a visualization harness to compare the scored profile with the
+/// corrected legacy evaluator under the same visible state and hard node budget.
+#[wasm_bindgen]
+pub fn analyze_pending_profile_json(input_json:&str, profile:&str)->Result<String,JsValue>{
+    let input=serde_json::from_value(parse_json(input_json)?).map_err(js_error)?;
+    serde_json::to_string(&crate::analysis::analyze_with_profile(input, profile).map_err(js_error)?).map_err(js_error)
+}
