@@ -59,6 +59,16 @@ pub struct Request {
     /// Legacy fallback for callers that provide only active=false. New Tetrp
     /// authority adapters provide ready_in_frames on every packet.
     pub pending_delay_frames: u32,
+    /// Optional exact authority clock state. All four fields must be present
+    /// together for time-based Tetrp attack scaling to be modeled.
+    #[serde(default)]
+    pub authority_frame: Option<u32>,
+    #[serde(default)]
+    pub garbage_multiplier: Option<f64>,
+    #[serde(default)]
+    pub garbage_margin_frames: Option<u32>,
+    #[serde(default)]
+    pub garbage_increase_per_second: Option<f64>,
     /// Total evaluator-node budget across the modeled hole scenarios.
     pub node_budget: u32,
 }
@@ -83,6 +93,7 @@ pub struct Report {
     pub frames_per_piece: u32,
     pub pending_delay_frames: u32,
     pub per_packet_ready_timing: bool,
+    pub authority_attack_clock: bool,
     pub assumptions: Vec<&'static str>,
 }
 
@@ -121,6 +132,20 @@ pub fn analyze_with_profile(request: Request, profile: &str) -> Result<Report, S
     let timed_incoming: Vec<(u32,u32)> = request.incoming.iter().copied()
         .map(|p| p.timing(request.pending_delay_frames))
         .collect::<Result<_,_>>()?;
+    let clock_fields = (
+        request.authority_frame,
+        request.garbage_multiplier,
+        request.garbage_margin_frames,
+        request.garbage_increase_per_second,
+    );
+    let authority_attack_clock = matches!(clock_fields, (Some(_),Some(_),Some(_),Some(_)));
+    if !authority_attack_clock
+        && [request.authority_frame.is_some(),request.garbage_multiplier.is_some(),
+            request.garbage_margin_frames.is_some(),request.garbage_increase_per_second.is_some()]
+            .into_iter().any(|x|x)
+    {
+        return Err("authority attack clock fields must be supplied together".into());
+    }
 
     let scenarios: u32 = if request.incoming.is_empty() { 1 } else { 10 };
     let mut scores: HashMap<Placement, (f64, f32, u32)> = HashMap::new();
@@ -155,13 +180,26 @@ pub fn analyze_with_profile(request: Request, profile: &str) -> Result<Report, S
             b2b_count: request.start.b2b_count,
             randomizer: copy_randomizer(&request.start.randomizer),
         };
-        let forecast = Forecast::new_timed(
-            &timed_incoming,
-            request.pieces_placed,
-            request.garbage_sent,
-            request.frames_per_piece,
-            scenario,
-        )?;
+        let forecast = match clock_fields {
+            (Some(frame),Some(multiplier),Some(margin),Some(rate)) => Forecast::new_timed_with_clock(
+                &timed_incoming,
+                request.pieces_placed,
+                request.garbage_sent,
+                request.frames_per_piece,
+                frame,
+                multiplier,
+                margin,
+                rate,
+                scenario,
+            )?,
+            _ => Forecast::new_timed(
+                &timed_incoming,
+                request.pieces_placed,
+                request.garbage_sent,
+                request.frames_per_piece,
+                scenario,
+            )?,
+        };
         let mut bot = try_create_bot(start, config.clone())?;
         bot.set_forecast(forecast);
 
@@ -226,10 +264,12 @@ pub fn analyze_with_profile(request: Request, profile: &str) -> Result<Report, S
         frames_per_piece: request.frames_per_piece,
         pending_delay_frames: request.pending_delay_frames,
         per_packet_ready_timing,
+        authority_attack_clock,
         assumptions: vec![
             "Only already observable incoming packets are modeled; no opponent board or future attacks.",
             "Unknown holes use ten equally weighted clean-hole scenarios when incoming garbage exists.",
             "Per-packet ready_in_frames is used when supplied; active-only callers fall back to pending_delay_frames.",
+            "When supplied together, authority frame/multiplier/margin/rate drive time-based Tetrp attack scaling at each hypothetical lock frame.",
             "The caller must derive SevenBag bag_state only from information already visible in replay history.",
             "The hard evaluator-node budget is divided across modeled hole scenarios.",
             "Per-scenario future search can be optimistic about information revealed later; scores are heuristic, not win probabilities.",
@@ -261,6 +301,10 @@ mod tests {
             garbage_sent: 0,
             frames_per_piece: 30,
             pending_delay_frames: 20,
+            authority_frame: None,
+            garbage_multiplier: None,
+            garbage_margin_frames: None,
+            garbage_increase_per_second: None,
             node_budget: 5000,
         }
     }
