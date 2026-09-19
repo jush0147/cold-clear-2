@@ -42,7 +42,7 @@
     }
   },
   "stage_1_broad_rescreen": {
-    "purpose": "Give old strategy hypothesis families a fair current-stack screen before constructing a new sequential lineage.",
+    "purpose": "Cheap representative-value reconnaissance used only to prioritize the order of later multi-parameter family studies. It is not a family-elimination or promotion stage.",
     "candidate_families": [
       "H1 pending-garbage safety",
       "H2 useful outgoing attack / cancellation value",
@@ -70,21 +70,22 @@
       "same_seed_symmetric_self_play": false,
       "reason": "Avoid deterministic mirror locking such as the 5000-lock H1 cap behavior observed in run 35431278966."
     },
-    "optional_extension": "A borderline 8-pair result may be extended to 12 paired units before deciding whether fresh confirmation is worth the compute. Extension must be recorded before inspecting the added outcomes."
+    "optional_extension": "Historical note: the 8-pair screen was extended to 12 pairs for directional candidates. Under v2 these results remain prioritization evidence only."
   },
   "screen_status_policy": {
-    "screened_positive": "Current small-sample evidence is promising enough to justify fresh confirmation.",
-    "screened_neutral": "Current small-sample evidence is weak or mixed. Pause; do not infer equivalence or permanent uselessness.",
-    "screened_negative": "Current small-sample evidence is sufficiently negative to stop spending compute for now.",
-    "confirmed": "Fresh confirmation supports adding the feature to the current incumbent.",
-    "rejected_for_now": "Fresh evidence does not support promotion under the current incumbent and stack.",
-    "retest_if_context_changes": "Archived candidate that may be reconsidered when the incumbent, authority, search budget, or a strongly interacting feature changes."
+    "priority_high": "Small representative-value evidence suggests studying this family sooner.",
+    "priority_middle": "Small representative-value evidence is flat or mixed; retain for later multi-parameter study.",
+    "priority_low": "Small representative-value evidence is negative; defer expensive study, but do not reject the family.",
+    "finalist_candidate": "A concrete parameter survives multi-parameter coarse sweep and fresh local refinement.",
+    "promoted": "A fixed finalist passes a large fresh confirmation against the current incumbent.",
+    "retest_if_context_changes": "A previously studied family or parameter may be revisited after incumbent, authority, search policy, compute budget, or a strongly interacting feature changes."
   },
   "small_sample_rule": {
-    "principle": "Small-sample failure controls current compute allocation, not the permanent truth value of a feature.",
+    "principle": "Small representative-value results are a research-priority signal only. They must not eliminate an H-family or promote a parameter.",
     "never_do": [
-      "Do not delete or forget screened-neutral or screened-negative candidates.",
-      "Do not label a small-sample loss as proof that the feature is universally bad.",
+      "Do not delete or permanently reject a family because one representative parameter lost or tied in a small screen.",
+      "Do not interpret 8, 12, or 16 paired units as enough evidence to establish feature superiority when realistic effects may be modest.",
+      "Do not assume an old winning parameter or sign remains optimal under the current 200k Tetrp stack.",
       "Do not promote or reject based on APP when KO points the other way."
     ],
     "always_record": [
@@ -108,16 +109,70 @@
     "deep_freeze_guidance": "Repeated, strongly negative current-stack results across sensible parameter choices may be assigned very low priority, but the evidence remains preserved rather than deleted."
   },
   "stage_2_confirmation_and_lineage_growth": {
-    "entry": "Only stage-1 candidates with a credible positive signal proceed immediately.",
-    "confirmation": "Use fresh asymmetric paired seeds; choose the confirmation sample size and decision rule before inspecting outcomes.",
-    "promotion": "A confirmed candidate becomes part of the new incumbent.",
-    "next_candidate_rule": "Every later feature is tested for marginal value against the current incumbent, not forever against corrected legacy.",
-    "re_screen_after_promotion": "Previously neutral/negative candidates may be revisited when there is a plausible interaction with the newly changed incumbent.",
-    "reference_check": "Periodically compare a mature new incumbent against the frozen review_h9_h12 benchmark and corrected_legacy_h12, without using those reference matches as substitutes for per-feature promotion evidence."
+    "status": "superseded_by_family_research_policy_v2",
+    "historical_note": "The earlier plan moved representative-value winners directly toward 16-pair standalone confirmation. Under v2, that follow-up is retained only as ranking/diagnostic evidence.",
+    "replacement": "Use the multi-parameter family cycle: coarse sweep -> fresh local refinement -> fixed finalist -> large fresh confirmation -> sequential incumbent update."
   },
   "historical_run_handling": {
     "whole_profile_transfer_and_confirmation": "Retain as evidence that the old tuned package contains useful signal under Tetrp authority, but not as proof that each old component remains beneficial.",
     "single_component_ablation_run_35431278966": "Retain as partial historical evidence and as the reason to avoid symmetric same-seed evaluation. Do not use the four H1 caps as wins, losses, or draws."
   },
-  "next_action": "Design the current-stack broad rescreen workflow from corrected_legacy_h12 using fresh asymmetric paired seeds. Do not continue the old reverse-ablation lineage as the primary strategy-selection path."
+  "next_action": "Finish the already-running 16-pair H9/H4/H2 follow-up for diagnostic value, but do not promote from it. Then begin the first current-stack multi-parameter family study (priority H9), using a preregistered grid that includes the neutral value and both negative and positive H9 values rather than only the historical negative winner.",
+  "process_revision": {
+    "name": "parameter-search-first lineage v2",
+    "adopted_on": "2026-09-19",
+    "supersedes": "Using single representative-value small screens as feature promotion/rejection evidence.",
+    "core_principle": "The completed 8/12-pair representative-value screens, and the currently running 16-pair follow-up, are prioritization evidence only. They rank which hypothesis families receive expensive study first; they do not eliminate a family and cannot promote a feature.",
+    "reason": [
+      "The current representative screens have too few paired experimental units to reliably distinguish modest effects.",
+      "A single historical parameter value cannot establish whether the broader hypothesis family contains a useful region under the new 200k Tetrp stack.",
+      "Old experiments used substantially larger multi-parameter screens, fresh validation, and often 200 paired seeds / 400 games for fixed-finalist confirmation; that experimental discipline should be retained while replacing the old arena and compute regime."
+    ]
+  },
+  "family_research_policy": {
+    "coverage": "Every standalone H-family remains eligible for a current-stack multi-parameter study. Small-sample flat or negative results change priority, not eligibility.",
+    "priority_source": "Use the representative-value broad screen and follow-ups only to choose study order. Current leading priority is H9/H2/H4, but later families are not rejected.",
+    "cycle": [
+      {
+        "stage": "coarse_parameter_sweep",
+        "purpose": "Search the family, not just the old winner.",
+        "design": "Test multiple parameter values against the current incumbent using the same fresh asymmetric seed pairs for all values in that family.",
+        "default_target": "About 20 paired units / 40 games per parameter value unless compute cost or a preregistered design justifies another size.",
+        "range_rule": "Historical results may narrow or densify the range, but must not restrict the search to the old winning sign or exact value. Include the neutral/default value and both sides when the parameter semantics make both directions meaningful.",
+        "interpretation": "This stage identifies promising regions only; it cannot promote the family."
+      },
+      {
+        "stage": "local_refinement",
+        "purpose": "Resolve the promising region found in the coarse sweep with fresh seeds and denser nearby values.",
+        "default_target": "About 40 fresh paired units / 80 games per refined value or finalist candidate, preregistered before outcomes are inspected.",
+        "interpretation": "Choose a fixed finalist from fresh evidence. Do not reuse the refinement data as final promotion evidence."
+      },
+      {
+        "stage": "large_fixed_finalist_confirmation",
+        "purpose": "Determine whether the fixed parameter is reliably better than the current incumbent.",
+        "default_target": "Target roughly 200 fresh paired units / 400 games for actual promotion evidence, comparable in sample scale to the stronger historical confirmations.",
+        "requirements": [
+          "Fresh asymmetric paired seeds.",
+          "Fixed parameter and decision rule before results.",
+          "KO is the primary outcome; APP remains diagnostic.",
+          "Report pair-level sweeps/splits and uncertainty.",
+          "No promotion from the earlier small or medium screens alone."
+        ]
+      }
+    ],
+    "sequential_incumbent_rule": "If a finalist passes large confirmation, add it to the incumbent. The next H-family must then perform its own parameter search against that new incumbent rather than inheriting an optimum selected against an older baseline.",
+    "parameter_point_rule": "A weak result for one parameter value rejects only that tested point under that context, not the entire H-family.",
+    "compute_efficiency": "Not every parameter value receives 200-pair confirmation. Broad values get moderate samples; only a fixed finalist earns the expensive large confirmation."
+  },
+  "interaction_policy_v2": {
+    "H7_H8": "Treat H7/H8 as interaction studies rather than standalone families. Run them when their relevant base features exist in the current incumbent or when a concrete interaction hypothesis becomes relevant.",
+    "resurrection": "After meaningful incumbent changes, previously lower-priority families may be re-screened/researched because marginal value and optimal parameters can change through interactions."
+  },
+  "current_small_sample_runs": {
+    "broad_screen_run": 35435294614,
+    "extension_run": 35437419694,
+    "ongoing_followup_run": 35438250546,
+    "interpretation": "All of these are retained as ranking/diagnostic evidence. The ongoing 16-pair / 32-game run must not be called a promotion confirmation under the v2 policy, regardless of its outcome.",
+    "no_family_eliminated": true
+  }
 }
