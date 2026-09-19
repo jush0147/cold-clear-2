@@ -171,14 +171,24 @@ impl<E: Evaluation> Dag<E> {
         self.top_layer.kind.suggest(&self.root)
     }
 
-    pub fn select(&self, speculate: bool, exploration: f64) -> Option<Selection<E>> {
+    pub fn select(
+        &self,
+        speculate: bool,
+        known_exploration: f64,
+        speculated_exploration: f64,
+    ) -> Option<Selection<E>> {
         puffin::profile_function!();
         let mut layers = vec![&*self.top_layer];
         let mut game_state = self.root;
         loop {
             let &layer = layers.last().unwrap();
 
-            match layer.kind.select(&game_state, speculate, exploration) {
+            match layer.kind.select(
+                &game_state,
+                speculate,
+                known_exploration,
+                speculated_exploration,
+            ) {
                 SelectResult::Failed => return None,
                 SelectResult::Done => return Some(Selection { layers, game_state }),
                 SelectResult::Advance(next, placement) => {
@@ -340,11 +350,19 @@ impl<E: Evaluation> WithBump<E> {
         })
     }
 
-    fn select(&self, game_state: &GameState, speculate: bool, exploration: f64) -> SelectResult {
+    fn select(
+        &self,
+        game_state: &GameState,
+        speculate: bool,
+        known_exploration: f64,
+        speculated_exploration: f64,
+    ) -> SelectResult {
         puffin::profile_function!();
         self.with(|this| match this.data {
-            LayerKind::Known(l) => l.select(game_state, exploration),
-            LayerKind::Speculated(l) if speculate => l.select(game_state, exploration),
+            LayerKind::Known(l) => l.select(game_state, known_exploration),
+            LayerKind::Speculated(l) if speculate => {
+                l.select(game_state, speculated_exploration)
+            }
             LayerKind::Speculated(_) => SelectResult::Failed,
         })
     }
