@@ -19,6 +19,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/checkout@v4
+        with:
+          repository: jush0147/tetrp
+          ref: 0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2
+          path: tetrp-reference
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Verify Tetrp placement transport
+        run: node scripts/test-tetrp-placement-scheduler.mjs tetrp-reference
+
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-unknown-unknown
@@ -90,7 +104,9 @@ jobs:
             information_boundary: 'own visible state only',
             authority: 'Tetrp',
             persistent_api: 'WasmBot',
-            pending_api: 'analyze_pending_json'
+            pending_api: 'analyze_pending_json',
+            tetrp_ref: '0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2',
+            placement_transport: 'authority-gated reset-safe fallback'
           };
           fs.writeFileSync(
             'kiwi-v1-browser/kiwi-build.json',
