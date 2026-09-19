@@ -1,0 +1,62 @@
+{
+  "experiment": "tetrp-search-rule-parity-audit",
+  "status": "validation_running",
+  "date": "2026-09-19",
+  "tetrp_authority": {
+    "repository": "jush0147/tetrp",
+    "commit": "0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2",
+    "reference_files": [
+      "src/attack.js",
+      "src/data/tl.json",
+      "docs/ENGINE_SPEC.md",
+      "test/attack.test.js",
+      "test/reference/tl_v19_reference.py"
+    ]
+  },
+  "findings": [
+    {
+      "area": "mini base attack",
+      "legacy_cc2": "Spin::Mini quad used 10 attack",
+      "pinned_tetrp": "recognized mini keeps the non-full base table; mini quad base is 4",
+      "action": "corrected"
+    },
+    {
+      "area": "B2B Charging / Surge",
+      "legacy_cc2": "displayed B2B xN released N lines once x>=4",
+      "pinned_tetrp": "raw B2B must be >4 and releases raw-4; with CC2 displayed x=raw-1 this is max(0,x-3)",
+      "action": "corrected"
+    },
+    {
+      "area": "All Clear B2B contribution",
+      "legacy_cc2": "perfect clear was folded into a single difficult-clear boolean",
+      "pinned_tetrp": "All Clear contributes one raw B2B charge in addition to a difficult clear; PC Quad/Spin can contribute two",
+      "action": "corrected"
+    },
+    {
+      "area": "time-based garbage multiplier",
+      "legacy_cc2": "search forecast used multiplier 1.0 even after authority scaling began",
+      "pinned_tetrp": "after frame 10801 the multiplier increases by 0.008 per second and applies to normal/combo attack, Surge and All Clear",
+      "action": "corrected using authority snapshot frame/multiplier/margin/rate and hypothetical lock frame"
+    },
+    {
+      "area": "garbage special bonus",
+      "legacy_cc2": "flat +1 after normal attack calculation",
+      "pinned_tetrp": "flat +1 after garbage multiplier for Quad/spin clearing garbage",
+      "action": "retained; multiplier ordering now explicit"
+    }
+  ],
+  "evidence_notes": [
+    "Historical replay-v19 fixture per-lock Surge expectations encoded the old CC2 formula; six fixture values were updated. The fixture itself states it is not an official per-lock snapshot oracle.",
+    "Pinned Tetrp attack tests and independent tl_v19_reference.py are the rule oracle for this migration.",
+    "Historical H1-H14 strength results remain legacy-arena evidence and are not reinterpreted after these correctness changes."
+  ],
+  "validation": {
+    "workflow": "Tetrp authority correctness",
+    "run": 35427898834,
+    "required": [
+      "full Cold Clear release tests",
+      "visible-state adapter tests",
+      "pinned Tetrp attack tests"
+    ]
+  }
+}
