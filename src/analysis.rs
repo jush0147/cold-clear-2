@@ -95,6 +95,16 @@ fn copy_randomizer(randomizer: &Randomizer) -> Randomizer {
     }
 }
 
+fn placement_key(m: Placement) -> (u8, i8, i8, u8, u8) {
+    (
+        m.location.piece as u8,
+        m.location.x,
+        m.location.y,
+        m.location.rotation as u8,
+        m.spin as u8,
+    )
+}
+
 pub fn analyze(request: Request) -> Result<Report, String> {
     analyze_with_profile(request, "review_h9_h12")
 }
@@ -200,7 +210,10 @@ pub fn analyze_with_profile(request: Request, profile: &str) -> Result<Report, S
             scenarios: count,
         })
         .collect();
-    candidates.sort_by(|a, b| b.mean_score.total_cmp(&a.mean_score));
+    candidates.sort_by(|a, b| {
+        b.mean_score.total_cmp(&a.mean_score)
+            .then_with(|| placement_key(a.placement).cmp(&placement_key(b.placement)))
+    });
 
     Ok(Report {
         candidates,
