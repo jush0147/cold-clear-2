@@ -1,6 +1,6 @@
 {
   "experiment": "200k promoted strategy lineage revalidation",
-  "status": "h1_base_link_failed_positive_revalidation_final_profile_ablation_next",
+  "status": "final_profile_h1_ablation_running",
   "compute_regime": {
     "nodes_per_move": 200000,
     "reason": "provisional product default after H14 200k-vs-100k"
@@ -279,7 +279,12 @@
     "Do not run lower lineage links until the upper link result is known.",
     "Do not revive rejected H3-H11 hypotheses unless the promoted chain changes."
   ],
-  "active_run": null,
+  "active_run": {
+    "id": "final-profile-H1-ablation",
+    "run": 35420978082,
+    "workflow_commit": "e3f75f4b77bccd6552d0a2b961f18d70a30e53c2",
+    "status": "running"
+  },
   "failed_runs": [
     {
       "run": 35357634194,
@@ -426,5 +431,18 @@
       "concurrency": "Each confirmation uses 10 batches x 10 paired seeds with max-parallel=5. H2-vs-H1 screen may run concurrently.",
       "storage": "Per-batch artifacts retain 7 days; summary artifacts retain 30 days."
     }
+  },
+  "final_profile_h1_ablation": {
+    "purpose": "Resolve whether pending_safety=1 should remain in the final 200k evaluator after standalone H1 failed positive revalidation.",
+    "candidate": "H2+H6C+H9+H12 with pending_safety=1",
+    "incumbent": "H2+H6C+H9+H12 with pending_safety=0",
+    "nodes_per_move": 200000,
+    "aa_seed_range": "49090-49091",
+    "formal_seed_range": "49100-49199",
+    "paired_seeds": 100,
+    "games": 200,
+    "run": 35420978082,
+    "status": "running",
+    "decision_rule": "Use this direct interaction-aware ablation, not the standalone H1-vs-legacy result, to decide whether pending_safety belongs in the final promoted evaluator."
   }
 }
