@@ -54,6 +54,7 @@ jobs:
           STOP_AFTER_PIECES: '40'
           ASSERT_MIRROR: '1'
         run: |
+          set -o pipefail
           mkdir -p aa
           node scripts/generate-tetrp-exhibition.mjs tetrp-reference aa/tuned-aa.ttrm \
             | tee aa/tuned-aa.log
@@ -75,6 +76,7 @@ jobs:
           STOP_AFTER_PIECES: '40'
           ASSERT_MIRROR: '1'
         run: |
+          set -o pipefail
           node scripts/generate-tetrp-exhibition.mjs tetrp-reference aa/legacy-aa.ttrm \
             | tee aa/legacy-aa.log
 
