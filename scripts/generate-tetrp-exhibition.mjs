@@ -113,7 +113,9 @@ function dropped(board, piece) {
   return p;
 }
 function pathStateKey(p) {
-  return [p.x, Number(p.y).toFixed(6), p.r, p.kick, p.rotated?1:0, p.spin, p.totalRotations].join(',');
+  // Do not key on totalRotations. Rotation loops would otherwise create an
+  // artificial unbounded state dimension before the useful tuck is reached.
+  return [p.x, Number(p.y).toFixed(6), p.r, p.kick, p.rotated?1:0, p.spin].join(',');
 }
 function applyPathMove(board, piece, action, ruleset) {
   let p = copyPiece(piece);
@@ -155,7 +157,7 @@ function findPath(engine, placement) {
   const seen=new Set();
   const actions=['moveLeft','moveRight','rotateCW','rotateCCW','rotate180','down'];
   let head=0;
-  while(head<q.length && head<30000) {
+  while(head<q.length && head<100000) {
     const node=q[head++], p=node.piece, key=pathStateKey(p);
     if(seen.has(key)) continue;
     seen.add(key);
