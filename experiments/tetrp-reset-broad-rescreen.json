@@ -1,6 +1,6 @@
 {
   "experiment": "Tetrp current-stack broad strategy rescreen",
-  "status": "stage1_completed_extension_preregistered",
+  "status": "extension_completed_confirmation_preregistered",
   "decision_date": "2026-09-19",
   "policy_source": "experiments/tetrp-strategy-lineage-reset-policy.json",
   "purpose": "Re-screen representative H1-H11 strategy/search hypotheses under one current Tetrp authority and 200k corrected baseline before building a new sequential incumbent lineage.",
@@ -190,7 +190,7 @@
     "cap_timeout_error": "Unscored. Preserve structured failure, continue other pair games, and mark that candidate incomplete if 16 scored games are not available.",
     "no_artificial_winner": true
   },
-  "next_after_screen": "Run the preregistered four-pair extension for H2/H4/H6/H6C/H9/H10, then freshly confirm only candidates reaching >=15/24 combined KO wins.",
+  "next_after_screen": "Run fresh 16-pair standalone confirmations for H9/H4/H2. Then build the new lineage sequentially, re-testing each confirmed feature for marginal value against the current incumbent.",
   "stage1_run_id": 35435294614,
   "stage1_result": {
     "all_complete": true,
@@ -404,6 +404,164 @@
       "confirmation": "Only screened-positive-after-extension candidates advance immediately to fresh confirmation.",
       "app_rule": "APP remains diagnostic only and cannot override KO."
     },
-    "note": "The extension rule is fixed before inspecting any 65016-65023 outcomes."
+    "note": "The extension rule is fixed before inspecting any 65016-65023 outcomes.",
+    "run_id": 35437419694,
+    "result": {
+      "all_complete": true,
+      "h2": {
+        "extension_ko": "5-3",
+        "combined_ko": "15-9",
+        "combined_sweeps": "5-2",
+        "split_pairs": 5,
+        "paired_sign_p": 0.453125,
+        "classification": "screened_positive_after_extension"
+      },
+      "h4": {
+        "extension_ko": "6-2",
+        "combined_ko": "15-9",
+        "combined_sweeps": "5-2",
+        "split_pairs": 5,
+        "paired_sign_p": 0.453125,
+        "classification": "screened_positive_after_extension"
+      },
+      "h6": {
+        "extension_ko": "3-5",
+        "combined_ko": "12-12",
+        "combined_sweeps": "2-2",
+        "split_pairs": 8,
+        "paired_sign_p": 1,
+        "classification": "screened_neutral_after_extension"
+      },
+      "h6c": {
+        "extension_ko": "1-7",
+        "combined_ko": "11-13",
+        "combined_sweeps": "4-5",
+        "split_pairs": 3,
+        "paired_sign_p": 1,
+        "classification": "screened_neutral_after_extension"
+      },
+      "h9": {
+        "extension_ko": "6-2",
+        "combined_ko": "16-8",
+        "combined_sweeps": "5-1",
+        "split_pairs": 6,
+        "paired_sign_p": 0.21875,
+        "classification": "screened_positive_after_extension"
+      },
+      "h10": {
+        "extension_ko": "3-5",
+        "combined_ko": "12-12",
+        "combined_sweeps": "4-4",
+        "split_pairs": 4,
+        "paired_sign_p": 1,
+        "classification": "screened_neutral_after_extension"
+      }
+    },
+    "interpretation": [
+      "H2 preserved a positive direction and reached the predeclared 15/24 threshold.",
+      "H4 strengthened on the fresh extension and reached 15/24.",
+      "H9 strengthened on the fresh extension and reached 16/24.",
+      "H6 and H10 regressed to exactly 12/24 and stop here for now.",
+      "H6C regressed sharply on the fresh extension (1/8) and finished 11/24; its old promoted status is therefore not carried into the reset lineage.",
+      "No result here is a promotion. H2/H4/H9 only earn a fresh standalone confirmation against corrected_legacy_h12."
+    ]
+  },
+  "confirmation": {
+    "status": "preregistered",
+    "candidates": [
+      "h9",
+      "h4",
+      "h2"
+    ],
+    "candidate_profiles": {
+      "h9": "reset_h9_cavity_m0_5_h12",
+      "h4": "reset_h4_well_half_h12",
+      "h2": "reset_h2_useful_attack_1_h12"
+    },
+    "incumbent_profile": "corrected_legacy_h12",
+    "fresh_pairs": [
+      [
+        65100,
+        65101
+      ],
+      [
+        65102,
+        65103
+      ],
+      [
+        65104,
+        65105
+      ],
+      [
+        65106,
+        65107
+      ],
+      [
+        65108,
+        65109
+      ],
+      [
+        65110,
+        65111
+      ],
+      [
+        65112,
+        65113
+      ],
+      [
+        65114,
+        65115
+      ],
+      [
+        65116,
+        65117
+      ],
+      [
+        65118,
+        65119
+      ],
+      [
+        65120,
+        65121
+      ],
+      [
+        65122,
+        65123
+      ],
+      [
+        65124,
+        65125
+      ],
+      [
+        65126,
+        65127
+      ],
+      [
+        65128,
+        65129
+      ],
+      [
+        65130,
+        65131
+      ]
+    ],
+    "paired_units_per_candidate": 16,
+    "games_per_candidate": 32,
+    "node_budget_per_decision": 200000,
+    "frames_per_piece": 24,
+    "result_rule": "KO only",
+    "decision_rule": {
+      "confirmed_candidate": "candidate wins >=20/32, equivalently net candidate sweep advantage >=4 over 16 asymmetric pairs.",
+      "rejected_for_now": "candidate wins <=12/32.",
+      "confirmation_inconclusive": "candidate wins 13-19/32.",
+      "paired_sign_test": "Report exact two-sided sign p on non-split pairs as a diagnostic; it does not override the fixed KO threshold.",
+      "app_rule": "APP remains diagnostic only."
+    },
+    "post_confirmation_lineage_order": [
+      "H9 cavity excavation first, if confirmed, because it is a structural evaluator term and had the strongest combined screen (16-8).",
+      "H4 well shaping next, if confirmed, tested for marginal value on the then-current incumbent.",
+      "H2 useful attack last, if confirmed, tested for marginal value on the then-current incumbent because it changes attack objective shaping."
+    ],
+    "note": "Standalone confirmation only creates a confirmed candidate pool. Actual promotion still requires a fresh marginal test against the current incumbent in the fixed order above."
   }
 }
