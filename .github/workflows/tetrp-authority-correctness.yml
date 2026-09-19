@@ -4,8 +4,12 @@ on:
   push:
     branches: [tetrp-authority]
     paths:
+      - 'src/data.rs'
+      - 'src/tetrio.rs'
       - 'src/analysis.rs'
       - 'src/forecast.rs'
+      - 'tests/replay_fixtures.rs'
+      - 'tests/fixtures/replay-v19.json'
       - 'scripts/lib/tetrp-authority-adapter.mjs'
       - 'scripts/test-tetrp-authority-adapter.mjs'
       - '.github/workflows/tetrp-authority-correctness.yml'
@@ -20,11 +24,25 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/checkout@v4
+        with:
+          repository: jush0147/tetrp
+          ref: 0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2
+          path: tetrp-reference
+          persist-credentials: false
+
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+
       - uses: dtolnay/rust-toolchain@stable
-      - name: Run core tests
-        run: cargo test --release --lib
+
+      - name: Run full Cold Clear regressions
+        run: cargo test --release
+
       - name: Test visible-state adapter
         run: node scripts/test-tetrp-authority-adapter.mjs
+
+      - name: Verify pinned Tetrp attack authority
+        run: node --test tetrp-reference/test/attack.test.js
