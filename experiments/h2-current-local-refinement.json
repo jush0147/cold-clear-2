@@ -1,0 +1,261 @@
+{
+  "experiment": "H2 current-stack local refinement",
+  "status": "preregistered",
+  "decision_date": "2026-09-20",
+  "policy_source": "experiments/tetrp-strategy-lineage-reset-policy.json",
+  "parent_coarse": "experiments/h2-current-coarse-sweep.json",
+  "parent_run_id": 35484168954,
+  "family": "H2 useful outgoing attack / cancellation",
+  "purpose": "Resolve the two coarse H2 modes with fresh seeds: the attack-only ridge centered near useful_attack_reward=1, and the attack/cancellation interaction that appeared at (1.5,0.5). Extend the useful-attack boundary only along cancellation=0.5 because the coarse winner there sat at attack=1.5.",
+  "incumbent_profile": "corrected_legacy_h12",
+  "fixed_stack": {
+    "tetrp_ref": "0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2",
+    "authority": "synchronous Tetrp TL with authority-validated reset-safe placement transport",
+    "node_budget_per_decision": 200000,
+    "frames_per_piece": 24,
+    "pps": 2.5,
+    "gravity": 0,
+    "h12": true,
+    "h13": false,
+    "result_rule": "KO only"
+  },
+  "candidates": [
+    {
+      "id": "a1_c0",
+      "attack": 1,
+      "cancel": 0,
+      "profile": "tuner:{\"useful_attack_reward\":1,\"cancellation_reward\":0}"
+    },
+    {
+      "id": "a1_25_c0",
+      "attack": 1.25,
+      "cancel": 0,
+      "profile": "tuner:{\"useful_attack_reward\":1.25,\"cancellation_reward\":0}"
+    },
+    {
+      "id": "a1_5_c0",
+      "attack": 1.5,
+      "cancel": 0,
+      "profile": "tuner:{\"useful_attack_reward\":1.5,\"cancellation_reward\":0}"
+    },
+    {
+      "id": "a1_5_c0_25",
+      "attack": 1.5,
+      "cancel": 0.25,
+      "profile": "tuner:{\"useful_attack_reward\":1.5,\"cancellation_reward\":0.25}"
+    },
+    {
+      "id": "a1_5_c0_5",
+      "attack": 1.5,
+      "cancel": 0.5,
+      "profile": "tuner:{\"useful_attack_reward\":1.5,\"cancellation_reward\":0.5}"
+    },
+    {
+      "id": "a1_75_c0_5",
+      "attack": 1.75,
+      "cancel": 0.5,
+      "profile": "tuner:{\"useful_attack_reward\":1.75,\"cancellation_reward\":0.5}"
+    }
+  ],
+  "design_reason": [
+    "(1.0,0), (1.25,0), and (1.5,0) resolve the attack-only ridge without assuming the historical attack=1 point remains optimal.",
+    "(1.5,0), (1.5,0.25), and (1.5,0.5) form a fixed-attack cancellation cross to test whether the coarse (1.5,0.5) result reflects a reproducible interaction rather than small-sample noise.",
+    "(1.75,0.5) extends the only outward coarse boundary that was simultaneously among the best observed points.",
+    "No cancellation>0.5 point is included because cancellation=1 was weaker than cancellation=0.5 at attack=1.5 and weaker than cancellation=0 at lower attack values in the coarse sweep."
+  ],
+  "sampling": {
+    "paired_units_per_candidate": 40,
+    "games_per_pair": 2,
+    "games_per_candidate": 80,
+    "total_candidates": 6,
+    "total_games": 480,
+    "fresh_seed_pairs": [
+      [
+        66000,
+        66001
+      ],
+      [
+        66002,
+        66003
+      ],
+      [
+        66004,
+        66005
+      ],
+      [
+        66006,
+        66007
+      ],
+      [
+        66008,
+        66009
+      ],
+      [
+        66010,
+        66011
+      ],
+      [
+        66012,
+        66013
+      ],
+      [
+        66014,
+        66015
+      ],
+      [
+        66016,
+        66017
+      ],
+      [
+        66018,
+        66019
+      ],
+      [
+        66020,
+        66021
+      ],
+      [
+        66022,
+        66023
+      ],
+      [
+        66024,
+        66025
+      ],
+      [
+        66026,
+        66027
+      ],
+      [
+        66028,
+        66029
+      ],
+      [
+        66030,
+        66031
+      ],
+      [
+        66032,
+        66033
+      ],
+      [
+        66034,
+        66035
+      ],
+      [
+        66036,
+        66037
+      ],
+      [
+        66038,
+        66039
+      ],
+      [
+        66040,
+        66041
+      ],
+      [
+        66042,
+        66043
+      ],
+      [
+        66044,
+        66045
+      ],
+      [
+        66046,
+        66047
+      ],
+      [
+        66048,
+        66049
+      ],
+      [
+        66050,
+        66051
+      ],
+      [
+        66052,
+        66053
+      ],
+      [
+        66054,
+        66055
+      ],
+      [
+        66056,
+        66057
+      ],
+      [
+        66058,
+        66059
+      ],
+      [
+        66060,
+        66061
+      ],
+      [
+        66062,
+        66063
+      ],
+      [
+        66064,
+        66065
+      ],
+      [
+        66066,
+        66067
+      ],
+      [
+        66068,
+        66069
+      ],
+      [
+        66070,
+        66071
+      ],
+      [
+        66072,
+        66073
+      ],
+      [
+        66074,
+        66075
+      ],
+      [
+        66076,
+        66077
+      ],
+      [
+        66078,
+        66079
+      ]
+    ],
+    "seed_range": [
+      66000,
+      66079
+    ],
+    "common_random_numbers": "All six refined candidates use the same 40 fresh asymmetric seed pairs.",
+    "independence": "Each asymmetric pair is one experimental unit."
+  },
+  "integrity_gates": [
+    "Every candidate must have exactly 40 complete asymmetric pairs / 80 scored games with no harness failures.",
+    "Each pair must contain the candidate once in slot0 and once in slot1.",
+    "The one-lock placement-transport guard must remain enabled.",
+    "No malformed or unscored game is converted into a loss."
+  ],
+  "preregistered_selection": {
+    "eligibility": "candidate_sweeps > incumbent_sweeps AND candidate KO wins > 40/80",
+    "ranking": "Among eligible candidates rank first by net paired sweeps, then by candidate KO wins.",
+    "exact_tie": "If multiple candidates tie on both primary and secondary ranking, do not pick between them from diagnostics; require a fresh paired decider.",
+    "outward_boundary": "If (1.75,0.5) is the unique top-ranked eligible candidate, do not fix it as the finalist; extend the useful-attack boundary with fresh seeds first.",
+    "fixed_finalist": "Otherwise the unique top-ranked eligible candidate becomes the fixed H2 finalist for a separate ~200-pair / 400-game fresh promotion confirmation.",
+    "no_eligible": "If no candidate is eligible, H2 is not promoted and corrected_legacy_h12 remains incumbent.",
+    "diagnostics_only": [
+      "raw APP",
+      "sent APP"
+    ]
+  },
+  "promotion_authority": false,
+  "note": "This local refinement may select a fixed finalist but cannot promote H2. Promotion requires a later large fresh confirmation."
+}

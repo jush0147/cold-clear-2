@@ -1,6 +1,6 @@
 {
   "experiment": "H2 current-stack coarse parameter sweep",
-  "status": "preregistered",
+  "status": "completed_promising_region",
   "decision_date": "2026-09-20",
   "policy_source": "experiments/tetrp-strategy-lineage-reset-policy.json",
   "historical_source": "experiments/h2-useful-attack.json",
@@ -225,5 +225,192 @@
     "boundary_handling": "A leading attack=1.5 or cancellation=1.0 point is a boundary signal, not an optimum.",
     "decision_after_run": "Stop after producing the machine-readable summary. The next local-refinement grid is chosen by research judgment after inspecting the full pattern; do not auto-promote or auto-launch refinement."
   },
-  "no_promotion": "This coarse sweep has no promotion authority. Only a later fixed finalist may receive large fresh confirmation."
+  "no_promotion": "This coarse sweep has no promotion authority. Only a later fixed finalist may receive large fresh confirmation.",
+  "execution": {
+    "run_id": 35484168954,
+    "source_commit": "87a97a327f1a2016b9914b99faca9990f8379faa",
+    "conclusion": "success",
+    "all_complete": true,
+    "calibration_passed": true,
+    "summary_artifact_id": 10599285524
+  },
+  "outcome": {
+    "results": [
+      {
+        "attack": 0,
+        "cancel": 0,
+        "ko": [
+          20,
+          20
+        ],
+        "sweeps": [
+          0,
+          0
+        ],
+        "splits": 20,
+        "net_sweeps": 0
+      },
+      {
+        "attack": 0,
+        "cancel": 0.5,
+        "ko": [
+          18,
+          22
+        ],
+        "sweeps": [
+          5,
+          7
+        ],
+        "splits": 8,
+        "net_sweeps": -2
+      },
+      {
+        "attack": 0,
+        "cancel": 1,
+        "ko": [
+          20,
+          20
+        ],
+        "sweeps": [
+          6,
+          6
+        ],
+        "splits": 8,
+        "net_sweeps": 0
+      },
+      {
+        "attack": 0.5,
+        "cancel": 0,
+        "ko": [
+          30,
+          10
+        ],
+        "sweeps": [
+          11,
+          1
+        ],
+        "splits": 8,
+        "net_sweeps": 10
+      },
+      {
+        "attack": 0.5,
+        "cancel": 0.5,
+        "ko": [
+          24,
+          16
+        ],
+        "sweeps": [
+          8,
+          4
+        ],
+        "splits": 8,
+        "net_sweeps": 4
+      },
+      {
+        "attack": 0.5,
+        "cancel": 1,
+        "ko": [
+          22,
+          18
+        ],
+        "sweeps": [
+          6,
+          4
+        ],
+        "splits": 10,
+        "net_sweeps": 2
+      },
+      {
+        "attack": 1,
+        "cancel": 0,
+        "ko": [
+          32,
+          8
+        ],
+        "sweeps": [
+          14,
+          2
+        ],
+        "splits": 4,
+        "net_sweeps": 12
+      },
+      {
+        "attack": 1,
+        "cancel": 0.5,
+        "ko": [
+          28,
+          12
+        ],
+        "sweeps": [
+          10,
+          2
+        ],
+        "splits": 8,
+        "net_sweeps": 8
+      },
+      {
+        "attack": 1,
+        "cancel": 1,
+        "ko": [
+          27,
+          13
+        ],
+        "sweeps": [
+          8,
+          1
+        ],
+        "splits": 11,
+        "net_sweeps": 7
+      },
+      {
+        "attack": 1.5,
+        "cancel": 0,
+        "ko": [
+          26,
+          14
+        ],
+        "sweeps": [
+          9,
+          3
+        ],
+        "splits": 8,
+        "net_sweeps": 6
+      },
+      {
+        "attack": 1.5,
+        "cancel": 0.5,
+        "ko": [
+          32,
+          8
+        ],
+        "sweeps": [
+          14,
+          2
+        ],
+        "splits": 4,
+        "net_sweeps": 12
+      },
+      {
+        "attack": 1.5,
+        "cancel": 1,
+        "ko": [
+          26,
+          14
+        ],
+        "sweeps": [
+          9,
+          3
+        ],
+        "splits": 8,
+        "net_sweeps": 6
+      }
+    ],
+    "interpretation": [
+      "Useful outgoing attack has a strong current-stack signal: every attack>=0.5 point beat the neutral incumbent on game-level KO, with the strongest coarse paired results at (1.0,0.0) and (1.5,0.5).",
+      "Cancellation reward by itself did not help. At attack=0.5 it weakened monotonically as cancellation reward increased, and at attack=1.0 it also reduced the coarse net-sweep margin relative to cancellation=0.",
+      "The (1.5,0.5) point nevertheless matched the best coarse result and sits on the useful-attack upper boundary. That creates a plausible interaction/boundary hypothesis rather than evidence that cancellation is independently useful.",
+      "Local refinement should therefore discriminate the historical/current attack-only ridge around 1.0-1.5 from the attack/cancellation interaction at 1.5, while extending the attack boundary only along cancellation=0.5."
+    ]
+  },
+  "next_action": "Run H2 current-stack local refinement on a six-point cross/boundary design with 40 fresh asymmetric pairs per point."
 }
