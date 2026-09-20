@@ -1,6 +1,6 @@
 {
   "experiment": "H2 current-stack local refinement",
-  "status": "preregistered",
+  "status": "running_diagnostic_base0_only",
   "decision_date": "2026-09-20",
   "policy_source": "experiments/tetrp-strategy-lineage-reset-policy.json",
   "parent_coarse": "experiments/h2-current-coarse-sweep.json",
@@ -257,5 +257,11 @@
     ]
   },
   "promotion_authority": false,
-  "note": "This local refinement may select a fixed finalist but cannot promote H2. Promotion requires a later large fresh confirmation."
+  "note": "This local refinement may select a fixed finalist but cannot promote H2. Promotion requires a later large fresh confirmation.",
+  "validity_scope": {
+    "discovered_during_run": "The run was launched before discovering that the authority/search stack used b2bcharge_base=0 while real TL replay evidence used b2bcharge_base=3.",
+    "run_id": 35491099927,
+    "disposition": "Let the already-running job finish, but treat all outcomes as diagnostics only. The preregistered finalist-selection rule is suspended and this run cannot select or promote a real-TL H2 finalist.",
+    "rerun_required": true
+  }
 }

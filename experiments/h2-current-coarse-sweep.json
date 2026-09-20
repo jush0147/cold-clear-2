@@ -1,6 +1,6 @@
 {
   "experiment": "H2 current-stack coarse parameter sweep",
-  "status": "completed_promising_region",
+  "status": "completed_diagnostic_base0_only",
   "decision_date": "2026-09-20",
   "policy_source": "experiments/tetrp-strategy-lineage-reset-policy.json",
   "historical_source": "experiments/h2-useful-attack.json",
@@ -412,5 +412,10 @@
       "Local refinement should therefore discriminate the historical/current attack-only ridge around 1.0-1.5 from the attack/cancellation interaction at 1.5, while extending the attack boundary only along cancellation=0.5."
     ]
   },
-  "next_action": "Run H2 current-stack local refinement on a six-point cross/boundary design with 40 fresh asymmetric pairs per point."
+  "next_action": "After rule-parity repair, rerun H2 family research with fresh seeds under the explicit real-TL rule contract.",
+  "validity_scope": {
+    "discovered_after_run": "The run used the authority default b2bcharge_base=0. Real TL replay evidence used b2bcharge_base=3.",
+    "interpretation": "Retain the result as directional H2 evidence for the base=0 context only. It cannot select or promote a real-TL parameter.",
+    "rerun_required": true
+  }
 }
