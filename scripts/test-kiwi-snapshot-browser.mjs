@@ -34,7 +34,7 @@ try{
         const timer=setInterval(()=>ticks++,5);
         const run=(id,r)=>new Promise((resolve,reject)=>{
           const timeout=setTimeout(()=>reject(new Error('Worker timed out')),60000);
-          worker.onmessage=({data})=>{if(data.id!==id)return;clearTimeout(timeout);data.error?reject(new Error(data.error)):resolve(data.result);};
+          worker.onmessage=({data})=>{if(data.id!==id)return;clearTimeout(timeout);data.error?reject(Object.assign(new Error(data.error.message??String(data.error)),{code:data.error.code??'WORKER_ERROR'})):resolve({result:data.result,capabilities:data.capabilities});};
           worker.onerror=e=>{clearTimeout(timeout);reject(new Error(e.message));};
           worker.postMessage({type:'analyze',id,request:r});
         });
@@ -42,6 +42,8 @@ try{
           const a=await run(1,request);
           const b=await run(2,request);
           const identical=JSON.stringify(a)===JSON.stringify(b);
+          let rejectionCode=null;
+          try{await run(20,{...request,history:[]});}catch(error){rejectionCode=error.code;}
           let lateReplies=0;
           worker.onmessage=()=>lateReplies++;
           worker.postMessage({type:'analyze',id:3,request:{...request,node_budget:2000000}});
@@ -50,15 +52,24 @@ try{
           await new Promise(resolve=>setTimeout(resolve,100));
           worker=create();
           const c=await run(4,request);
-          return {identical,restarted_identical:JSON.stringify(a)===JSON.stringify(c),ticks,lateReplies,nodes:a.nodes,budget:a.node_budget,action_kind:a.action.kind};
+          return {
+            identical,restarted_identical:JSON.stringify(a)===JSON.stringify(c),
+            rejectionCode,ticks,lateReplies,
+            nodes:a.result.nodes,budget:a.result.node_budget,action_kind:a.result.action.kind,
+            same_piece_hold_search:a.capabilities.same_piece_hold_search,
+            root_geometry_in_search:a.capabilities.root_geometry_in_search
+          };
         }finally{clearInterval(timer);worker.terminate();}
       },request);
       assert.equal(result.identical,true);assert.equal(result.restarted_identical,true);
       assert.equal(result.lateReplies,0);assert.ok(result.ticks>0);assert.ok(result.nodes<=200000);
+      assert.equal(result.rejectionCode,'REQUEST_SCHEMA_INVALID');
+      assert.equal(result.same_piece_hold_search,true);
+      assert.equal(result.root_geometry_in_search,true);
       assert.ok(urls.every(u=>u.startsWith(base)),'browser must not contact a remote bot service');
       results.push({browser:name,version:browser.version(),...result});
     }finally{await browser.close();}
   }
 }finally{await new Promise(resolve=>server.close(resolve));}
-console.log(JSON.stringify({status:'passed',schema:'kiwi-snapshot-browser/2',results,
+console.log(JSON.stringify({status:'passed',schema:'kiwi-snapshot-browser/3',results,
   evidence:'real headless browser module Workers using the delivered web WASM; not physical-device certification'},null,2));
