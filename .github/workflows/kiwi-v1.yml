@@ -65,7 +65,7 @@ jobs:
           cp scripts/lib/kiwi-snapshot-adapter.mjs scripts/lib/tetrp-placement-path.mjs kiwi-v1-browser/
           cp scripts/kiwi-snapshot-worker.mjs scripts/verify-kiwi-artifact.mjs kiwi-v1-browser/
           cp KIWI_V1_HANDOFF.md CODEX_TETRP_KIWI_TASK.md TETRP_RULE_PARITY_GAPS.md LICENSE-MIT LICENSE-APACHE THIRD_PARTY_NOTICES.md kiwi-v1-browser/
-          cp kiwi-snapshot-acceptance.json kiwi-wasm-smoke.json kiwi-native-tests.log kiwi-rule-fixture-counts.json kiwi-rule-audit.log kiwi-v1-browser/
+          cp kiwi-snapshot-acceptance.json kiwi-wasm-smoke.json kiwi-native-tests.log kiwi-rule-fixture-counts.json kiwi-rule-audit.log kiwi-rule-fixtures.json snapshot-browser-request.json snapshot-example-result.json kiwi-v1-browser/
       - name: Install pinned Tetrp browser-test dependencies
         run: |
           cd tetrp-reference
