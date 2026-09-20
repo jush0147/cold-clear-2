@@ -6,7 +6,7 @@ import {createRequire} from 'node:module';
 import {
   KiwiSnapshotError,captureSnapshot,captureSnapshotFromEngine,buildSnapshotRequest,
   normalizeSnapshotError,selectReachableSnapshotAction,validateSnapshotAction,
-  validateSnapshotTimingAction,assertSupportedSnapshotRules,snapshotRuleContract
+  validateSnapshotTimingAction,applyHoldForReanalysis,assertSupportedSnapshotRules,snapshotRuleContract
 } from './lib/kiwi-snapshot-adapter.mjs';
 import {createPlacementTools} from './lib/tetrp-placement-path.mjs';
 
@@ -97,27 +97,28 @@ checks.push('empty/occupied same-piece Hold is explicit, landing-free, and empty
 {
   const e=make(30),current=e.state.piece.type;
   e.state.bag.queue[0]=current;
-  const before=e.state.bag.queue.slice(0,6);
+  const original=e.serialize(),before=e.state.bag.queue.slice(0,6);
   const pre=analyze(request(e));
   const hold=pre.candidates.find(c=>c.action.kind==='hold'&&c.action.same_piece).action;
-  assert.ok(e.hold());
-  const post=request(e);
+  const fork=applyHoldForReanalysis(e,hold,{Engine});
+  assert.equal(e.serialize(),original);
+  const post=request(fork);
   assert.equal(post.hold_locked,true);
   assert.equal(post.start.hold,current.toUpperCase());
-  assert.deepEqual(post.start.queue.slice(0,5),before.slice(0,5).map(x=>x.toUpperCase()));
-  assert.equal(post.start.queue[5],before[5].toUpperCase());
+  assert.deepEqual(post.start.queue,before.map(x=>x.toUpperCase()));
   const rr=analyze(post);
   assert.ok(rr.candidates.every(c=>c.action.kind==='place'));
-  assert.ok(!e.hold());
+  assert.ok(!fork.hold());
 }
 {
   const e=make(31),current=e.state.piece.type;
   e.state.hold={piece:current,locked:false};
-  const q=JSON.stringify(e.state.bag.queue);
+  const original=e.serialize(),q=JSON.stringify(e.state.bag.queue);
   const h=analyze(request(e)).candidates.find(c=>c.action.kind==='hold'&&c.action.same_piece).action;
-  assert.ok(e.hold());
-  assert.equal(JSON.stringify(e.state.bag.queue),q);
-  assert.equal(request(e).hold_locked,true);
+  const fork=applyHoldForReanalysis(e,h,{Engine});
+  assert.equal(e.serialize(),original);
+  assert.equal(JSON.stringify(fork.state.bag.queue),q);
+  assert.equal(request(fork).hold_locked,true);
   assert.equal(h.mode,'occupied');
 }
 checks.push('post-Hold reanalysis: empty consumes one draw/refills preview; occupied consumes zero draws; root is locked');
@@ -160,13 +161,14 @@ for(const [name,e] of geometryFixtures){
   }
   const selected=selectReachableSnapshotAction(e,result,deps);
   assert.ok(Number.isInteger(selected.candidate_index));
+  assert.equal(result.candidates[selected.candidate_index].candidate_index,selected.candidate_index);
   if(selected.action.kind==='place')assert.equal(selected.geometry_validated,true);
 }
 checks.push('root geometry fixtures: non-spawn/wall/rotated/near-lock/spin states are filtered inside search and candidate index is reported');
 
 // Geometry and input timing are deliberately separate claims.
 {
-  const e=make(45);e.slam();
+  const e=make(45);e.slam();e.state.piece.safelock=7;
   const result=analyze(request(e));
   const place=result.candidates.find(c=>c.action.kind==='place');
   assert.ok(place);
