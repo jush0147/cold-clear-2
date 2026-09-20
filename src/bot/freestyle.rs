@@ -519,12 +519,12 @@ mod h2_tests {
 
     #[test]
     fn h3_values_only_live_charge_and_banked_surge() {
-        assert_eq!(h3_inventory(false, 12, TetrioRules::default()), (0, 0));
-        assert_eq!(h3_inventory(true, 0, TetrioRules::default()), (0, 0));
-        assert_eq!(h3_inventory(true, 1, TetrioRules::default()), (1, 0));
-        assert_eq!(h3_inventory(true, 3, TetrioRules::default()), (3, 0));
-        assert_eq!(h3_inventory(true, 4, TetrioRules::default()), (4, 1));
-        assert_eq!(h3_inventory(true, 9, TetrioRules::default()), (4, 6));
+        assert_eq!(h3_inventory(false, 12, crate::data::TetrioRules::default()), (0, 0));
+        assert_eq!(h3_inventory(true, 0, crate::data::TetrioRules::default()), (0, 0));
+        assert_eq!(h3_inventory(true, 1, crate::data::TetrioRules::default()), (1, 0));
+        assert_eq!(h3_inventory(true, 3, crate::data::TetrioRules::default()), (3, 0));
+        assert_eq!(h3_inventory(true, 4, crate::data::TetrioRules::default()), (4, 1));
+        assert_eq!(h3_inventory(true, 9, crate::data::TetrioRules::default()), (4, 6));
     }
 
     #[test]
