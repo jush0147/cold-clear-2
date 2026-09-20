@@ -433,7 +433,7 @@ mod tests{
             (Some(Piece::T),Piece::I,"occupied"),
         ]{
             let r=analyze_text(&input(held,next0,false).to_string()).unwrap();
-            let h=r.candidates.iter().find(|c|matches!(c.action,Action::Hold{..})).unwrap();
+            let h=r.candidates.iter().find(|c|matches!(&c.action,Action::Hold{..})).unwrap();
             let v=serde_json::to_value(&h.action).unwrap();
             assert_eq!(v["mode"],mode);assert_eq!(v["same_piece"],true);
             assert!(v.get("placement").is_none());
@@ -446,9 +446,9 @@ mod tests{
         let mut v=input(Some(Piece::L),Piece::I,true);
         v["hold_locked"]=json!(true);
         let r=analyze_text(&v.to_string()).unwrap();
-        assert!(r.candidates.iter().all(|c|matches!(c.action,Action::Place{..})));
+        assert!(r.candidates.iter().all(|c|matches!(&c.action,Action::Place{..})));
         for c in &r.candidates {
-            if let Action::Place{placement}=c.action { assert_eq!(placement,p(Piece::T,4)); }
+            if let Action::Place{placement}=&c.action { assert_eq!(*placement,p(Piece::T,4)); }
         }
     }
     #[test]
