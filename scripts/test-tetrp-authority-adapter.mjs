@@ -39,7 +39,7 @@ function fakeEngine(hiddenTail, rngSeed, holeSeed) {
       piece:{type:'i'},
       bag:{queue:['o','t','l','j','s',...hiddenTail],rng:{seed:rngSeed}},
       holes:{rng:{seed:holeSeed}},
-      hold:{piece:null},
+      hold:{piece:null,locked:false},
       board:{rows:Array.from({length:40},()=>Array(10).fill(null))},
       attack:{
         combo:2,
@@ -57,6 +57,16 @@ function fakeEngine(hiddenTail, rngSeed, holeSeed) {
         garbagespeed_frames:20,
         garbagemargin_frames:10800,
         garbageincrease_per_second:0.008,
+        b2bcharging:true,
+        b2bcharge_at:4,
+        b2bcharge_base:3,
+        b2bchaining:false,
+        openerphase_pieces:14,
+        allclears:true,
+        allclear_garbage:5,
+        allclear_b2b:1,
+        garbagespecialbonus:true,
+        clutch:true,
       },
     }
   };
@@ -73,6 +83,9 @@ function fakeEngine(hiddenTail, rngSeed, holeSeed) {
     {lines:4,ready_in_frames:0},
   ]);
   assert.equal(a.b2b_count,4);
+  assert.equal(a.hold_locked,false);
+  assert.equal(a.rules.b2bcharge_base,3);
+  assert.equal(a.rules.openerphase_pieces,14);
 
   const observer=SevenBagObserver.fromGameStart(a.queue);
   const req=buildAnalysisRequest(a,observer,{nodeBudget:200000,framesPerPiece:30});
@@ -84,8 +97,23 @@ function fakeEngine(hiddenTail, rngSeed, holeSeed) {
   assert.equal(req.garbage_multiplier,1);
   assert.equal(req.garbage_margin_frames,10800);
   assert.equal(req.garbage_increase_per_second,0.008);
+  assert.equal(req.rules.b2bcharge_base,3);
+  assert.equal(req.rules.b2bcharge_at,4);
+  assert.equal(req.rules.openerphase_pieces,14);
+  assert.equal(req.hold_locked,false);
   assert.equal(JSON.stringify(req).includes('111'),false);
   assert.equal(JSON.stringify(req).includes('222'),false);
+}
+
+{
+  const e=fakeEngine(['z'],123,456);
+  e.state.hold={piece:'z',locked:true};
+  const locked=captureVisibleState(e);
+  assert.equal(locked.hold,'Z');
+  assert.equal(locked.hold_locked,true);
+  const observer=SevenBagObserver.fromGameStart(locked.queue);
+  const req=buildAnalysisRequest(locked,observer,{nodeBudget:5000,framesPerPiece:24});
+  assert.equal(req.hold_locked,true);
 }
 
 {
@@ -107,6 +135,8 @@ console.log(JSON.stringify({
     'hidden-state noninterference',
     'per-packet remaining garbage timing',
     'authority attack scaling clock',
+    'public TL rule transport including surge base',
+    'root Hold lock transport',
     'hold-driven visible draw advance'
   ]
 },null,2));

@@ -650,6 +650,23 @@ mod tests {
     }
 
     #[test]
+    fn hold_locked_root_excludes_hold_branch() {
+        let mut request = empty_request();
+        request.start.hold = Some(Piece::Z);
+        request.hold_locked = true;
+        let report = analyze_with_profile(request, "corrected_legacy_h12").unwrap();
+        assert!(!report.candidates.is_empty());
+        assert!(report.candidates.iter().all(|c| c.placement.location.piece == Piece::I));
+    }
+
+    #[test]
+    fn hold_locked_requires_occupied_hold() {
+        let mut request = empty_request();
+        request.hold_locked = true;
+        assert!(analyze_with_profile(request, "corrected_legacy_h12").is_err());
+    }
+
+    #[test]
     fn repeated_snapshot_analysis_has_identical_rank_order() {
         let a = analyze_with_profile(empty_request(), "review_h9_h12").unwrap();
         let b = analyze_with_profile(empty_request(), "review_h9_h12").unwrap();

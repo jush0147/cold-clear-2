@@ -67,6 +67,8 @@ jobs:
           if(row.tetrp_ref!=='0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2') throw new Error('unpinned Tetrp authority');
           if(row.node_budget_per_decision!==10000) throw new Error('node budget drift');
           if(row.frames_per_piece!==30 || row.pps!==2) throw new Error('pace drift');
+          if(row.rules?.b2bcharge_at!==4 || row.rules?.b2bcharge_base!==3) throw new Error('real-TL Surge rule drift');
+          if(row.rules?.openerphase_pieces!==14) throw new Error('opener rule drift');
           if(row.winner_slot!==0 && row.winner_slot!==1) throw new Error('smoke match did not reach a unique KO');
           if(row.profiles[0]!=='review_h9_h12' || row.profiles[1]!=='corrected_legacy_h12') throw new Error('profile drift');
           if(row.slots.some(s=>s.search_nodes<=0 || s.pieces<=0)) throw new Error('empty search or game');
