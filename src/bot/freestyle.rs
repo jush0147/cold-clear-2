@@ -85,10 +85,19 @@ impl Mode for Freestyle {
                     let reserve_moves: &[(Placement,u32)] = &moves[state.reserve];
                     let empty: &[(Placement,u32)] = &[];
                     let selected: Vec<(Placement,u32)> = if is_root && options.root_no_hold_only {
-                        // Empty-Hold normalization stores current in reserve and
-                        // NEXT[0] in the known layer. Occupied Hold is the opposite.
-                        let source = if options.root_hold_is_empty { reserve_moves } else { next_moves };
-                        source.to_vec()
+                        if let Some(allowed) = &options.root_legal_placements {
+                            // Snapshot-v3 Place root: score the complete
+                            // authority-derived current-pose landing set directly.
+                            // review_h9_h12 has zero softdrop weight, so no
+                            // spawn-based path-distance surrogate is needed here.
+                            allowed.iter().copied().map(|mv|(mv,0)).collect()
+                        } else {
+                            // Post-Hold hypothetical root: Tetrp respawns the
+                            // active piece, so spawn-based finite-visible movegen
+                            // remains the model until mandatory post-Hold reanalysis.
+                            let source = if options.root_hold_is_empty { reserve_moves } else { next_moves };
+                            source.to_vec()
+                        }
                     } else {
                         let reserve = if next == state.reserve || options.root_hold_locked && is_root {
                             empty
@@ -98,11 +107,6 @@ impl Mode for Freestyle {
                         next_moves.iter().chain(reserve.iter()).copied().collect()
                     };
                     for (mv, sd_distance) in selected {
-                        if is_root {
-                            if let Some(allowed) = &options.root_legal_placements {
-                                if !allowed.contains(&mv) { continue; }
-                            }
-                        }
                         if new_stats.nodes == budget {
                             // Charge evaluated nodes, but never publish a partially
                             // enumerated action set as a completed expansion.

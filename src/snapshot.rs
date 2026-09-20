@@ -246,6 +246,13 @@ pub fn analyze_text(text:&str)->Result<Report,String>{
     let unlocked=!r.hold_locked;
     let hold_budget=if unlocked {r.node_budget/2} else {0};
     let place_budget=r.node_budget-hold_budget;
+    if r.root_legal_placements.len() as u32 > place_budget {
+        return Err(reject(
+            "ROOT_GEOMETRY_BUDGET_INSUFFICIENT",
+            format!("{} authority root placements exceed the {}-node Place branch budget",
+                r.root_legal_placements.len(), place_budget),
+        ));
+    }
 
     let place_report=analysis::analyze_snapshot_branch(
         analysis_request(&r,r.start.clone(),place_budget,r.hold_locked),
@@ -329,14 +336,14 @@ pub fn analyze_text(text:&str)->Result<Report,String>{
         authority_attack_clock:place_report.authority_attack_clock,
         root_geometry_filtered:true,
         root_geometry_candidates:r.root_legal_placements.len(),
-        candidate_truncation:"none_after_authority_allowlist; insufficient root expansion is an error, never top-k truncation",
+        candidate_truncation:"none: complete authority allowlist is scored directly; if it cannot fit the Place root budget the request rejects",
         hold_information_gain_optimized:false,
         requires_authority_timing_validation:true,
         rules_parity_verified:false,
         assumptions:vec![
             "Only the current detached visible snapshot is used; no draw history, bag remainder, hidden RNG/tail, opponent board or future original placement.",
             "Unknown tail never expands speculatively; frontier leaves keep the existing evaluator.",
-            "Place search is restricted to the complete geometry-only root landing allowlist derived by pinned Tetrp from the actual active piece.",
+            "Place search scores the complete geometry-only root landing allowlist derived by pinned Tetrp from the actual active piece; it is not intersected with spawn movegen.",
             "Geometry reachability and frame-accurate input timing are separate. Tetrp must still validate execution timing before any future automated execution.",
             "Hold is a standalone action with no landing. Tetrp applies Hold, refills NEXT 5, then sends a new hold_locked=true request.",
             "Same-piece Hold is a distinct action. It is not assumed equivalent because Hold respawns/resets the active piece and changes Hold lock state.",
