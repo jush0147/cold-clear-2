@@ -128,6 +128,7 @@ export function captureVisibleState(engine) {
     back_to_back:s.attack.btb > 0,
     // CC2's root convention is x0 on the first difficult clear.
     b2b_count:Math.max(0,s.attack.btb-1),
+    hold_locked:Boolean(s.hold.locked),
     rules:{
       b2bcharging:s.rules.b2bcharging,
       b2bcharge_at:s.rules.b2bcharge_at,
@@ -168,6 +169,7 @@ export function buildAnalysisRequest(visible, bagObserver, {nodeBudget,framesPer
       randomizer:{type:'seven_bag',bag_state:bag.frontier_bag_state},
     },
     rules:{...visible.rules},
+    hold_locked:Boolean(visible.hold_locked),
     incoming:visible.incoming.map(p=>({...p})),
     pieces_placed:visible.pieces_placed,
     garbage_sent:visible.garbage_sent,
@@ -201,6 +203,7 @@ export function visibleFingerprint(visible) {
     combo:visible.combo,
     back_to_back:visible.back_to_back,
     b2b_count:visible.b2b_count,
+    hold_locked:visible.hold_locked,
     rules:visible.rules,
     incoming:visible.incoming,
     pieces_placed:visible.pieces_placed,

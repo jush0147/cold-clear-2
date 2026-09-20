@@ -91,16 +91,23 @@ pub fn try_create_bot(start: tbp::Start, config: Arc<BotConfig>) -> Result<Bot, 
 }
 
 pub fn try_create_bot_with_rules(start: tbp::Start, config: Arc<BotConfig>, rules: TetrioRules) -> Result<Bot, String> {
+    try_create_bot_with_context(start, config, rules, false)
+}
+
+pub fn try_create_bot_with_context(start: tbp::Start, config: Arc<BotConfig>, rules: TetrioRules, hold_locked: bool) -> Result<Bot, String> {
     start.validate()?;
     rules.validate()?;
-    Ok(create_bot_with_rules(start, config, rules))
+    if hold_locked && start.hold.is_none() {
+        return Err("hold_locked=true requires an occupied Hold slot".into());
+    }
+    Ok(create_bot_with_context(start, config, rules, hold_locked))
 }
 
 pub fn create_bot(start: tbp::Start, config: Arc<BotConfig>) -> Bot {
-    create_bot_with_rules(start, config, TetrioRules::default())
+    create_bot_with_context(start, config, TetrioRules::default(), false)
 }
 
-fn create_bot_with_rules(mut start: tbp::Start, config: Arc<BotConfig>, rules: TetrioRules) -> Bot {
+fn create_bot_with_context(mut start: tbp::Start, config: Arc<BotConfig>, rules: TetrioRules, root_hold_locked: bool) -> Bot {
     let hold_is_empty = start.hold.is_none();
     // Empty hold normalization is only internal: reserve represents current,
     // queue represents NEXT. Bot::player_pieces reverses this representation.
@@ -126,7 +133,7 @@ fn create_bot_with_rules(mut start: tbp::Start, config: Arc<BotConfig>, rules: T
         rules,
         forecast: crate::forecast::Forecast::default(),
     };
-    let mut bot = Bot::new(BotOptions { speculate, config }, state, &start.queue);
+    let mut bot = Bot::new(BotOptions { speculate, config, root_hold_locked }, state, &start.queue);
     bot.set_initial_empty_hold(hold_is_empty);
     bot
 }

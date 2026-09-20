@@ -10,7 +10,7 @@ use crate::{
     forecast::Forecast,
     ko_support::with_search_seed,
     tbp::{Randomizer, Start},
-    try_create_bot_with_rules,
+    try_create_bot_with_context,
 };
 
 #[derive(Deserialize, Clone, Copy, Debug)]
@@ -53,6 +53,8 @@ pub struct Request {
     pub start: Start,
     #[serde(default)]
     pub rules: TetrioRules,
+    #[serde(default)]
+    pub hold_locked: bool,
     pub incoming: Vec<IncomingPacket>,
     pub pieces_placed: u32,
     pub garbage_sent: u32,
@@ -248,6 +250,9 @@ pub fn analyze(request: Request) -> Result<Report, String> {
 pub fn analyze_with_profile(request: Request, profile: &str) -> Result<Report, String> {
     request.start.validate()?;
     request.rules.validate()?;
+    if request.hold_locked && request.start.hold.is_none() {
+        return Err("hold_locked=true requires an occupied Hold slot".into());
+    }
     if request.start.queue.len() != 6 {
         return Err("exactly current + five NEXT pieces are required".into());
     }
@@ -465,7 +470,7 @@ pub fn analyze_with_profile(request: Request, profile: &str) -> Result<Report, S
                 scenario,
             )?,
         };
-        let mut bot = try_create_bot_with_rules(start, config.clone(), request.rules)?;
+        let mut bot = try_create_bot_with_context(start, config.clone(), request.rules, request.hold_locked)?;
         let mut forecast = forecast;
         forecast.set_opener_phase_pieces(request.rules.opener_phase_pieces);
         bot.set_forecast(forecast);
@@ -564,6 +569,7 @@ mod tests {
                 randomizer: Randomizer::SevenBag { bag_state },
             },
             rules: TetrioRules::default(),
+            hold_locked: false,
             incoming: vec![],
             pieces_placed: 0,
             garbage_sent: 0,

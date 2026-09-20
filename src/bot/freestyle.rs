@@ -80,11 +80,13 @@ impl Mode for Freestyle {
             {
                 puffin::profile_scope!("eval");
                 for next in next_possibilities {
-                    let moves = moves[next].iter().chain(if next == state.reserve {
-                        [].iter()
-                    } else {
-                        moves[state.reserve].iter()
-                    });
+                    let reserve_moves: &[(Placement,u32)] =
+                        if next == state.reserve || options.root_hold_locked && node.depth() == 1 {
+                            &[]
+                        } else {
+                            &moves[state.reserve]
+                        };
+                    let moves = moves[next].iter().chain(reserve_moves.iter());
                     for &(mv, sd_distance) in moves {
                         if new_stats.nodes == budget {
                             // Charge evaluated nodes, but never publish a partially

@@ -4,7 +4,7 @@ use crate::bot::{Bot, BotConfig, Statistics};
 use crate::data::{Piece, Placement, TetrioRules};
 use crate::tbp::Start;
 use crate::tetrio::garbage::GarbageQueue;
-use crate::{try_create_bot, try_create_bot_with_rules};
+use crate::{try_create_bot, try_create_bot_with_context};
 
 const REVIEW_SEARCH_SEED_BASE: u64 = 0xC01D_C1EA_5EED_0001;
 
@@ -51,7 +51,7 @@ impl WasmBot {
 
     /// Tetrp review entrypoint. Public attack rules are transported explicitly
     /// instead of inheriting the legacy base-0 defaults.
-    pub fn start_tetrp(&mut self, start_json: &str, rules_json: &str) -> Result<(), JsValue> {
+    pub fn start_tetrp(&mut self, start_json: &str, rules_json: &str, hold_locked: bool) -> Result<(), JsValue> {
         let value = parse_json(start_json)?;
         let object = value.as_object().ok_or_else(|| js_error("start must be an object"))?;
         const FIELDS: &[&str] = &["board", "queue", "hold", "combo", "back_to_back", "b2b_count", "randomizer"];
@@ -64,7 +64,7 @@ impl WasmBot {
         if start.queue.len() != 6 { return Err(js_error("browser start requires current + exactly five visible NEXT pieces")); }
         let rules: TetrioRules = serde_json::from_value(parse_json(rules_json)?).map_err(js_error)?;
         rules.validate().map_err(js_error)?;
-        let bot = try_create_bot_with_rules(start, self.config.clone(), rules).map_err(js_error)?;
+        let bot = try_create_bot_with_context(start, self.config.clone(), rules, hold_locked).map_err(js_error)?;
         self.bot = Some(bot);
         self.stats = Statistics::default();
         self.decision_index = 0;
@@ -181,6 +181,7 @@ impl WasmBot {
             "deterministic_hard_node_search": true,
             "persistent_dag": true,
             "public_rule_contract": true,
+            "root_hold_lock": true,
             "clutch_spawn_rescue": true,
             "clutch_clears": false,
             "garbage_special_bonus": true,

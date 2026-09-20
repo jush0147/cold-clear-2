@@ -122,7 +122,13 @@ impl BotConfig {
 }
 
 #[derive(Debug)]
-pub struct BotOptions { pub speculate: bool, pub config: Arc<BotConfig> }
+pub struct BotOptions {
+    pub speculate: bool,
+    pub config: Arc<BotConfig>,
+    /// Root-only Hold lock from the visible player state. Descendants may Hold
+    /// normally because a lock/spawn resets Tetrp's one-Hold-per-piece gate.
+    pub root_hold_locked: bool,
+}
 #[enum_dispatch]
 enum ModeEnum { Freestyle }
 #[enum_dispatch(ModeEnum)]
@@ -177,6 +183,7 @@ impl Bot {
         puffin::profile_function!();
         let info = self.current.advance(self.queue.pop_front().expect("cannot advance an exhausted search queue"), mv);
         if self.hold_is_empty && use_hold { self.hold_is_empty = false; }
+        self.options.root_hold_locked = false;
         if let Some(to) = self.mode.advance(&self.options, mv) { self.switch(to); }
         info
     }
@@ -190,13 +197,16 @@ impl Bot {
     /// Explicit hold is necessary when current and NEXT[0] have the same type.
     pub fn try_play(&mut self, mv: Placement, use_hold: bool) -> Result<PlacementInfo, String> {
         if self.queue.is_empty() { return Err("search queue exhausted; supply the newly visible pieces first".into()); }
+        if use_hold && self.options.root_hold_locked {
+            return Err("Hold is already locked for this root position".into());
+        }
         let pieces = self.player_pieces();
         let expected = if use_hold { pieces.hold.or_else(|| pieces.next.first().copied()) } else { pieces.current };
         if expected != Some(mv.location.piece) { return Err("placement does not match the current/hold decision".into()); }
         // Check membership before doing arithmetic on untrusted coordinates.
         // This also validates reachability and the spin flag using this core's
         // supported movement rules; it does NOT certify full SRS+ parity.
-        let legal = find_moves_with_clutch(&self.current.board, mv.location.piece, self.current.combo > 0);
+        let legal = find_moves_with_clutch(&self.current.board, mv.location.piece, self.current.rules.clutch && self.current.combo > 0);
         if !legal.iter().any(|&(candidate, _)| candidate == mv) {
             return Err("placement is not reachable with the supplied spin under the supported move generator".into());
         }
@@ -207,9 +217,11 @@ impl Bot {
         if self.queue.is_empty() { return false; }
         let pieces = self.player_pieces();
         let current = match pieces.current { Some(p) => p, None => return false };
-        if !find_moves_with_clutch(&self.current.board, current, self.current.combo > 0).is_empty() { return true; }
+        let allow_clutch = self.current.rules.clutch && self.current.combo > 0;
+        if !find_moves_with_clutch(&self.current.board, current, allow_clutch).is_empty() { return true; }
+        if self.options.root_hold_locked { return false; }
         let held = pieces.hold.or_else(|| pieces.next.first().copied());
-        held.map(|p| !find_moves_with_clutch(&self.current.board, p, self.current.combo > 0).is_empty()).unwrap_or(false)
+        held.map(|p| !find_moves_with_clutch(&self.current.board, p, allow_clutch).is_empty()).unwrap_or(false)
     }
 
     pub fn new_piece(&mut self, piece: Piece) {
