@@ -54,8 +54,9 @@ jobs:
         run: |
           mkdir -p kiwi-v1-browser/pkg
           cp -r pkg/. kiwi-v1-browser/pkg/
+          rm -f kiwi-v1-browser/pkg/.gitignore
           cp scripts/lib/kiwi-snapshot-adapter.mjs scripts/lib/tetrp-authority-adapter.mjs scripts/lib/tetrp-placement-path.mjs kiwi-v1-browser/
-          cp scripts/kiwi-snapshot-worker.mjs kiwi-v1-browser/
+          cp scripts/kiwi-snapshot-worker.mjs scripts/verify-kiwi-artifact.mjs kiwi-v1-browser/
           cp KIWI_V1_HANDOFF.md CODEX_TETRP_KIWI_TASK.md TETRP_RULE_PARITY_GAPS.md LICENSE-MIT LICENSE-APACHE THIRD_PARTY_NOTICES.md kiwi-v1-browser/
           cp kiwi-snapshot-acceptance.json kiwi-wasm-smoke.json kiwi-native-tests.log kiwi-v1-browser/
       - name: Install pinned Tetrp browser-test dependencies
@@ -90,6 +91,7 @@ jobs:
             strategy_profile:'review_h9_h12',strategy_promotion:false,
             default_node_budget:200000,visible_next:5,
             snapshot_api:'analyze_snapshot_json',worker:'kiwi-snapshot-worker.mjs',
+            artifact_hash_contract:'exact file set plus SHA256; post-upload verification required',
             capabilities:JSON.parse(wasm.snapshot_capabilities_json()),
             phase_4b_implemented:false,downstream_tetrp_pin_changed:false
           };
@@ -100,6 +102,7 @@ jobs:
           fs.writeFileSync('kiwi-v1-browser/sha256.json',JSON.stringify(hashes,null,2)+'\n');
           console.log(JSON.stringify(manifest,null,2));
           NODE
+          node scripts/verify-kiwi-artifact.mjs kiwi-v1-browser
       - name: Upload accepted Kiwi browser artifact
         uses: actions/upload-artifact@v4
         with:
@@ -118,12 +121,27 @@ jobs:
             kiwi-snapshot-browser.json
           if-no-files-found: ignore
           retention-days: 7
-  notify:
+  verify-archive:
     needs: build
-    if: ${{ needs.build.result == 'success' }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@v4
+        with:
+          name: kiwi-v1-browser
+          path: downloaded-artifact
+      - name: Verify actual downloaded file set and every hash
+        run: node scripts/verify-kiwi-artifact.mjs downloaded-artifact
+  notify:
+    needs: verify-archive
+    if: ${{ needs.verify-archive.result == 'success' }}
     uses: ./.github/workflows/ntfy-test.yml
     with:
       title: Kiwi snapshot artifact ready
-      message: Snapshot-v2 browser artifact and new acceptance tests completed. Review before Tetrp integration.
+      message: Snapshot-v2 artifact passed new acceptance and post-upload hash verification. Review before Tetrp integration.
     secrets:
       NTFY_URL: ${{ secrets.NTFY_URL }}
