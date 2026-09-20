@@ -1,6 +1,6 @@
 {
   "experiment": "H9 current-stack fixed-finalist confirmation",
-  "status": "preregistered",
+  "status": "completed_no_promotion",
   "decision_date": "2026-09-20",
   "policy_source": "experiments/tetrp-strategy-lineage-reset-policy.json",
   "parent_boundary_extension": "experiments/h9-current-boundary-extension.json",
@@ -864,5 +864,49 @@
     "no_optional_stopping": "Use all 200 preregistered pairs. Do not stop early for significance or futility."
   },
   "if_promoted": "Create a new confirmed incumbent equal to corrected_legacy_h12 plus H9 cavity excavation = -0.75. Subsequent H-family parameter searches must compare against that new incumbent.",
-  "if_not_promoted": "Keep corrected_legacy_h12 as the confirmed incumbent for the next family. H9 remains studied but unpromoted under this context."
+  "if_not_promoted": "Keep corrected_legacy_h12 as the confirmed incumbent for the next family. H9 remains studied but unpromoted under this context.",
+  "execution": {
+    "run_id": 35462770822,
+    "source_commit": "71e0aba5ceb7a2055f9d8d998d936f0c3db7601c",
+    "conclusion": "success",
+    "all_complete": true,
+    "artifact_id": 10593876534
+  },
+  "outcome": {
+    "ko": {
+      "candidate_wins": 193,
+      "incumbent_wins": 207
+    },
+    "pairs": {
+      "candidate_sweeps": 51,
+      "incumbent_sweeps": 58,
+      "split_pairs": 91,
+      "decisive_pairs": 109,
+      "net_sweeps": -7,
+      "exact_two_sided_sign_p": 0.565700113973634,
+      "candidate_sweep_share_among_decisive": 0.46788990825688076,
+      "candidate_sweep_share_wilson95": [
+        0.37691328555456316,
+        0.5610527769799256
+      ]
+    },
+    "diagnostics": {
+      "candidate": {
+        "raw_app": 1.1103452464093766,
+        "sent_app": 0.827885403698418,
+        "pieces": 131732
+      },
+      "incumbent": {
+        "raw_app": 1.1246546017672243,
+        "sent_app": 0.8540369841800018,
+        "pieces": 131732
+      }
+    },
+    "preregistered_decision": {
+      "action": "do_not_promote_h9",
+      "reason": "The fixed H9=-0.75 finalist failed the preregistered KO and paired-sweep criteria; both game-level KO and paired sweeps favored corrected_legacy_h12."
+    },
+    "interpretation": "H9 produced useful-looking medium-sample regions but did not replicate as a fixed improvement in the large fresh confirmation. Keep corrected_legacy_h12 as the confirmed incumbent. Preserve H9 evidence for later retest only if context changes under the lineage policy."
+  },
+  "next_action": "Move to the next priority family, H2 useful outgoing attack / cancellation, against unchanged corrected_legacy_h12."
 }
