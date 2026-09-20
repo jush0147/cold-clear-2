@@ -1,6 +1,6 @@
 {
   "experiment": "Tetrp strategy lineage reset policy",
-  "status": "active",
+  "status": "paused_for_rule_parity",
   "decision_date": "2026-09-19",
   "motivation": [
     "The old H1-H11 strategy results were produced under materially different conditions, including the legacy alternating-lock arena and mostly 10k-node search.",
@@ -117,7 +117,7 @@
     "whole_profile_transfer_and_confirmation": "Retain as evidence that the old tuned package contains useful signal under Tetrp authority, but not as proof that each old component remains beneficial.",
     "single_component_ablation_run_35431278966": "Retain as partial historical evidence and as the reason to avoid symmetric same-seed evaluation. Do not use the four H1 caps as wins, losses, or draws."
   },
-  "next_action": "Finish the already-running 16-pair H9/H4/H2 follow-up for diagnostic value, but do not promote from it. Then begin the first current-stack multi-parameter family study (priority H9), using a preregistered grid that includes the neutral value and both negative and positive H9 values rather than only the historical negative winner.",
+  "next_action": "Pause strength tuning. Repair and validate the Tetrp/Kiwi public rule contract first; then restart affected H2 research with fresh seeds under the repaired real-TL rules.",
   "process_revision": {
     "name": "parameter-search-first lineage v2",
     "adopted_on": "2026-09-19",
@@ -174,5 +174,19 @@
     "ongoing_followup_run": 35438250546,
     "interpretation": "All of these are retained as ranking/diagnostic evidence. The ongoing 16-pair / 32-game run must not be called a promotion confirmation under the v2 policy, regardless of its outcome.",
     "no_family_eliminated": true
+  },
+  "rule_parity_pause": {
+    "discovered_on": "2026-09-20",
+    "blocking_issue": "The authority/search stack used b2bcharge_base=0 while real TL replay evidence used b2bcharge_base=3. Public replay rules were not fully transported into the bot root.",
+    "affected_evidence": "All current-stack H9/H2 strength evidence collected before the rules contract is repaired remains evidence for the base=0 context only. It must not promote a real-TL product profile.",
+    "current_h2_local_run": 35491099927,
+    "current_h2_local_disposition": "Allow the already-running job to finish for diagnostics only. It cannot select or promote a finalist.",
+    "resume_gate": [
+      "Transport the relevant public TL attack/rule contract into every Kiwi/search root instead of relying on hidden defaults.",
+      "Run rule-parity regressions for Surge base/threshold, opener double-cancel boundary, attack multiplier, PC/garbage-special behavior, and Hold-locked root behavior.",
+      "Verify the research harness explicitly runs the intended real-TL rule profile.",
+      "Re-run authority/correctness gates before any new strength experiment.",
+      "Restart affected family research with fresh seeds under the repaired rule contract."
+    ]
   }
 }

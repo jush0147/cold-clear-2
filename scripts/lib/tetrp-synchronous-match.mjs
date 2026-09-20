@@ -53,7 +53,7 @@ export function runSynchronousMatch({
   };
   // Placement speed/gravity is deliberately neutralized. Frame time remains
   // authoritative for garbage travel and late-round attack scaling.
-  const rules = {g:0,gincrease:0};
+  const rules = {g:0,gincrease:0,b2bcharge_base:3};
   const makeEngine=(authoritySeed)=>new Engine({mode:'tl',seed:authoritySeed,rules,handling});
   const engines=authoritySeeds.map(makeEngine);
   const observers=engines.map(e=>SevenBagObserver.fromGameStart(visibleBagSix(e.state)));
@@ -161,7 +161,7 @@ export function runSynchronousMatch({
       searchNodes[slot]+=report.nodes;
       const placement=report.candidates[0].placement;
       const path=findPath(engines[slot],placement);
-      const inputs=schedulePath(startFrame,lockFrame,path.moves);
+      const inputs=schedulePath(startFrame,lockFrame,path.moves,engines[slot]);
       plans.push({
         placement,path,inputs,report,
         drawsAdvanced:drawsAdvancedByPlacement(visible[slot],placement),
@@ -202,11 +202,46 @@ export function runSynchronousMatch({
     }
 
     for(let slot=0;slot<2;slot++) {
+      const expectedPieces=visible[slot].pieces_placed+1;
+      const actualPieces=engines[slot].state.stats.pieces;
+      if(actualPieces>expectedPieces || (engines[slot].state.playing && actualPieces!==expectedPieces)) {
+        throw new Error('placement transport changed an unexpected number of pieces '+JSON.stringify({
+          slot,
+          lock_step:lockStep+1,
+          profile:profiles[slot],
+          before_pieces:visible[slot].pieces_placed,
+          after_pieces:actualPieces,
+          playing:engines[slot].state.playing,
+          reason:engines[slot].state.reason,
+          planned_moves:plans[slot].path.moves,
+          scheduled_inputs:plans[slot].inputs,
+        }));
+      }
       if(engines[slot].state.playing) {
-        observers[slot].advance(
-          visibleBagSix(engines[slot].state),
-          plans[slot].drawsAdvanced
-        );
+        const postVisible=visibleBagSix(engines[slot].state);
+        try {
+          observers[slot].advance(postVisible,plans[slot].drawsAdvanced);
+        } catch(error) {
+          throw new Error('SevenBag observer advance failed '+JSON.stringify({
+            slot,
+            lock_step:lockStep+1,
+            profile:profiles[slot],
+            draws_advanced:plans[slot].drawsAdvanced,
+            use_hold:plans[slot].path.useHold,
+            placement:plans[slot].placement,
+            before_queue:visible[slot].queue,
+            before_hold:visible[slot].hold,
+            post_queue:postVisible,
+            post_hold:engines[slot].state.hold.piece,
+            pieces:engines[slot].state.stats.pieces,
+            holds:engines[slot].state.stats.holds,
+            planned_moves:plans[slot].path.moves,
+            scheduled_inputs:plans[slot].inputs,
+            recent_trace:engines[slot].trace.slice(-140),
+            observer:observers[slot].snapshot(),
+            cause:error instanceof Error?error.message:String(error),
+          }));
+        }
       }
     }
 
@@ -286,6 +321,12 @@ export function runSynchronousMatch({
         openerphase_pieces:ruleState.openerphase_pieces,
         garbageblocking:ruleState.garbageblocking,
         b2bcharging:ruleState.b2bcharging,
+        b2bcharge_at:ruleState.b2bcharge_at,
+        b2bcharge_base:ruleState.b2bcharge_base,
+        allclear_garbage:ruleState.allclear_garbage,
+        allclear_b2b:ruleState.allclear_b2b,
+        garbagespecialbonus:ruleState.garbagespecialbonus,
+        clutch:ruleState.clutch,
         passthrough:ruleState.passthrough,
       },
       slots:[summarize(0),summarize(1)],

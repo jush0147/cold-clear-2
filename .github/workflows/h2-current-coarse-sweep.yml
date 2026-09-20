@@ -1,0 +1,160 @@
+name: H2 current coarse sweep
+
+on:
+  push:
+    branches: [tetrp-authority]
+    paths:
+      - '.github/workflows/h2-current-coarse-sweep.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: h2-current-coarse-sweep-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: jush0147/tetrp
+          ref: 0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2
+          path: tetrp-reference
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify tuner controller contract
+        run: node scripts/test-tuner-controller.mjs
+      - name: Verify placement transport
+        run: node scripts/test-tetrp-placement-scheduler.mjs tetrp-reference
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: h2-current-coarse
+      - name: Run release library regressions
+        run: cargo test --release --lib
+      - name: Install wasm-pack
+        run: cargo install wasm-pack --locked
+      - name: Build Node WASM
+        run: wasm-pack build --release --target nodejs --out-dir pkg-node
+      - uses: actions/upload-artifact@v4
+        with:
+          name: h2-current-coarse-node-wasm
+          path: pkg-node/
+          retention-days: 1
+
+  batch:
+    needs: build
+    runs-on: ubuntu-22.04
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix:
+        include:
+          - { id: 'a0_c0', attack: '0', cancel: '0', profile: 'tuner:{"useful_attack_reward":0,"cancellation_reward":0}', pair_start: 0, pair_end: 9, block: 'a' }
+          - { id: 'a0_c0', attack: '0', cancel: '0', profile: 'tuner:{"useful_attack_reward":0,"cancellation_reward":0}', pair_start: 10, pair_end: 19, block: 'b' }
+          - { id: 'a0_c0_5', attack: '0', cancel: '0.5', profile: 'tuner:{"useful_attack_reward":0,"cancellation_reward":0.5}', pair_start: 0, pair_end: 9, block: 'a' }
+          - { id: 'a0_c0_5', attack: '0', cancel: '0.5', profile: 'tuner:{"useful_attack_reward":0,"cancellation_reward":0.5}', pair_start: 10, pair_end: 19, block: 'b' }
+          - { id: 'a0_c1', attack: '0', cancel: '1', profile: 'tuner:{"useful_attack_reward":0,"cancellation_reward":1}', pair_start: 0, pair_end: 9, block: 'a' }
+          - { id: 'a0_c1', attack: '0', cancel: '1', profile: 'tuner:{"useful_attack_reward":0,"cancellation_reward":1}', pair_start: 10, pair_end: 19, block: 'b' }
+          - { id: 'a0_5_c0', attack: '0.5', cancel: '0', profile: 'tuner:{"useful_attack_reward":0.5,"cancellation_reward":0}', pair_start: 0, pair_end: 9, block: 'a' }
+          - { id: 'a0_5_c0', attack: '0.5', cancel: '0', profile: 'tuner:{"useful_attack_reward":0.5,"cancellation_reward":0}', pair_start: 10, pair_end: 19, block: 'b' }
+          - { id: 'a0_5_c0_5', attack: '0.5', cancel: '0.5', profile: 'tuner:{"useful_attack_reward":0.5,"cancellation_reward":0.5}', pair_start: 0, pair_end: 9, block: 'a' }
+          - { id: 'a0_5_c0_5', attack: '0.5', cancel: '0.5', profile: 'tuner:{"useful_attack_reward":0.5,"cancellation_reward":0.5}', pair_start: 10, pair_end: 19, block: 'b' }
+          - { id: 'a0_5_c1', attack: '0.5', cancel: '1', profile: 'tuner:{"useful_attack_reward":0.5,"cancellation_reward":1}', pair_start: 0, pair_end: 9, block: 'a' }
+          - { id: 'a0_5_c1', attack: '0.5', cancel: '1', profile: 'tuner:{"useful_attack_reward":0.5,"cancellation_reward":1}', pair_start: 10, pair_end: 19, block: 'b' }
+          - { id: 'a1_c0', attack: '1', cancel: '0', profile: 'tuner:{"useful_attack_reward":1,"cancellation_reward":0}', pair_start: 0, pair_end: 9, block: 'a' }
+          - { id: 'a1_c0', attack: '1', cancel: '0', profile: 'tuner:{"useful_attack_reward":1,"cancellation_reward":0}', pair_start: 10, pair_end: 19, block: 'b' }
+          - { id: 'a1_c0_5', attack: '1', cancel: '0.5', profile: 'tuner:{"useful_attack_reward":1,"cancellation_reward":0.5}', pair_start: 0, pair_end: 9, block: 'a' }
+          - { id: 'a1_c0_5', attack: '1', cancel: '0.5', profile: 'tuner:{"useful_attack_reward":1,"cancellation_reward":0.5}', pair_start: 10, pair_end: 19, block: 'b' }
+          - { id: 'a1_c1', attack: '1', cancel: '1', profile: 'tuner:{"useful_attack_reward":1,"cancellation_reward":1}', pair_start: 0, pair_end: 9, block: 'a' }
+          - { id: 'a1_c1', attack: '1', cancel: '1', profile: 'tuner:{"useful_attack_reward":1,"cancellation_reward":1}', pair_start: 10, pair_end: 19, block: 'b' }
+          - { id: 'a1_5_c0', attack: '1.5', cancel: '0', profile: 'tuner:{"useful_attack_reward":1.5,"cancellation_reward":0}', pair_start: 0, pair_end: 9, block: 'a' }
+          - { id: 'a1_5_c0', attack: '1.5', cancel: '0', profile: 'tuner:{"useful_attack_reward":1.5,"cancellation_reward":0}', pair_start: 10, pair_end: 19, block: 'b' }
+          - { id: 'a1_5_c0_5', attack: '1.5', cancel: '0.5', profile: 'tuner:{"useful_attack_reward":1.5,"cancellation_reward":0.5}', pair_start: 0, pair_end: 9, block: 'a' }
+          - { id: 'a1_5_c0_5', attack: '1.5', cancel: '0.5', profile: 'tuner:{"useful_attack_reward":1.5,"cancellation_reward":0.5}', pair_start: 10, pair_end: 19, block: 'b' }
+          - { id: 'a1_5_c1', attack: '1.5', cancel: '1', profile: 'tuner:{"useful_attack_reward":1.5,"cancellation_reward":1}', pair_start: 0, pair_end: 9, block: 'a' }
+          - { id: 'a1_5_c1', attack: '1.5', cancel: '1', profile: 'tuner:{"useful_attack_reward":1.5,"cancellation_reward":1}', pair_start: 10, pair_end: 19, block: 'b' }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: jush0147/tetrp
+          ref: 0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2
+          path: tetrp-reference
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@v4
+        with:
+          name: h2-current-coarse-node-wasm
+          path: pkg-node
+      - name: Run H2 coarse block
+        env:
+          NODE_BUDGET: '200000'
+          FRAMES_PER_PIECE: '24'
+          TETRP_REF: 0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2
+          INCUMBENT_PROFILE: corrected_legacy_h12
+          CANDIDATE_PROFILE: ${{ matrix.profile }}
+          SAFETY_LOCK_STEPS: '5000'
+          PROGRESS_EVERY_LOCKS: '250'
+        run: |
+          set -euo pipefail
+          mkdir -p results
+          out="results/h2-coarse-${{ matrix.id }}-${{ matrix.block }}.jsonl"
+          : > "$out"
+          for pair in $(seq ${{ matrix.pair_start }} ${{ matrix.pair_end }}); do
+            a=$((65900 + pair * 2))
+            b=$((a + 1))
+            echo "H2 attack=${{ matrix.attack }} cancel=${{ matrix.cancel }} pair=$pair seeds=$a,$b" >&2
+            SEED_A="$a" SEED_B="$b" \
+              node scripts/run-tetrp-reset-screen-pair.mjs tetrp-reference \
+              | tee -a "$out"
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: h2-coarse-${{ matrix.id }}-${{ matrix.block }}
+          path: results/
+          if-no-files-found: error
+          retention-days: 14
+
+  summarize:
+    needs: [batch]
+    if: always()
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: h2-coarse-*
+          path: h2-coarse-results
+          merge-multiple: true
+      - name: Summarize H2 coarse sweep
+        run: |
+          set -o pipefail
+          mkdir -p summary
+          node scripts/summarize-h2-current-coarse-sweep.mjs \
+            h2-coarse-results summary/h2-current-coarse-sweep-summary.json \
+            | tee summary/h2-current-coarse-sweep-summary.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: h2-current-coarse-sweep-summary
+          path: summary/
+          if-no-files-found: error
+          retention-days: 30

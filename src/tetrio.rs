@@ -1,6 +1,6 @@
 //! TL profile observed in the 2026-09-10 replay (engine version 19).
 //! Full game parity is still not certified. See docs/replay-validation.md.
-use crate::data::{PlacementInfo, Spin};
+use crate::data::{PlacementInfo, Spin, TetrioRules};
 use serde::Serialize;
 #[path = "garbage.rs"]
 pub mod garbage;
@@ -41,13 +41,27 @@ pub fn multiplier_attack_with_garbage(base_plus_b2b: u32, combo: u32, garbage_mu
     (scaled.max(minimum) * garbage_multiplier).floor() as u32
 }
 /// `count` is CC2's displayed B2B x-count (Tetrp raw counter minus one).
-/// Tetrp v19 releases max(0, raw - 4), therefore displayed x4 banks one line.
-pub fn surge_size(count: u32) -> u32 { count.saturating_sub(3) }
+/// Legacy callers use the historical base-0 profile; Tetrp review callers pass
+/// the replay-visible rule contract explicitly.
+pub fn surge_size(count: u32) -> u32 { surge_size_with_rules(count, TetrioRules::default()) }
+pub fn surge_size_with_rules(count: u32, rules: TetrioRules) -> u32 {
+    if !rules.b2b_charging { return 0; }
+    let raw = count.saturating_add(1);
+    if raw <= rules.b2b_charge_at { 0 } else {
+        raw.saturating_sub(rules.b2b_charge_at).saturating_add(rules.b2b_charge_base)
+    }
+}
 pub fn attack(info: &PlacementInfo) -> AttackBreakdown {
-    attack_with_multiplier(info, 1.0)
+    attack_with_rules(info, TetrioRules::default())
+}
+pub fn attack_with_rules(info: &PlacementInfo, rules: TetrioRules) -> AttackBreakdown {
+    attack_with_multiplier_and_rules(info, 1.0, rules)
+}
+pub fn attack_with_multiplier(info: &PlacementInfo, garbage_multiplier: f64) -> AttackBreakdown {
+    attack_with_multiplier_and_rules(info, garbage_multiplier, TetrioRules::default())
 }
 
-pub fn attack_with_multiplier(info: &PlacementInfo, garbage_multiplier: f64) -> AttackBreakdown {
+pub fn attack_with_multiplier_and_rules(info: &PlacementInfo, garbage_multiplier: f64, rules: TetrioRules) -> AttackBreakdown {
     if info.lines_cleared == 0 { return AttackBreakdown::default(); }
     debug_assert!(garbage_multiplier.is_finite() && garbage_multiplier > 0.0);
     let base = base_attack(info.placement.spin, info.lines_cleared);
@@ -55,9 +69,9 @@ pub fn attack_with_multiplier(info: &PlacementInfo, garbage_multiplier: f64) -> 
     // GameState::advance already applies the pinned Tetrp v19 B2B bonus
     // condition, including the all-clear-only exception.
     let b2b_bonus = u32::from(info.back_to_back);
-    let garbage_special_bonus = u32::from(spin_or_quad && info.garbage_cleared > 0);
-    let perfect_clear_bonus = if info.perfect_clear {
-        (5.0 * garbage_multiplier).floor() as u32
+    let garbage_special_bonus = u32::from(rules.garbage_special_bonus && spin_or_quad && info.garbage_cleared > 0);
+    let perfect_clear_bonus = if rules.all_clears && info.perfect_clear {
+        (rules.all_clear_garbage as f64 * garbage_multiplier).floor() as u32
     } else {
         0
     };
@@ -65,7 +79,7 @@ pub fn attack_with_multiplier(info: &PlacementInfo, garbage_multiplier: f64) -> 
         multiplier_attack_with_garbage(base + b2b_bonus, info.combo, garbage_multiplier)
         + garbage_special_bonus;
     let surge_released = if info.b2b_broken {
-        (surge_size(info.b2b_count_before) as f64 * garbage_multiplier).floor() as u32
+        (surge_size_with_rules(info.b2b_count_before, rules) as f64 * garbage_multiplier).floor() as u32
     } else {
         0
     };
@@ -118,6 +132,13 @@ mod tests {
         assert_eq!(surge_size(3),0);
         assert_eq!(surge_size(4),1);
         assert_eq!(surge_size(9),6);
+    }
+    #[test]
+    fn real_tl_base3_surge_examples() {
+        let rules = TetrioRules { b2b_charge_base: 3, ..TetrioRules::default() };
+        assert_eq!(surge_size_with_rules(3,rules),0);
+        assert_eq!(surge_size_with_rules(4,rules),4);
+        assert_eq!(surge_size_with_rules(9,rules),9);
     }
     #[test]
     fn mini_uses_non_full_base_table() { assert_eq!(base_attack(Spin::Mini,4),4); }

@@ -1,0 +1,154 @@
+name: H9 fixed-finalist confirmation
+
+on:
+  push:
+    branches: [tetrp-authority]
+    paths:
+      - '.github/workflows/h9-current-final-confirmation.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: h9-current-final-confirmation-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: jush0147/tetrp
+          ref: 0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2
+          path: tetrp-reference
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify placement transport
+        run: node scripts/test-tetrp-placement-scheduler.mjs tetrp-reference
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: h9-current-final-confirmation
+      - name: Run release library regressions
+        run: cargo test --release --lib
+      - name: Install wasm-pack
+        run: cargo install wasm-pack --locked
+      - name: Build Node WASM
+        run: wasm-pack build --release --target nodejs --out-dir pkg-node
+      - uses: actions/upload-artifact@v4
+        with:
+          name: h9-final-node-wasm
+          path: pkg-node/
+          retention-days: 1
+
+  batch:
+    needs: build
+    runs-on: ubuntu-22.04
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix:
+        include:
+          - { pair_start: 0, pair_end: 9, block: 'a' }
+          - { pair_start: 10, pair_end: 19, block: 'b' }
+          - { pair_start: 20, pair_end: 29, block: 'c' }
+          - { pair_start: 30, pair_end: 39, block: 'd' }
+          - { pair_start: 40, pair_end: 49, block: 'e' }
+          - { pair_start: 50, pair_end: 59, block: 'f' }
+          - { pair_start: 60, pair_end: 69, block: 'g' }
+          - { pair_start: 70, pair_end: 79, block: 'h' }
+          - { pair_start: 80, pair_end: 89, block: 'i' }
+          - { pair_start: 90, pair_end: 99, block: 'j' }
+          - { pair_start: 100, pair_end: 109, block: 'k' }
+          - { pair_start: 110, pair_end: 119, block: 'l' }
+          - { pair_start: 120, pair_end: 129, block: 'm' }
+          - { pair_start: 130, pair_end: 139, block: 'n' }
+          - { pair_start: 140, pair_end: 149, block: 'o' }
+          - { pair_start: 150, pair_end: 159, block: 'p' }
+          - { pair_start: 160, pair_end: 169, block: 'q' }
+          - { pair_start: 170, pair_end: 179, block: 'r' }
+          - { pair_start: 180, pair_end: 189, block: 's' }
+          - { pair_start: 190, pair_end: 199, block: 't' }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: jush0147/tetrp
+          ref: 0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2
+          path: tetrp-reference
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@v4
+        with:
+          name: h9-final-node-wasm
+          path: pkg-node
+      - name: Run fixed H9 finalist block
+        env:
+          NODE_BUDGET: '200000'
+          FRAMES_PER_PIECE: '24'
+          TETRP_REF: 0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2
+          INCUMBENT_PROFILE: corrected_legacy_h12
+          CANDIDATE_PROFILE: reset_h9_cavity_m0_75_h12
+          SAFETY_LOCK_STEPS: '5000'
+          PROGRESS_EVERY_LOCKS: '250'
+        run: |
+          set -euo pipefail
+          mkdir -p results
+          out="results/h9-final-${{ matrix.block }}.jsonl"
+          : > "$out"
+          for pair in $(seq ${{ matrix.pair_start }} ${{ matrix.pair_end }}); do
+            a=$((65500 + pair * 2))
+            b=$((a + 1))
+            echo "h9=-0.75 pair=$pair seeds=$a,$b" >&2
+            SEED_A="$a" SEED_B="$b" \
+              node scripts/run-tetrp-reset-screen-pair.mjs tetrp-reference \
+              | tee -a "$out"
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: h9-final-${{ matrix.block }}
+          path: results/
+          if-no-files-found: error
+          retention-days: 14
+
+  summarize:
+    needs: [batch]
+    if: always()
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: h9-final-*
+          path: h9-final-results
+          merge-multiple: true
+      - name: Summarize fixed-finalist confirmation
+        run: |
+          set -o pipefail
+          mkdir -p summary
+          node scripts/summarize-h9-current-final-confirmation.mjs \
+            h9-final-results summary/h9-current-final-confirmation-summary.json \
+            | tee summary/h9-current-final-confirmation-summary.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: h9-current-final-confirmation-summary
+          path: summary/
+          if-no-files-found: error
+          retention-days: 30

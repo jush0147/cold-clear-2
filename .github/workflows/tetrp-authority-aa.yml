@@ -4,9 +4,17 @@ on:
   push:
     branches: [tetrp-authority]
     paths:
+      - 'src/data.rs'
+      - 'src/tetrio.rs'
       - 'src/analysis.rs'
       - 'src/forecast.rs'
+      - 'src/ko_support.rs'
+      - 'src/lib.rs'
+      - 'src/bot.rs'
+      - 'src/bot/freestyle.rs'
+      - 'src/wasm.rs'
       - 'scripts/lib/tetrp-authority-adapter.mjs'
+      - 'scripts/lib/tetrp-synchronous-match.mjs'
       - 'scripts/generate-tetrp-exhibition.mjs'
       - '.github/workflows/tetrp-authority-aa.yml'
   workflow_dispatch:

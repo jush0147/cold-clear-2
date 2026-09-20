@@ -1,7 +1,5 @@
 # Cold Clear 2
 
-> **Kiwi v1 product branch:** this `kiwi-v1` branch is a frozen browser handoff for Tetrp. Start with [`KIWI_V1_HANDOFF.md`](KIWI_V1_HANDOFF.md). If Codex is implementing the Tetrp integration, also read [`CODEX_TETRP_KIWI_TASK.md`](CODEX_TETRP_KIWI_TASK.md). The `Kiwi v1 browser artifact` workflow produces the consumable `kiwi-v1-browser` artifact. Strategy research continues elsewhere.
-
 Cold Clear 2 is a rewrite of [Cold Clear](https://github.com/MinusKelvin/cold-clear)
 using column-major bitboards, a transposition-aware search graph and native
 worker threads. It implements the [Tetris Bot Protocol](https://github.com/tetris-bot-protocol/tbp-spec).

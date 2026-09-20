@@ -1,0 +1,107 @@
+name: H9 current coarse sweep repair
+
+on:
+  push:
+    branches: [tetrp-authority]
+    paths:
+      - '.github/workflows/h9-current-coarse-repair.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  repair:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: jush0147/tetrp
+          ref: 0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2
+          path: tetrp-reference
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Download original H9 coarse WASM
+        uses: actions/download-artifact@v4
+        with:
+          name: h9-current-coarse-node-wasm
+          path: pkg-node
+          github-token: ${{ github.token }}
+          run-id: 35439517509
+
+      - name: Download original H9 coarse result blocks
+        uses: actions/download-artifact@v4
+        with:
+          pattern: h9-coarse-*
+          path: h9-coarse-results
+          merge-multiple: true
+          github-token: ${{ github.token }}
+          run-id: 35439517509
+
+      - name: Rerun only the malformed H9 +1 pair
+        env:
+          SEED_A: '65206'
+          SEED_B: '65207'
+          CANDIDATE_PROFILE: reset_h9_cavity_p1_h12
+          INCUMBENT_PROFILE: corrected_legacy_h12
+          NODE_BUDGET: '200000'
+          FRAMES_PER_PIECE: '24'
+          SAFETY_LOCK_STEPS: '5000'
+          PROGRESS_EVERY_LOCKS: '0'
+          TETRP_REF: 0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2
+        run: |
+          set -euo pipefail
+          node scripts/run-tetrp-reset-screen-pair.mjs tetrp-reference | tee h9-p1-pair-repair.jsonl
+          if grep -q '"type":"tetrp_reset_screen_failure"' h9-p1-pair-repair.jsonl; then
+            echo "repair pair still contains a harness failure" >&2
+            exit 1
+          fi
+          test "$(grep -c '"type":"tetrp_synchronous_match"' h9-p1-pair-repair.jsonl)" -eq 2
+
+      - name: Replace only the malformed original pair
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs=require('fs');
+          const path=require('path');
+          function walk(dir){
+            return fs.readdirSync(dir,{withFileTypes:true}).flatMap(e=>{
+              const p=path.join(dir,e.name);
+              return e.isDirectory()?walk(p):[p];
+            });
+          }
+          for(const file of walk('h9-coarse-results')){
+            if(!file.endsWith('.jsonl')) continue;
+            const kept=fs.readFileSync(file,'utf8').split(/\r?\n/).filter(Boolean).filter(line=>{
+              const r=JSON.parse(line);
+              const profile=r.screen_pair?.candidate_profile??r.candidate_profile;
+              const pair=r.screen_pair?.pair_seeds??r.pair_seeds;
+              return !(profile==='reset_h9_cavity_p1_h12' &&
+                Array.isArray(pair) && pair[0]===65206 && pair[1]===65207);
+            });
+            fs.writeFileSync(file,kept.length?kept.join('\n')+'\n':'');
+          }
+          fs.copyFileSync('h9-p1-pair-repair.jsonl','h9-coarse-results/h9-p1-pair-repair.jsonl');
+          NODE
+
+      - name: Summarize repaired coarse sweep
+        run: |
+          set -euo pipefail
+          mkdir -p summary
+          node scripts/summarize-h9-current-coarse-sweep.mjs             h9-coarse-results summary/h9-current-coarse-summary-repaired.json             | tee summary/h9-current-coarse-summary-repaired.log
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: h9-current-coarse-sweep-repaired
+          path: |
+            h9-p1-pair-repair.jsonl
+            summary/
+          if-no-files-found: error
+          retention-days: 30

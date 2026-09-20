@@ -1,0 +1,308 @@
+{
+  "experiment": "H9 current-stack local refinement",
+  "status": "completed_boundary_extension_required",
+  "decision_date": "2026-09-19",
+  "policy_source": "experiments/tetrp-strategy-lineage-reset-policy.json",
+  "parent_coarse_experiment": "experiments/h9-current-coarse-sweep.json",
+  "parent_repaired_run_id": 35443991705,
+  "family": "H9 cavity excavation",
+  "purpose": "Refine the only coarse-sweep positive region (-0.5/-0.25) with fresh asymmetric pairs. This stage selects at most one fixed finalist; it cannot promote H9.",
+  "incumbent_profile": "corrected_legacy_h12",
+  "fixed_stack": {
+    "tetrp_ref": "0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2",
+    "authority": "synchronous Tetrp TL with authority-validated reset-safe placement transport",
+    "node_budget_per_decision": 200000,
+    "frames_per_piece": 24,
+    "pps": 2.5,
+    "gravity": 0,
+    "h12": true,
+    "h13": false,
+    "result_rule": "KO only"
+  },
+  "grid": [
+    {
+      "value": -0.625,
+      "profile": "reset_h9_cavity_m0_625_h12"
+    },
+    {
+      "value": -0.5,
+      "profile": "reset_h9_cavity_m0_5_h12"
+    },
+    {
+      "value": -0.375,
+      "profile": "reset_h9_cavity_m0_375_h12"
+    },
+    {
+      "value": -0.25,
+      "profile": "reset_h9_cavity_m0_25_h12"
+    },
+    {
+      "value": -0.125,
+      "profile": "reset_h9_cavity_m0_125_h12"
+    }
+  ],
+  "grid_reason": [
+    "The repaired coarse sweep found the only positive-direction plateau at -0.5 and -0.25.",
+    "The refinement keeps both plateau anchors, inserts -0.375 between them, and samples one shoulder on each side (-0.625 and -0.125).",
+    "The range stays local rather than spending refinement budget on the clearly poor positive-sign region."
+  ],
+  "sampling": {
+    "paired_units_per_value": 40,
+    "games_per_pair": 2,
+    "games_per_value": 80,
+    "fresh_seed_pairs": [
+      [
+        65300,
+        65301
+      ],
+      [
+        65302,
+        65303
+      ],
+      [
+        65304,
+        65305
+      ],
+      [
+        65306,
+        65307
+      ],
+      [
+        65308,
+        65309
+      ],
+      [
+        65310,
+        65311
+      ],
+      [
+        65312,
+        65313
+      ],
+      [
+        65314,
+        65315
+      ],
+      [
+        65316,
+        65317
+      ],
+      [
+        65318,
+        65319
+      ],
+      [
+        65320,
+        65321
+      ],
+      [
+        65322,
+        65323
+      ],
+      [
+        65324,
+        65325
+      ],
+      [
+        65326,
+        65327
+      ],
+      [
+        65328,
+        65329
+      ],
+      [
+        65330,
+        65331
+      ],
+      [
+        65332,
+        65333
+      ],
+      [
+        65334,
+        65335
+      ],
+      [
+        65336,
+        65337
+      ],
+      [
+        65338,
+        65339
+      ],
+      [
+        65340,
+        65341
+      ],
+      [
+        65342,
+        65343
+      ],
+      [
+        65344,
+        65345
+      ],
+      [
+        65346,
+        65347
+      ],
+      [
+        65348,
+        65349
+      ],
+      [
+        65350,
+        65351
+      ],
+      [
+        65352,
+        65353
+      ],
+      [
+        65354,
+        65355
+      ],
+      [
+        65356,
+        65357
+      ],
+      [
+        65358,
+        65359
+      ],
+      [
+        65360,
+        65361
+      ],
+      [
+        65362,
+        65363
+      ],
+      [
+        65364,
+        65365
+      ],
+      [
+        65366,
+        65367
+      ],
+      [
+        65368,
+        65369
+      ],
+      [
+        65370,
+        65371
+      ],
+      [
+        65372,
+        65373
+      ],
+      [
+        65374,
+        65375
+      ],
+      [
+        65376,
+        65377
+      ],
+      [
+        65378,
+        65379
+      ]
+    ],
+    "common_random_numbers": "Every H9 refinement value uses the same 40 fresh asymmetric seed pairs.",
+    "pair_design": "Game A candidate gets seed X in slot0 and incumbent seed Y in slot1; Game B swaps profile assignment so candidate gets seed Y in slot1.",
+    "independence": "The 40 asymmetric pairs are the experimental units; 80 games are not 80 independent observations."
+  },
+  "integrity_gates": [
+    "Every value must have 40 complete asymmetric pairs / 80 scored games with no harness failures.",
+    "Each pair must contain candidate once in slot0 and once in slot1.",
+    "The one-lock placement-transport guard must remain enabled.",
+    "Any correctness failure blocks finalist selection until repaired; do not count a malformed game as a loss."
+  ],
+  "finalist_selection": {
+    "primary_metric": "net paired sweeps = candidate_sweeps - incumbent_sweeps",
+    "secondary_metric": "candidate KO wins out of 80",
+    "eligibility": "A value must have positive net paired sweeps and >40/80 candidate KO wins.",
+    "tie_breakers": [
+      "higher net paired sweeps",
+      "higher candidate KO wins",
+      "smaller absolute distance from -0.375 (the center of the coarse positive plateau)",
+      "smaller absolute H9 magnitude"
+    ],
+    "boundary_rule": "If the selected best value is -0.625 or -0.125, extend refinement outward on that side with fresh seeds before fixing a finalist.",
+    "no_positive_region": "If no value meets eligibility, pause H9 rather than force a finalist.",
+    "no_promotion": "Local refinement can select a finalist only. It cannot promote H9."
+  },
+  "next_if_finalist_selected": "Preregister one fixed H9 finalist against corrected_legacy_h12 for roughly 200 fresh asymmetric pairs / 400 games. Promotion requires that independent confirmation.",
+  "execution": {
+    "run_id": 35444191358,
+    "source_commit": "6df96ccbb2f0327031e5502b4587fd3b33c7e21e",
+    "conclusion": "success",
+    "all_complete": true,
+    "artifact_id": 10586937924
+  },
+  "outcome": {
+    "results": [
+      {
+        "value": -0.625,
+        "ko": "54-26",
+        "candidate_sweeps": 18,
+        "incumbent_sweeps": 4,
+        "split_pairs": 18,
+        "net_sweeps": 14,
+        "exact_two_sided_sign_p": 0.004343509674072266,
+        "eligible_for_finalist": true
+      },
+      {
+        "value": -0.5,
+        "ko": "45-35",
+        "candidate_sweeps": 13,
+        "incumbent_sweeps": 8,
+        "split_pairs": 19,
+        "net_sweeps": 5,
+        "exact_two_sided_sign_p": 0.38331031799316406,
+        "eligible_for_finalist": true
+      },
+      {
+        "value": -0.375,
+        "ko": "48-32",
+        "candidate_sweeps": 15,
+        "incumbent_sweeps": 7,
+        "split_pairs": 18,
+        "net_sweeps": 8,
+        "exact_two_sided_sign_p": 0.13380050659179688,
+        "eligible_for_finalist": true
+      },
+      {
+        "value": -0.25,
+        "ko": "40-40",
+        "candidate_sweeps": 11,
+        "incumbent_sweeps": 11,
+        "split_pairs": 18,
+        "net_sweeps": 0,
+        "exact_two_sided_sign_p": 1,
+        "eligible_for_finalist": false
+      },
+      {
+        "value": -0.125,
+        "ko": "35-45",
+        "candidate_sweeps": 9,
+        "incumbent_sweeps": 14,
+        "split_pairs": 17,
+        "net_sweeps": -5,
+        "exact_two_sided_sign_p": 0.4048728942871094,
+        "eligible_for_finalist": false
+      }
+    ],
+    "preregistered_selection": {
+      "action": "extend_boundary",
+      "best_observed_value": -0.625,
+      "reason": "The strongest eligible value was the outward refinement boundary, so the preregistered boundary rule requires fresh outward sampling before fixing a finalist."
+    },
+    "interpretation": "The local refinement strongly shifts the useful H9 region more negative than the coarse readout suggested. This stage has no promotion authority and does not itself select a final H9 value."
+  },
+  "next_experiment": "experiments/h9-current-boundary-extension.json"
+}

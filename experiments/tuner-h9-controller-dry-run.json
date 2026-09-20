@@ -1,0 +1,52 @@
+{
+  "schema": "tetrp-tuner-config/1",
+  "status": "controller_dry_run",
+  "evidence_role": "non_evidentiary_controller_dry_run",
+  "purpose": "Validate candidate-vector generation -> dynamic Actions matrix -> KO aggregation -> optimizer state update -> next-generation proposal. Results must not be used as H9 promotion/refinement evidence.",
+  "algorithm": "diagonal_es_v1",
+  "algorithm_note": "A dependency-free diagonal evolution-strategy controller is used to validate orchestration. It is deliberately pluggable; CMA-ES or another optimizer may replace the ask/tell policy later without changing the match-worker contract.",
+  "random_seed": 20260919,
+  "population": 4,
+  "elite_fraction": 0.5,
+  "pairs_per_candidate": 3,
+  "pair_seed_base": 71000,
+  "pair_seed_stride": 20,
+  "generations_to_evaluate": 2,
+  "next_generation_proposal_after_run": true,
+  "node_budget_per_decision": 50000,
+  "frames_per_piece": 24,
+  "incumbent_profile": "corrected_legacy_h12",
+  "tetrp_ref": "0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2",
+  "parameters": {
+    "h9_cavity_excavation": {
+      "min": -0.625,
+      "max": -0.125,
+      "initial_mean": -0.375,
+      "initial_sigma": 0.125,
+      "min_sigma": 0.02,
+      "max_sigma": 0.25
+    }
+  },
+  "isolation": [
+    "Seeds 71000+ are reserved for this controller plumbing dry-run and are separate from H9 preregistered research seeds.",
+    "The 50k budget is chosen to keep the dry-run cheap; it is not the 200k research-strength regime.",
+    "No dry-run win/loss result may select, promote, reject, or rank H9 research values.",
+    "Only controller correctness, artifact flow, deterministic candidate generation, and next-generation state transitions are in scope."
+  ],
+  "future_parameter_keys": [
+    "pending_safety",
+    "useful_attack_reward",
+    "cancellation_reward",
+    "h3_b2b_charge_value",
+    "h3_surge_bank_value",
+    "h6_base_holes_scale",
+    "h6_base_coveredness_scale",
+    "h9_cavity_excavation",
+    "row_transitions_scale",
+    "height_scale",
+    "tetris_well_depth_scale",
+    "combo_attack_scale",
+    "freestyle_exploitation",
+    "freestyle_speculated_exploitation"
+  ]
+}

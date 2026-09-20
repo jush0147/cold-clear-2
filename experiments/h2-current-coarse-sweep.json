@@ -1,0 +1,421 @@
+{
+  "experiment": "H2 current-stack coarse parameter sweep",
+  "status": "completed_diagnostic_base0_only",
+  "decision_date": "2026-09-20",
+  "policy_source": "experiments/tetrp-strategy-lineage-reset-policy.json",
+  "historical_source": "experiments/h2-useful-attack.json",
+  "family": "H2 useful outgoing attack / cancellation",
+  "purpose": "Re-search H2 under the corrected Tetrp authority and 200k review regime. Treat the historical attack=1,cancel=0 result as a prior, not a carried-forward winner.",
+  "incumbent_profile": "corrected_legacy_h12",
+  "fixed_stack": {
+    "tetrp_ref": "0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2",
+    "authority": "synchronous Tetrp TL with authority-validated reset-safe placement transport",
+    "node_budget_per_decision": 200000,
+    "frames_per_piece": 24,
+    "pps": 2.5,
+    "gravity": 0,
+    "h12": true,
+    "h13": false,
+    "result_rule": "KO only"
+  },
+  "grid": {
+    "useful_attack_reward": [
+      0,
+      0.5,
+      1,
+      1.5
+    ],
+    "cancellation_reward": [
+      0,
+      0.5,
+      1
+    ],
+    "candidates": [
+      {
+        "id": "a0_c0",
+        "useful_attack_reward": 0,
+        "cancellation_reward": 0,
+        "profile": "tuner:{\"useful_attack_reward\":0,\"cancellation_reward\":0}"
+      },
+      {
+        "id": "a0_c0_5",
+        "useful_attack_reward": 0,
+        "cancellation_reward": 0.5,
+        "profile": "tuner:{\"useful_attack_reward\":0,\"cancellation_reward\":0.5}"
+      },
+      {
+        "id": "a0_c1",
+        "useful_attack_reward": 0,
+        "cancellation_reward": 1,
+        "profile": "tuner:{\"useful_attack_reward\":0,\"cancellation_reward\":1}"
+      },
+      {
+        "id": "a0_5_c0",
+        "useful_attack_reward": 0.5,
+        "cancellation_reward": 0,
+        "profile": "tuner:{\"useful_attack_reward\":0.5,\"cancellation_reward\":0}"
+      },
+      {
+        "id": "a0_5_c0_5",
+        "useful_attack_reward": 0.5,
+        "cancellation_reward": 0.5,
+        "profile": "tuner:{\"useful_attack_reward\":0.5,\"cancellation_reward\":0.5}"
+      },
+      {
+        "id": "a0_5_c1",
+        "useful_attack_reward": 0.5,
+        "cancellation_reward": 1,
+        "profile": "tuner:{\"useful_attack_reward\":0.5,\"cancellation_reward\":1}"
+      },
+      {
+        "id": "a1_c0",
+        "useful_attack_reward": 1,
+        "cancellation_reward": 0,
+        "profile": "tuner:{\"useful_attack_reward\":1,\"cancellation_reward\":0}"
+      },
+      {
+        "id": "a1_c0_5",
+        "useful_attack_reward": 1,
+        "cancellation_reward": 0.5,
+        "profile": "tuner:{\"useful_attack_reward\":1,\"cancellation_reward\":0.5}"
+      },
+      {
+        "id": "a1_c1",
+        "useful_attack_reward": 1,
+        "cancellation_reward": 1,
+        "profile": "tuner:{\"useful_attack_reward\":1,\"cancellation_reward\":1}"
+      },
+      {
+        "id": "a1_5_c0",
+        "useful_attack_reward": 1.5,
+        "cancellation_reward": 0,
+        "profile": "tuner:{\"useful_attack_reward\":1.5,\"cancellation_reward\":0}"
+      },
+      {
+        "id": "a1_5_c0_5",
+        "useful_attack_reward": 1.5,
+        "cancellation_reward": 0.5,
+        "profile": "tuner:{\"useful_attack_reward\":1.5,\"cancellation_reward\":0.5}"
+      },
+      {
+        "id": "a1_5_c1",
+        "useful_attack_reward": 1.5,
+        "cancellation_reward": 1,
+        "profile": "tuner:{\"useful_attack_reward\":1.5,\"cancellation_reward\":1}"
+      }
+    ]
+  },
+  "grid_reason": [
+    "The neutral (0,0) point is included as a deterministic A/A calibration against corrected_legacy_h12.",
+    "The historical winner (1,0) is included, but the search also covers weaker/stronger outgoing-attack reward and cancellation-only/joint variants.",
+    "The coarse range uses attack 0..1.5 and cancellation 0..1.0. If a promising point lands on an outer boundary, the next local study may extend that boundary rather than treating it as an optimum.",
+    "Negative H2 rewards are omitted because the feature semantics are explicitly to value useful outgoing attack and visible cancellation; negative coefficients reward the opposite behavior rather than representing a plausible alternative interpretation."
+  ],
+  "sampling": {
+    "paired_units_per_candidate": 20,
+    "games_per_pair": 2,
+    "games_per_candidate": 40,
+    "total_candidates": 12,
+    "total_games": 480,
+    "fresh_seed_pairs": [
+      [
+        65900,
+        65901
+      ],
+      [
+        65902,
+        65903
+      ],
+      [
+        65904,
+        65905
+      ],
+      [
+        65906,
+        65907
+      ],
+      [
+        65908,
+        65909
+      ],
+      [
+        65910,
+        65911
+      ],
+      [
+        65912,
+        65913
+      ],
+      [
+        65914,
+        65915
+      ],
+      [
+        65916,
+        65917
+      ],
+      [
+        65918,
+        65919
+      ],
+      [
+        65920,
+        65921
+      ],
+      [
+        65922,
+        65923
+      ],
+      [
+        65924,
+        65925
+      ],
+      [
+        65926,
+        65927
+      ],
+      [
+        65928,
+        65929
+      ],
+      [
+        65930,
+        65931
+      ],
+      [
+        65932,
+        65933
+      ],
+      [
+        65934,
+        65935
+      ],
+      [
+        65936,
+        65937
+      ],
+      [
+        65938,
+        65939
+      ]
+    ],
+    "seed_range": [
+      65900,
+      65939
+    ],
+    "common_random_numbers": "Every H2 coarse candidate uses the same 20 fresh asymmetric seed pairs.",
+    "pair_design": "Game A candidate gets seed X in slot0 and incumbent seed Y in slot1; Game B swaps profile assignment so candidate gets seed Y in slot1.",
+    "independence": "The 20 asymmetric pairs are the experimental units; 40 games are not 40 independent observations."
+  },
+  "integrity_gates": [
+    "Every candidate must have 20 complete asymmetric pairs / 40 scored games with no harness failures.",
+    "Each pair must contain the candidate once in slot0 and once in slot1.",
+    "The neutral tuner override (attack=0,cancel=0) must calibrate exactly: 20-20 KO, zero sweeps for either profile, and 20 split pairs.",
+    "The one-lock placement-transport guard must remain enabled.",
+    "Any correctness or calibration failure blocks interpretation; malformed games are never counted as losses."
+  ],
+  "analysis_plan": {
+    "primary_metric": "net paired sweeps = candidate_sweeps - incumbent_sweeps",
+    "secondary_metric": "candidate KO wins out of 40",
+    "diagnostics": [
+      "raw APP",
+      "sent APP"
+    ],
+    "promising_signal": "Positive net paired sweeps and >20/40 candidate KO wins are a coarse directional signal only.",
+    "boundary_handling": "A leading attack=1.5 or cancellation=1.0 point is a boundary signal, not an optimum.",
+    "decision_after_run": "Stop after producing the machine-readable summary. The next local-refinement grid is chosen by research judgment after inspecting the full pattern; do not auto-promote or auto-launch refinement."
+  },
+  "no_promotion": "This coarse sweep has no promotion authority. Only a later fixed finalist may receive large fresh confirmation.",
+  "execution": {
+    "run_id": 35484168954,
+    "source_commit": "87a97a327f1a2016b9914b99faca9990f8379faa",
+    "conclusion": "success",
+    "all_complete": true,
+    "calibration_passed": true,
+    "summary_artifact_id": 10599285524
+  },
+  "outcome": {
+    "results": [
+      {
+        "attack": 0,
+        "cancel": 0,
+        "ko": [
+          20,
+          20
+        ],
+        "sweeps": [
+          0,
+          0
+        ],
+        "splits": 20,
+        "net_sweeps": 0
+      },
+      {
+        "attack": 0,
+        "cancel": 0.5,
+        "ko": [
+          18,
+          22
+        ],
+        "sweeps": [
+          5,
+          7
+        ],
+        "splits": 8,
+        "net_sweeps": -2
+      },
+      {
+        "attack": 0,
+        "cancel": 1,
+        "ko": [
+          20,
+          20
+        ],
+        "sweeps": [
+          6,
+          6
+        ],
+        "splits": 8,
+        "net_sweeps": 0
+      },
+      {
+        "attack": 0.5,
+        "cancel": 0,
+        "ko": [
+          30,
+          10
+        ],
+        "sweeps": [
+          11,
+          1
+        ],
+        "splits": 8,
+        "net_sweeps": 10
+      },
+      {
+        "attack": 0.5,
+        "cancel": 0.5,
+        "ko": [
+          24,
+          16
+        ],
+        "sweeps": [
+          8,
+          4
+        ],
+        "splits": 8,
+        "net_sweeps": 4
+      },
+      {
+        "attack": 0.5,
+        "cancel": 1,
+        "ko": [
+          22,
+          18
+        ],
+        "sweeps": [
+          6,
+          4
+        ],
+        "splits": 10,
+        "net_sweeps": 2
+      },
+      {
+        "attack": 1,
+        "cancel": 0,
+        "ko": [
+          32,
+          8
+        ],
+        "sweeps": [
+          14,
+          2
+        ],
+        "splits": 4,
+        "net_sweeps": 12
+      },
+      {
+        "attack": 1,
+        "cancel": 0.5,
+        "ko": [
+          28,
+          12
+        ],
+        "sweeps": [
+          10,
+          2
+        ],
+        "splits": 8,
+        "net_sweeps": 8
+      },
+      {
+        "attack": 1,
+        "cancel": 1,
+        "ko": [
+          27,
+          13
+        ],
+        "sweeps": [
+          8,
+          1
+        ],
+        "splits": 11,
+        "net_sweeps": 7
+      },
+      {
+        "attack": 1.5,
+        "cancel": 0,
+        "ko": [
+          26,
+          14
+        ],
+        "sweeps": [
+          9,
+          3
+        ],
+        "splits": 8,
+        "net_sweeps": 6
+      },
+      {
+        "attack": 1.5,
+        "cancel": 0.5,
+        "ko": [
+          32,
+          8
+        ],
+        "sweeps": [
+          14,
+          2
+        ],
+        "splits": 4,
+        "net_sweeps": 12
+      },
+      {
+        "attack": 1.5,
+        "cancel": 1,
+        "ko": [
+          26,
+          14
+        ],
+        "sweeps": [
+          9,
+          3
+        ],
+        "splits": 8,
+        "net_sweeps": 6
+      }
+    ],
+    "interpretation": [
+      "Useful outgoing attack has a strong current-stack signal: every attack>=0.5 point beat the neutral incumbent on game-level KO, with the strongest coarse paired results at (1.0,0.0) and (1.5,0.5).",
+      "Cancellation reward by itself did not help. At attack=0.5 it weakened monotonically as cancellation reward increased, and at attack=1.0 it also reduced the coarse net-sweep margin relative to cancellation=0.",
+      "The (1.5,0.5) point nevertheless matched the best coarse result and sits on the useful-attack upper boundary. That creates a plausible interaction/boundary hypothesis rather than evidence that cancellation is independently useful.",
+      "Local refinement should therefore discriminate the historical/current attack-only ridge around 1.0-1.5 from the attack/cancellation interaction at 1.5, while extending the attack boundary only along cancellation=0.5."
+    ]
+  },
+  "next_action": "After rule-parity repair, rerun H2 family research with fresh seeds under the explicit real-TL rule contract.",
+  "validity_scope": {
+    "discovered_after_run": "The run used the authority default b2bcharge_base=0. Real TL replay evidence used b2bcharge_base=3.",
+    "interpretation": "Retain the result as directional H2 evidence for the base=0 context only. It cannot select or promote a real-TL parameter.",
+    "rerun_required": true
+  }
+}

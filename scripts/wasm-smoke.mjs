@@ -124,7 +124,25 @@ assert.equal(capabilities.config_profile, "h9+h12+h13-interactive");
 assert.equal(capabilities.hard_node_budget, true);
 assert.equal(capabilities.deterministic_hard_node_search, true);
 assert.equal(capabilities.persistent_dag, true);
+assert.equal(capabilities.public_rule_contract, true);
+assert.equal(capabilities.root_hold_lock, true);
+assert.equal(capabilities.clutch_spawn_rescue, true);
 same.free();
+
+const lockedRoot = new WasmBot();
+lockedRoot.start_tetrp(
+  JSON.stringify({ ...reviewInitial(), hold: "Z" }),
+  JSON.stringify({ b2bcharge_base: 3 }),
+  true,
+);
+assert.equal(lockedRoot.think_nodes(5000), 5000n);
+const lockedSuggestions = JSON.parse(lockedRoot.suggest_json());
+assert.ok(lockedSuggestions.length > 0);
+assert.ok(lockedSuggestions.every(m => m.location.type === "I" || m.location.type === "O"),
+  "locked-root suggestions must not play the held Z piece");
+assert.ok(lockedSuggestions.every(m => m.location.type !== "Z"),
+  "root Hold lock must suppress the held-piece branch");
+lockedRoot.free();
 
 const pending = JSON.parse(preview_garbage_one_to_one(JSON.stringify([{ lines: 8, active: false }]), 3, 0, 8));
 assert.equal(pending.cancelled, 3);
@@ -150,6 +168,8 @@ console.log(JSON.stringify({
     "empty-hold",
     "first-hold-refill-two",
     "same-piece-explicit-hold",
+    "public-rule-contract-base3",
+    "root-hold-lock",
     "invalid-input-no-mutation",
     "no-hidden-preview",
     "normal-garbage-queue"

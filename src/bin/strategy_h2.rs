@@ -226,7 +226,7 @@ fn duel(seed: u64, swapped: bool, s: Settings) -> Result<Value, String> {
             let mut outgoing = vec![];
             for attack in tetrio::attack(&info).packets() {
                 let pending = p.incoming.iter().map(|p| p.lines).sum();
-                let (cancelled, sent) = cancel_plan(attack, pending, p.pieces, p.sent);
+                let (cancelled, sent) = cancel_plan(attack, pending, p.pieces, p.sent, 14);
                 consume(&mut p.incoming, cancelled);
                 p.sent = p.sent.checked_add(sent).ok_or("sent counter overflow")?;
                 if sent != 0 {
@@ -395,7 +395,7 @@ mod tests {
                 let mut f = Forecast::snapshot(&incoming, pieces, 2, 4).unwrap();
                 let mut board = Board::default();
                 f.resolve(&mut board, &[attack], 0);
-                let (cancelled, sent) = cancel_plan(attack, 11, pieces, 2);
+                let (cancelled, sent) = cancel_plan(attack, 11, pieces, 2, 14);
                 let remain = 11 - cancelled;
                 let rise = remain.min(8);
                 assert_eq!(f.remaining(), remain - rise);

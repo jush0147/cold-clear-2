@@ -1,6 +1,6 @@
 {
   "experiment": "H9 current-stack coarse parameter sweep",
-  "status": "preregistered",
+  "status": "completed_repaired",
   "decision_date": "2026-09-19",
   "policy_source": "experiments/tetrp-strategy-lineage-reset-policy.json",
   "family": "H9 cavity excavation",
@@ -166,5 +166,131 @@
     "no_positive_region": "If no nonzero value has positive net paired sweeps and >20/40 wins, pause H9 rather than force a finalist.",
     "no_promotion": "No coarse-sweep outcome can promote H9."
   },
-  "next_if_promising": "Preregister a fresh local-refinement grid around the selected region, targeting about 40 fresh pairs / 80 games per refined value. Only after fresh refinement may one fixed finalist earn a roughly 200-pair / 400-game promotion confirmation."
+  "next_if_promising": "Executed by experiments/h9-current-local-refinement.json. Local refinement remains selection evidence only; promotion still requires a separately preregistered ~200-pair / 400-game fixed-finalist confirmation.",
+  "execution": {
+    "original_run_id": 35439517509,
+    "original_source_commit": "e13ec57e7f3795ea0c4dd7e256346d533fcb36e3",
+    "original_conclusion": "failure_at_summary_due_to_one_harness_failure",
+    "malformed_pair": {
+      "value": 1,
+      "profile": "reset_h9_cavity_p1_h12",
+      "pair_seeds": [
+        65206,
+        65207
+      ],
+      "game_in_pair": 0,
+      "original_error": "visible 7-bag window did not advance by the declared draw count"
+    },
+    "root_cause": {
+      "component": "Tetrp placement transport scheduler",
+      "explanation": "A reset-heavy held-Z path contained 17 movement/rotation reset actions. The old synthetic scheduler spaced those taps across source time, allowing Tetrp's 15-reset exhaustion rule to auto-lock the Z before the scheduled hard drop. The later hard drop then locked the following I, advancing two pieces while the adapter correctly expected one draw.",
+      "not_a_sevenbag_bug": true,
+      "not_a_strategy_failure": true
+    },
+    "repair": {
+      "design": "Preserve ordinary transport when an isolated Tetrp authority clone verifies exactly one lock at the scheduled lock instant; use compact equal-subframe transport only when ordinary synthetic spacing would early-lock or multi-lock. Guard the committed match against unexpected piece-count changes.",
+      "direct_pair_verification_run_id": 35443849547,
+      "authority_correctness_run_id": 35443827333,
+      "synchronous_runtime_smoke_run_id": 35443812941,
+      "repair_merge_run_id": 35443991705,
+      "repair_workflow_commit": "ef1761173413547ad985910ee7299886286b9f9b",
+      "repaired_artifact_id": 10585081055,
+      "data_policy": "Retain the 358 unaffected original games from the original run, remove both rows for the malformed asymmetric pair, and rerun that full two-game pair with the corrected JS authority transport while reusing the original run's exact Node-WASM strategy artifact."
+    }
+  },
+  "outcome": {
+    "all_complete": true,
+    "calibration_passed": true,
+    "results": [
+      {
+        "value": -1.5,
+        "ko": "20-20",
+        "candidate_sweeps": 5,
+        "incumbent_sweeps": 5,
+        "split_pairs": 10,
+        "net_sweeps": 0,
+        "direction": "mixed_or_flat"
+      },
+      {
+        "value": -1,
+        "ko": "19-21",
+        "candidate_sweeps": 3,
+        "incumbent_sweeps": 4,
+        "split_pairs": 13,
+        "net_sweeps": -1,
+        "direction": "negative"
+      },
+      {
+        "value": -0.5,
+        "ko": "22-18",
+        "candidate_sweeps": 4,
+        "incumbent_sweeps": 2,
+        "split_pairs": 14,
+        "net_sweeps": 2,
+        "direction": "positive"
+      },
+      {
+        "value": -0.25,
+        "ko": "22-18",
+        "candidate_sweeps": 4,
+        "incumbent_sweeps": 2,
+        "split_pairs": 14,
+        "net_sweeps": 2,
+        "direction": "positive"
+      },
+      {
+        "value": 0,
+        "ko": "20-20",
+        "candidate_sweeps": 0,
+        "incumbent_sweeps": 0,
+        "split_pairs": 20,
+        "net_sweeps": 0,
+        "direction": "calibration_split"
+      },
+      {
+        "value": 0.25,
+        "ko": "13-27",
+        "candidate_sweeps": 4,
+        "incumbent_sweeps": 11,
+        "split_pairs": 5,
+        "net_sweeps": -7,
+        "direction": "negative"
+      },
+      {
+        "value": 0.5,
+        "ko": "2-38",
+        "candidate_sweeps": 0,
+        "incumbent_sweeps": 18,
+        "split_pairs": 2,
+        "net_sweeps": -18,
+        "direction": "negative"
+      },
+      {
+        "value": 1,
+        "ko": "0-40",
+        "candidate_sweeps": 0,
+        "incumbent_sweeps": 20,
+        "split_pairs": 0,
+        "net_sweeps": -20,
+        "direction": "negative"
+      },
+      {
+        "value": 1.5,
+        "ko": "0-40",
+        "candidate_sweeps": 0,
+        "incumbent_sweeps": 20,
+        "split_pairs": 0,
+        "net_sweeps": -20,
+        "direction": "negative"
+      }
+    ],
+    "coarse_readout": {
+      "directionally_promising_values": [
+        -0.5,
+        -0.25
+      ],
+      "plateau_interpretation": "The only preregistered positive-direction values are -0.5 and -0.25. Coarse evidence is region-discovery only and has no promotion authority.",
+      "next_step": "Fresh local refinement around the -0.5/-0.25 plateau under the current corrected authority transport."
+    }
+  }
 }

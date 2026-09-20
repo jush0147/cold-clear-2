@@ -1,0 +1,154 @@
+name: H9 current local refinement
+
+on:
+  push:
+    branches: [tetrp-authority]
+    paths:
+      - '.github/workflows/h9-current-local-refinement.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: h9-current-local-refinement-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: jush0147/tetrp
+          ref: 0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2
+          path: tetrp-reference
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify placement transport
+        run: node scripts/test-tetrp-placement-scheduler.mjs tetrp-reference
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: h9-current-local-refinement
+      - name: Run release library regressions
+        run: cargo test --release --lib
+      - name: Install wasm-pack
+        run: cargo install wasm-pack --locked
+      - name: Build Node WASM
+        run: wasm-pack build --release --target nodejs --out-dir pkg-node
+      - uses: actions/upload-artifact@v4
+        with:
+          name: h9-local-node-wasm
+          path: pkg-node/
+          retention-days: 1
+
+  batch:
+    needs: build
+    runs-on: ubuntu-22.04
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      max-parallel: 10
+      matrix:
+        include:
+          - { id: m0_625, profile: reset_h9_cavity_m0_625_h12, value: '-0.625', pair_start: 0, pair_end: 9, block: 'a' }
+          - { id: m0_625, profile: reset_h9_cavity_m0_625_h12, value: '-0.625', pair_start: 10, pair_end: 19, block: 'b' }
+          - { id: m0_625, profile: reset_h9_cavity_m0_625_h12, value: '-0.625', pair_start: 20, pair_end: 29, block: 'c' }
+          - { id: m0_625, profile: reset_h9_cavity_m0_625_h12, value: '-0.625', pair_start: 30, pair_end: 39, block: 'd' }
+          - { id: m0_5, profile: reset_h9_cavity_m0_5_h12, value: '-0.5', pair_start: 0, pair_end: 9, block: 'a' }
+          - { id: m0_5, profile: reset_h9_cavity_m0_5_h12, value: '-0.5', pair_start: 10, pair_end: 19, block: 'b' }
+          - { id: m0_5, profile: reset_h9_cavity_m0_5_h12, value: '-0.5', pair_start: 20, pair_end: 29, block: 'c' }
+          - { id: m0_5, profile: reset_h9_cavity_m0_5_h12, value: '-0.5', pair_start: 30, pair_end: 39, block: 'd' }
+          - { id: m0_375, profile: reset_h9_cavity_m0_375_h12, value: '-0.375', pair_start: 0, pair_end: 9, block: 'a' }
+          - { id: m0_375, profile: reset_h9_cavity_m0_375_h12, value: '-0.375', pair_start: 10, pair_end: 19, block: 'b' }
+          - { id: m0_375, profile: reset_h9_cavity_m0_375_h12, value: '-0.375', pair_start: 20, pair_end: 29, block: 'c' }
+          - { id: m0_375, profile: reset_h9_cavity_m0_375_h12, value: '-0.375', pair_start: 30, pair_end: 39, block: 'd' }
+          - { id: m0_25, profile: reset_h9_cavity_m0_25_h12, value: '-0.25', pair_start: 0, pair_end: 9, block: 'a' }
+          - { id: m0_25, profile: reset_h9_cavity_m0_25_h12, value: '-0.25', pair_start: 10, pair_end: 19, block: 'b' }
+          - { id: m0_25, profile: reset_h9_cavity_m0_25_h12, value: '-0.25', pair_start: 20, pair_end: 29, block: 'c' }
+          - { id: m0_25, profile: reset_h9_cavity_m0_25_h12, value: '-0.25', pair_start: 30, pair_end: 39, block: 'd' }
+          - { id: m0_125, profile: reset_h9_cavity_m0_125_h12, value: '-0.125', pair_start: 0, pair_end: 9, block: 'a' }
+          - { id: m0_125, profile: reset_h9_cavity_m0_125_h12, value: '-0.125', pair_start: 10, pair_end: 19, block: 'b' }
+          - { id: m0_125, profile: reset_h9_cavity_m0_125_h12, value: '-0.125', pair_start: 20, pair_end: 29, block: 'c' }
+          - { id: m0_125, profile: reset_h9_cavity_m0_125_h12, value: '-0.125', pair_start: 30, pair_end: 39, block: 'd' }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: jush0147/tetrp
+          ref: 0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2
+          path: tetrp-reference
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@v4
+        with:
+          name: h9-local-node-wasm
+          path: pkg-node
+      - name: Run H9 local-refinement block
+        env:
+          NODE_BUDGET: '200000'
+          FRAMES_PER_PIECE: '24'
+          TETRP_REF: 0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2
+          INCUMBENT_PROFILE: corrected_legacy_h12
+          CANDIDATE_PROFILE: ${{ matrix.profile }}
+          SAFETY_LOCK_STEPS: '5000'
+          PROGRESS_EVERY_LOCKS: '250'
+        run: |
+          set -euo pipefail
+          mkdir -p results
+          out="results/h9-local-${{ matrix.id }}-${{ matrix.block }}.jsonl"
+          : > "$out"
+          for pair in $(seq ${{ matrix.pair_start }} ${{ matrix.pair_end }}); do
+            a=$((65300 + pair * 2))
+            b=$((a + 1))
+            echo "h9=${{ matrix.value }} pair=$pair seeds=$a,$b" >&2
+            SEED_A="$a" SEED_B="$b" \
+              node scripts/run-tetrp-reset-screen-pair.mjs tetrp-reference \
+              | tee -a "$out"
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: h9-local-${{ matrix.id }}-${{ matrix.block }}
+          path: results/
+          if-no-files-found: error
+          retention-days: 14
+
+  summarize:
+    needs: [batch]
+    if: always()
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: h9-local-*
+          path: h9-local-results
+          merge-multiple: true
+      - name: Summarize H9 local refinement
+        run: |
+          set -o pipefail
+          mkdir -p summary
+          node scripts/summarize-h9-current-local-refinement.mjs \
+            h9-local-results summary/h9-current-local-refinement-summary.json \
+            | tee summary/h9-current-local-refinement-summary.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: h9-current-local-refinement-summary
+          path: summary/
+          if-no-files-found: error
+          retention-days: 30

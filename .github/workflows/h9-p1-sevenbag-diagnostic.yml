@@ -1,0 +1,62 @@
+name: H9 p1 SevenBag diagnostic
+
+on:
+  push:
+    branches: [tetrp-authority]
+    paths:
+      - '.github/workflows/h9-p1-sevenbag-diagnostic.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: jush0147/tetrp
+          ref: 0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2
+          path: tetrp-reference
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - name: Install wasm-pack
+        run: cargo install wasm-pack --locked
+      - name: Build Node WASM
+        run: wasm-pack build --release --target nodejs --out-dir pkg-node
+      - name: Verify repaired H9 +1 pair
+        env:
+          SEED_A: '65206'
+          SEED_B: '65207'
+          CANDIDATE_PROFILE: reset_h9_cavity_p1_h12
+          INCUMBENT_PROFILE: corrected_legacy_h12
+          NODE_BUDGET: '200000'
+          FRAMES_PER_PIECE: '24'
+          SAFETY_LOCK_STEPS: '5000'
+          PROGRESS_EVERY_LOCKS: '0'
+          TETRP_REF: 0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2
+        run: |
+          set -euo pipefail
+          node scripts/run-tetrp-reset-screen-pair.mjs tetrp-reference | tee h9-p1-sevenbag-diagnostic.jsonl
+          if grep -q '"type":"tetrp_reset_screen_failure"' h9-p1-sevenbag-diagnostic.jsonl; then
+            echo "unexpected match-harness failure" >&2
+            exit 1
+          fi
+          test "$(grep -c '"type":"tetrp_synchronous_match"' h9-p1-sevenbag-diagnostic.jsonl)" -eq 2
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: h9-p1-sevenbag-diagnostic
+          path: h9-p1-sevenbag-diagnostic.jsonl
+          if-no-files-found: error
+          retention-days: 14
+
+# diagnostic revision 6

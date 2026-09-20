@@ -322,6 +322,7 @@ fn round(seed: u64, swapped: bool, nodes: u64) -> Result<RoundResult, String> {
                     pending,
                     p.totals.pieces as u32,
                     p.totals.sent as u32,
+                    14,
                 );
                 p.totals.cancelled += u64::from(cancelled);
                 consume(&mut p.incoming, cancelled);

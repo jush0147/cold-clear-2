@@ -71,7 +71,7 @@ impl Mode for Freestyle {
             {
                 puffin::profile_scope!("movegen");
                 for piece in next_possibilities | state.reserve {
-                    moves[piece] = find_moves_with_clutch(&state.board, piece, state.combo > 0);
+                    moves[piece] = find_moves_with_clutch(&state.board, piece, state.rules.clutch && state.combo > 0);
                 }
             }
 
@@ -80,11 +80,13 @@ impl Mode for Freestyle {
             {
                 puffin::profile_scope!("eval");
                 for next in next_possibilities {
-                    let moves = moves[next].iter().chain(if next == state.reserve {
-                        [].iter()
-                    } else {
-                        moves[state.reserve].iter()
-                    });
+                    let reserve_moves: &[(Placement,u32)] =
+                        if next == state.reserve || options.root_hold_locked && node.depth() == 1 {
+                            &[]
+                        } else {
+                            &moves[state.reserve]
+                        };
+                    let moves = moves[next].iter().chain(reserve_moves.iter());
                     for &(mv, sd_distance) in moves {
                         if new_stats.nodes == budget {
                             // Charge evaluated nodes, but never publish a partially
@@ -256,7 +258,7 @@ fn evaluate(
         // CC2 reward remains as shaping. The latter encodes useful planning
         // preferences such as avoiding inefficient normal clears that raw
         // immediate attack alone cannot see through a short search horizon.
-        let attack = tetrio::attack(info);
+        let attack = tetrio::attack_with_rules(info, state.rules);
         reward += weights.attack_reward * attack.total as f32;
         reward += weights.legacy_shape_value * legacy_shape;
 
@@ -273,7 +275,7 @@ fn evaluate(
     // incumbent keeps the complete legacy shaping plus H1. Candidate changes
     // only these two coefficients. With a forecast enabled, a line clear cannot
     // raise garbage, so queue shrinkage on that transition is cancellation.
-    let raw_attack = tetrio::attack(info).total;
+    let raw_attack = tetrio::attack_with_rules(info, state.rules).total;
     let (useful_outgoing, cancelled) = useful_attack_delta(
         state.forecast.enabled,
         info.lines_cleared,
@@ -290,7 +292,7 @@ fn evaluate(
     // already rewards Surge when it is actually released and sent, so release
     // attack is deliberately not rewarded a second time here. Legacy CC2
     // already rewards merely having B2B, therefore charge starts at count x1.
-    let (charge_progress, surge_bank) = h3_inventory(state.back_to_back, state.b2b_count);
+    let (charge_progress, surge_bank) = h3_inventory(state.back_to_back, state.b2b_count, state.rules);
     eval += weights.h3_b2b_charge_value * charge_progress as f32;
     eval += weights.h3_surge_bank_value * surge_bank as f32;
 
@@ -462,12 +464,12 @@ fn cavity_excavation_cost(board: &Board) -> u32 {
     total
 }
 
-fn h3_inventory(back_to_back: bool, b2b_count: u16) -> (u32, u32) {
-    if !back_to_back {
+fn h3_inventory(back_to_back: bool, b2b_count: u16, rules: TetrioRules) -> (u32, u32) {
+    if !back_to_back || !rules.b2b_charging {
         return (0, 0);
     }
     let count = b2b_count as u32;
-    (count.min(4), tetrio::surge_size(count))
+    (count.min(rules.b2b_charge_at), tetrio::surge_size_with_rules(count, rules))
 }
 
 fn useful_attack_delta(
@@ -517,12 +519,12 @@ mod h2_tests {
 
     #[test]
     fn h3_values_only_live_charge_and_banked_surge() {
-        assert_eq!(h3_inventory(false, 12), (0, 0));
-        assert_eq!(h3_inventory(true, 0), (0, 0));
-        assert_eq!(h3_inventory(true, 1), (1, 0));
-        assert_eq!(h3_inventory(true, 3), (3, 0));
-        assert_eq!(h3_inventory(true, 4), (4, 1));
-        assert_eq!(h3_inventory(true, 9), (4, 6));
+        assert_eq!(h3_inventory(false, 12, crate::data::TetrioRules::default()), (0, 0));
+        assert_eq!(h3_inventory(true, 0, crate::data::TetrioRules::default()), (0, 0));
+        assert_eq!(h3_inventory(true, 1, crate::data::TetrioRules::default()), (1, 0));
+        assert_eq!(h3_inventory(true, 3, crate::data::TetrioRules::default()), (3, 0));
+        assert_eq!(h3_inventory(true, 4, crate::data::TetrioRules::default()), (4, 1));
+        assert_eq!(h3_inventory(true, 9, crate::data::TetrioRules::default()), (4, 6));
     }
 
     #[test]

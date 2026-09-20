@@ -7,117 +7,123 @@ on:
 
 permissions:
   contents: read
-
 concurrency:
   group: kiwi-v1-${{ github.ref }}
   cancel-in-progress: true
+defaults:
+  run:
+    shell: bash
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
+    runs-on: ubuntu-22.04
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/checkout@v4
         with:
           repository: jush0147/tetrp
           ref: 0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2
           path: tetrp-reference
           persist-credentials: false
-
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-
-      - name: Verify Tetrp placement transport
-        run: node scripts/test-tetrp-placement-scheduler.mjs tetrp-reference
-
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-unknown-unknown
-
-      - name: Native regression tests
-        run: cargo test --lib --bins --tests
-
-      - name: Check wasm target
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: kiwi-snapshot-v2
+      - name: Native regressions including new snapshot contract tests
+        run: cargo test --release --lib --bins --tests 2>&1 | tee kiwi-native-tests.log
+      - name: Check WASM target
         run: cargo check --target wasm32-unknown-unknown --lib
-
       - name: Install wasm-pack
-        run: cargo install wasm-pack --locked
-
-      - name: Build Kiwi browser package
-        run: wasm-pack build --release --target web --out-dir pkg
-
-      - name: Build Node package for smoke test
-        run: wasm-pack build --release --target nodejs --out-dir pkg-node
-
-      - name: Verify frozen Kiwi browser API
-        shell: bash
+        run: cargo install wasm-pack --version 0.13.1 --locked
+      - name: Build web and Node packages from the same source
         run: |
-          set -euo pipefail
+          wasm-pack build --release --target web --out-dir pkg
+          wasm-pack build --release --target nodejs --out-dir pkg-node
+      - name: Placement transport and NEW snapshot protocol acceptance
+        run: |
+          node scripts/test-tetrp-placement-scheduler.mjs tetrp-reference
+          node scripts/test-kiwi-snapshot.mjs tetrp-reference | tee kiwi-snapshot-acceptance.json
           node scripts/wasm-smoke.mjs > kiwi-wasm-smoke.json
-          node - <<'NODE'
-          const fs = require('fs');
-          const report = JSON.parse(fs.readFileSync('kiwi-wasm-smoke.json', 'utf8'));
-          if (report.status !== 'passed') throw new Error('WASM smoke test did not pass');
-          if (report.capabilities?.config_profile !== 'h9+h12+h13-interactive') {
-            throw new Error('unexpected Kiwi interactive profile');
-          }
-          if (report.capabilities?.hard_node_budget !== true) {
-            throw new Error('hard node budget capability missing');
-          }
-          if (report.capabilities?.persistent_dag !== true) {
-            throw new Error('persistent DAG capability missing');
-          }
-          NODE
-
-      - name: Assemble handoff artifact
-        shell: bash
-        env:
-          KIWI_SOURCE_SHA: ${{ github.sha }}
+      - name: Assemble browser package and handoff
         run: |
-          set -euo pipefail
-          rm -rf kiwi-v1-browser
           mkdir -p kiwi-v1-browser/pkg
           cp -r pkg/. kiwi-v1-browser/pkg/
-          cp scripts/lib/tetrp-authority-adapter.mjs kiwi-v1-browser/
-          cp scripts/lib/tetrp-placement-path.mjs kiwi-v1-browser/
-          cp KIWI_V1_HANDOFF.md kiwi-v1-browser/
-          cp CODEX_TETRP_KIWI_TASK.md kiwi-v1-browser/
-          cp LICENSE-MIT LICENSE-APACHE kiwi-v1-browser/
-          cp kiwi-wasm-smoke.json kiwi-v1-browser/
+          cp scripts/lib/kiwi-snapshot-adapter.mjs scripts/lib/tetrp-authority-adapter.mjs scripts/lib/tetrp-placement-path.mjs kiwi-v1-browser/
+          cp scripts/kiwi-snapshot-worker.mjs kiwi-v1-browser/
+          cp KIWI_V1_HANDOFF.md CODEX_TETRP_KIWI_TASK.md TETRP_RULE_PARITY_GAPS.md LICENSE-MIT LICENSE-APACHE THIRD_PARTY_NOTICES.md kiwi-v1-browser/
+          cp kiwi-snapshot-acceptance.json kiwi-wasm-smoke.json kiwi-native-tests.log kiwi-v1-browser/
+      - name: Install pinned Tetrp browser-test dependencies
+        run: |
+          cd tetrp-reference
+          npm ci
+          npx playwright install --with-deps chromium webkit
+      - name: NEW real Chromium and WebKit Worker acceptance
+        run: node scripts/test-kiwi-snapshot-browser.mjs | tee kiwi-snapshot-browser.json
+      - name: Finalize exact provenance and file hashes
+        env:
+          KIWI_SOURCE_SHA: ${{ github.sha }}
+          KIWI_RUN_ID: ${{ github.run_id }}
+          KIWI_RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          cp kiwi-snapshot-browser.json kiwi-v1-browser/
           node - <<'NODE'
-          const fs = require('fs');
-          const manifest = {
-            schema: 'tetrp-kiwi-build/1',
-            name: 'Kiwi',
-            product_version: 'kiwi-v1',
-            source_repository: 'jush0147/cold-clear-2',
-            source_branch: 'kiwi-v1',
-            source_commit: process.env.KIWI_SOURCE_SHA,
-            frozen_from: 'e13ec57e7f3795ea0c4dd7e256346d533fcb36e3',
-            strategy_profile: 'review_h9_h12',
-            interactive_profile: 'h9+h12+h13-interactive',
-            default_node_budget: 200000,
-            visible_next: 5,
-            information_boundary: 'own visible state only',
-            authority: 'Tetrp',
-            persistent_api: 'WasmBot',
-            pending_api: 'analyze_pending_json',
-            tetrp_ref: '0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2',
-            placement_transport: 'authority-gated reset-safe fallback'
+          const fs=require('fs'),path=require('path'),crypto=require('crypto');
+          const wasm=require('./pkg-node/cold_clear_2.js');
+          for(const file of ['kiwi-snapshot-acceptance.json','kiwi-snapshot-browser.json']) {
+            if(JSON.parse(fs.readFileSync(file,'utf8')).status!=='passed')throw new Error('Snapshot gate failed: '+file);
+          }
+          const manifest={
+            schema:'tetrp-kiwi-build/2',name:'Kiwi',product_version:'kiwi-v1-snapshot-v2',
+            source_repository:'jush0147/cold-clear-2',source_branch:'kiwi-v1',
+            source_commit:process.env.KIWI_SOURCE_SHA,build_commit:process.env.KIWI_SOURCE_SHA,
+            workflow_run_id:Number(process.env.KIWI_RUN_ID),workflow_run_attempt:Number(process.env.KIWI_RUN_ATTEMPT),
+            artifact_name:'kiwi-v1-browser',
+            rule_source_commit:'e8aabe80240b5cf5051d60e3d777afd31e633354',
+            tetrp_test_ref:'0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2',
+            product_handoff_blob:'eb7ece11f289b670d2953368dfa2166846ec4a8a',
+            strategy_profile:'review_h9_h12',strategy_promotion:false,
+            default_node_budget:200000,visible_next:5,
+            snapshot_api:'analyze_snapshot_json',worker:'kiwi-snapshot-worker.mjs',
+            capabilities:JSON.parse(wasm.snapshot_capabilities_json()),
+            phase_4b_implemented:false,downstream_tetrp_pin_changed:false
           };
-          fs.writeFileSync(
-            'kiwi-v1-browser/kiwi-build.json',
-            JSON.stringify(manifest, null, 2) + '\n'
-          );
+          fs.writeFileSync('kiwi-v1-browser/kiwi-build.json',JSON.stringify(manifest,null,2)+'\n');
+          function walk(dir){return fs.readdirSync(dir,{withFileTypes:true}).flatMap(e=>e.isDirectory()?walk(path.join(dir,e.name)):[path.join(dir,e.name)]);}
+          const hashes={};
+          for(const file of walk('kiwi-v1-browser').sort())hashes[path.relative('kiwi-v1-browser',file)]=crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+          fs.writeFileSync('kiwi-v1-browser/sha256.json',JSON.stringify(hashes,null,2)+'\n');
+          console.log(JSON.stringify(manifest,null,2));
           NODE
-
-      - name: Upload Kiwi v1 browser artifact
+      - name: Upload accepted Kiwi browser artifact
         uses: actions/upload-artifact@v4
         with:
           name: kiwi-v1-browser
           path: kiwi-v1-browser/
           if-no-files-found: error
           retention-days: 90
+      - name: Preserve failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kiwi-snapshot-failure-diagnostics
+          path: |
+            kiwi-native-tests.log
+            kiwi-snapshot-acceptance.json
+            kiwi-snapshot-browser.json
+          if-no-files-found: ignore
+          retention-days: 7
+  notify:
+    needs: build
+    if: ${{ needs.build.result == 'success' }}
+    uses: ./.github/workflows/ntfy-test.yml
+    with:
+      title: Kiwi snapshot artifact ready
+      message: Snapshot-v2 browser artifact and new acceptance tests completed. Review before Tetrp integration.
+    secrets:
+      NTFY_URL: ${{ secrets.NTFY_URL }}

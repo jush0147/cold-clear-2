@@ -5,7 +5,7 @@ use enumset::EnumSet;
 use tbp::Randomizer;
 
 use crate::bot::Bot;
-use crate::data::GameState;
+use crate::data::{GameState, TetrioRules};
 
 #[cfg(not(target_arch = "wasm32"))]
 use std::convert::Infallible;
@@ -24,6 +24,7 @@ pub mod replay_check;
 pub mod forecast;
 pub mod ko_support;
 pub mod analysis;
+pub mod snapshot;
 #[macro_use]
 pub mod data;
 mod map;
@@ -90,7 +91,24 @@ pub fn try_create_bot(start: tbp::Start, config: Arc<BotConfig>) -> Result<Bot, 
     Ok(create_bot(start, config))
 }
 
-pub fn create_bot(mut start: tbp::Start, config: Arc<BotConfig>) -> Bot {
+pub fn try_create_bot_with_rules(start: tbp::Start, config: Arc<BotConfig>, rules: TetrioRules) -> Result<Bot, String> {
+    try_create_bot_with_context(start, config, rules, false)
+}
+
+pub fn try_create_bot_with_context(start: tbp::Start, config: Arc<BotConfig>, rules: TetrioRules, hold_locked: bool) -> Result<Bot, String> {
+    start.validate()?;
+    rules.validate()?;
+    if hold_locked && start.hold.is_none() {
+        return Err("hold_locked=true requires an occupied Hold slot".into());
+    }
+    Ok(create_bot_with_context(start, config, rules, hold_locked))
+}
+
+pub fn create_bot(start: tbp::Start, config: Arc<BotConfig>) -> Bot {
+    create_bot_with_context(start, config, TetrioRules::default(), false)
+}
+
+fn create_bot_with_context(mut start: tbp::Start, config: Arc<BotConfig>, rules: TetrioRules, root_hold_locked: bool) -> Bot {
     let hold_is_empty = start.hold.is_none();
     // Empty hold normalization is only internal: reserve represents current,
     // queue represents NEXT. Bot::player_pieces reverses this representation.
@@ -113,9 +131,10 @@ pub fn create_bot(mut start: tbp::Start, config: Arc<BotConfig>) -> Bot {
         combo: start.combo.try_into().unwrap_or(255),
         bag,
         board: start.board,
+        rules,
         forecast: crate::forecast::Forecast::default(),
     };
-    let mut bot = Bot::new(BotOptions { speculate, config }, state, &start.queue);
+    let mut bot = Bot::new(BotOptions { speculate, config, root_hold_locked }, state, &start.queue);
     bot.set_initial_empty_hold(hold_is_empty);
     bot
 }
