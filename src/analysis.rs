@@ -6,11 +6,11 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     bot::{BotConfig, Statistics},
-    data::Placement,
+    data::{Placement, TetrioRules},
     forecast::Forecast,
     ko_support::with_search_seed,
     tbp::{Randomizer, Start},
-    try_create_bot,
+    try_create_bot_with_rules,
 };
 
 #[derive(Deserialize, Clone, Copy, Debug)]
@@ -51,6 +51,8 @@ impl IncomingPacket {
 #[serde(deny_unknown_fields)]
 pub struct Request {
     pub start: Start,
+    #[serde(default)]
+    pub rules: TetrioRules,
     pub incoming: Vec<IncomingPacket>,
     pub pieces_placed: u32,
     pub garbage_sent: u32,
@@ -245,6 +247,7 @@ pub fn analyze(request: Request) -> Result<Report, String> {
 
 pub fn analyze_with_profile(request: Request, profile: &str) -> Result<Report, String> {
     request.start.validate()?;
+    request.rules.validate()?;
     if request.start.queue.len() != 6 {
         return Err("exactly current + five NEXT pieces are required".into());
     }
@@ -462,7 +465,9 @@ pub fn analyze_with_profile(request: Request, profile: &str) -> Result<Report, S
                 scenario,
             )?,
         };
-        let mut bot = try_create_bot(start, config.clone())?;
+        let mut bot = try_create_bot_with_rules(start, config.clone(), request.rules)?;
+        let mut forecast = forecast;
+        forecast.set_opener_phase_pieces(request.rules.opener_phase_pieces);
         bot.set_forecast(forecast);
 
         let allocation = request.node_budget as u64 / scenarios as u64
@@ -558,6 +563,7 @@ mod tests {
                 b2b_count: 0,
                 randomizer: Randomizer::SevenBag { bag_state },
             },
+            rules: TetrioRules::default(),
             incoming: vec![],
             pieces_placed: 0,
             garbage_sent: 0,

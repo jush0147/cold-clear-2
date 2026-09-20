@@ -53,7 +53,7 @@ export function runSynchronousMatch({
   };
   // Placement speed/gravity is deliberately neutralized. Frame time remains
   // authoritative for garbage travel and late-round attack scaling.
-  const rules = {g:0,gincrease:0};
+  const rules = {g:0,gincrease:0,b2bcharge_base:3};
   const makeEngine=(authoritySeed)=>new Engine({mode:'tl',seed:authoritySeed,rules,handling});
   const engines=authoritySeeds.map(makeEngine);
   const observers=engines.map(e=>SevenBagObserver.fromGameStart(visibleBagSix(e.state)));
@@ -321,6 +321,12 @@ export function runSynchronousMatch({
         openerphase_pieces:ruleState.openerphase_pieces,
         garbageblocking:ruleState.garbageblocking,
         b2bcharging:ruleState.b2bcharging,
+        b2bcharge_at:ruleState.b2bcharge_at,
+        b2bcharge_base:ruleState.b2bcharge_base,
+        allclear_garbage:ruleState.allclear_garbage,
+        allclear_b2b:ruleState.allclear_b2b,
+        garbagespecialbonus:ruleState.garbagespecialbonus,
+        clutch:ruleState.clutch,
         passthrough:ruleState.passthrough,
       },
       slots:[summarize(0),summarize(1)],
