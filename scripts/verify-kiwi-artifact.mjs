@@ -20,7 +20,17 @@ for(const name of actual) {
   assert.equal(digest,hashes[name],'SHA-256 mismatch: '+name);
 }
 const read=name=>JSON.parse(fs.readFileSync(path.join(root,name),'utf8'));
-assert.equal(read('kiwi-build.json').snapshot_api,'analyze_snapshot_json');
+const build=read('kiwi-build.json');
+assert.equal(build.schema,'tetrp-kiwi-build/3');
+assert.equal(build.product_version,'kiwi-v1-snapshot-v3');
+assert.equal(build.snapshot_api,'analyze_snapshot_json');
+assert.equal(build.request_schema,'kiwi-snapshot/3');
+assert.equal(build.result_schema,'kiwi-snapshot-result/3');
+assert.equal(build.capabilities.same_piece_hold_search,true);
+assert.equal(build.capabilities.hold_information_gain_optimized,false);
+assert.equal(build.capabilities.root_geometry_in_search,true);
+assert.equal(build.capabilities.rules_parity_verified,false);
 assert.equal(read('kiwi-snapshot-acceptance.json').status,'passed');
 assert.equal(read('kiwi-snapshot-browser.json').status,'passed');
+assert.equal(read('kiwi-rule-fixture-counts.json').schema,'kiwi-rule-fixtures/2');
 console.log(JSON.stringify({status:'passed',verified_files:actual.length,exact_file_set:true,source_commit:read('kiwi-build.json').source_commit},null,2));
