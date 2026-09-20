@@ -28,8 +28,10 @@ The finite known horizon is per request, not a continuation-length limit. Tetrp
 owns the private original sequence in an isolated authority branch and reveals a
 new preview only when an actual branch action consumes a draw.
 
-All roots use the same clock-aware snapshot API, including incoming=[] and
-non-unit attack multipliers. The default hard cap remains 200,000 evaluated nodes
+All TL roots use the same clock-aware snapshot API, including incoming=[] and
+non-unit attack multipliers. 40L-source competitive_stacking uses the same
+stateless snapshot API but deliberately carries no TL attack clock. The default
+hard cap remains 200,000 evaluated nodes
 per request. When both Place and Hold are available, that one request divides its
 cap deterministically between the two root branches. A required post-Hold search
 is a separate request and gets its own request cap. Always use the returned actual
@@ -207,7 +209,7 @@ gate and the downloaded-package E2E gate pass.
 ## Release verification
 
 Consume only a successful `kiwi-v1-browser` whose `kiwi-build.json` says
-`kiwi-v1-snapshot-v3` and whose post-upload archive verification succeeded.
+`kiwi-v1-snapshot-v3.1` and whose post-upload archive verification and packaged E2E both succeeded.
 
 The artifact includes web WASM/glue, snapshot adapter and Worker, placement helper,
 capabilities through the WASM API, `kiwi-build.json`, `sha256.json`, native and

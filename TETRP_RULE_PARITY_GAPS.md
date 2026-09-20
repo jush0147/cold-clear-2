@@ -14,8 +14,10 @@ Phase 4B, a Tetrp pin change, fresh H2, evaluator-weight changes, or a strength 
   inference, hidden RNG/tail access, opponent future information or original-player
   future placements.
 - Every external request is exactly current + NEXT5 with
-  `bag_knowledge=unknown`, finite visible tail, public rules, clock/multiplier and
-  already observable pending facts.
+  `bag_knowledge=unknown`, finite visible tail and explicit public rules. TL
+  requests also carry the authority attack clock/multiplier and observable pending
+  facts; 40L competitive_stacking explicitly carries no TL attack clock/pending
+  state and uses neutral root combo/B2B.
 - Unknown tail is never expanded speculatively. A finite per-request search horizon
   is not a total continuation-length cap.
 - Empty Hold consumes one draw and immediately refills visible NEXT5 before a new
@@ -67,7 +69,9 @@ the downstream helper reports its filtered candidate index.
 Snapshot-v3 freezes an explicit supported mechanical rule envelope in the adapter.
 Values outside it reject with stable codes. Variable public attack rules continue
 to be transported explicitly; Surge base/threshold, opener limit, all-clear,
-garbage-special, Clutch switch, root Hold lock and attack clock/multiplier remain.
+garbage-special and Clutch switches plus root Hold lock remain. TL retains the
+authority attack clock/multiplier; 40L competitive_stacking deliberately does not
+claim those TL semantics.
 
 Important rejection codes include positive existing ARE queue, unknown activation,
 hardened/shielded/unsupported pending status, unsupported rule values, and root
