@@ -1,6 +1,6 @@
 {
   "experiment": "H2 current-stack local refinement",
-  "status": "running_diagnostic_base0_only",
+  "status": "completed_diagnostic_base0_only",
   "decision_date": "2026-09-20",
   "policy_source": "experiments/tetrp-strategy-lineage-reset-policy.json",
   "parent_coarse": "experiments/h2-current-coarse-sweep.json",
@@ -263,5 +263,115 @@
     "run_id": 35491099927,
     "disposition": "Let the already-running job finish, but treat all outcomes as diagnostics only. The preregistered finalist-selection rule is suspended and this run cannot select or promote a real-TL H2 finalist.",
     "rerun_required": true
-  }
+  },
+  "execution": {
+    "run_id": 35491099927,
+    "source_commit": "1318e938d0d52a9547b499adf17aaadbeb0bd898",
+    "conclusion": "success",
+    "all_complete": true,
+    "summary_artifact_id": 10601141260,
+    "notification_job": "success"
+  },
+  "outcome": {
+    "context": "Diagnostic only: this run used the pre-repair base-0 Surge authority/search contract and has no finalist-selection or promotion authority for real TL.",
+    "results": [
+      {
+        "attack": 1,
+        "cancel": 0,
+        "ko": [
+          57,
+          23
+        ],
+        "sweeps": [
+          19,
+          2
+        ],
+        "splits": 19,
+        "net_sweeps": 17,
+        "p": 0.00022125244140625
+      },
+      {
+        "attack": 1.25,
+        "cancel": 0,
+        "ko": [
+          51,
+          29
+        ],
+        "sweeps": [
+          15,
+          4
+        ],
+        "splits": 21,
+        "net_sweeps": 11,
+        "p": 0.0192108154296875
+      },
+      {
+        "attack": 1.5,
+        "cancel": 0,
+        "ko": [
+          51,
+          29
+        ],
+        "sweeps": [
+          14,
+          3
+        ],
+        "splits": 23,
+        "net_sweeps": 11,
+        "p": 0.012725830078125
+      },
+      {
+        "attack": 1.5,
+        "cancel": 0.25,
+        "ko": [
+          57,
+          23
+        ],
+        "sweeps": [
+          22,
+          5
+        ],
+        "splits": 13,
+        "net_sweeps": 17,
+        "p": 0.0015137195587158203
+      },
+      {
+        "attack": 1.5,
+        "cancel": 0.5,
+        "ko": [
+          62,
+          18
+        ],
+        "sweeps": [
+          25,
+          3
+        ],
+        "splits": 12,
+        "net_sweeps": 22,
+        "p": 0.00002744048833847046
+      },
+      {
+        "attack": 1.75,
+        "cancel": 0.5,
+        "ko": [
+          54,
+          26
+        ],
+        "sweeps": [
+          19,
+          5
+        ],
+        "splits": 16,
+        "net_sweeps": 14,
+        "p": 0.006610751152038574
+      }
+    ],
+    "pre_repair_summarizer_would_have_selected": {
+      "attack": 1.5,
+      "cancel": 0.5
+    },
+    "authoritative_decision": "selection_suspended_due_rule_parity",
+    "interpretation": "Useful-attack/cancellation shaping showed strong signal in the base-0 context, but the result cannot choose a real-TL finalist. After rule-parity repair, restart H2 with fresh seeds rather than continuing to a confirmation from this run."
+  },
+  "next_action": "Wait for the real-TL public rule contract and all authority gates to pass; then restart H2 with fresh seeds."
 }
