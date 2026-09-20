@@ -135,7 +135,13 @@ struct CollisionMaps { boards: [[u64; 10]; 4] }
 impl CollisionMaps {
     fn new(board: &Board, piece: Piece) -> Self {
         let mut boards = [[0; 10]; 4];
-        const CEILING: u64 = !((1u64 << 40) - 1);
+        // Pinned Tetrp spawn phase is y=buffer-2.04. With integer SRS+
+        // shifts/kicks and g=0, newly spawned hypothetical pieces cannot occupy
+        // storage row 0 (CC2 y=39): the corresponding raw Tetrp cell would be
+        // slightly negative and is out of bounds. Treat y=39 as the movegen
+        // ceiling for descendant spawn/clutch search. Actual replay roots are
+        // enumerated by Tetrp authority geometry and bypass this spawn surrogate.
+        const CEILING: u64 = !((1u64 << 39) - 1);
         for rot in [Rotation::North, Rotation::West, Rotation::South, Rotation::East] {
             for (dx, dy) in rot.rotate_cells(piece.cells()) {
                 for x in 0..10 {
