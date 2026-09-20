@@ -201,7 +201,7 @@ fn generated_locks_are_in_bounds_nonoverlapping_and_grounded() {
 }
 
 fn state() -> GameState {
-    GameState { board: Board::default(), bag: EnumSet::all(), reserve: Piece::O, back_to_back: false, b2b_count: 0, combo: 0, forecast: Default::default() }
+    GameState { board: Board::default(), bag: EnumSet::all(), reserve: Piece::O, back_to_back: false, b2b_count: 0, combo: 0, rules: Default::default(), forecast: Default::default() }
 }
 fn quad(s: &mut GameState) -> cold_clear_2::data::PlacementInfo {
     s.board = Board { cols: [15; 10], ..Board::default() };
