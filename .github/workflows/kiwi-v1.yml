@@ -64,6 +64,8 @@ jobs:
           rm -f kiwi-v1-browser/pkg/.gitignore
           cp scripts/lib/kiwi-snapshot-adapter.mjs scripts/lib/tetrp-placement-path.mjs kiwi-v1-browser/
           cp scripts/kiwi-snapshot-worker.mjs scripts/verify-kiwi-artifact.mjs kiwi-v1-browser/
+          mkdir -p kiwi-v1-browser/tests
+          cp scripts/test-kiwi-packaged-e2e.mjs kiwi-v1-browser/tests/
           cp KIWI_V1_HANDOFF.md CODEX_TETRP_KIWI_TASK.md TETRP_RULE_PARITY_GAPS.md LICENSE-MIT LICENSE-APACHE THIRD_PARTY_NOTICES.md kiwi-v1-browser/
           cp kiwi-snapshot-acceptance.json kiwi-wasm-smoke.json kiwi-native-tests.log kiwi-rule-fixture-counts.json kiwi-rule-audit.log kiwi-rule-fixtures.json snapshot-browser-request.json snapshot-example-result.json kiwi-v1-browser/
       - name: Install pinned Tetrp browser-test dependencies
@@ -73,13 +75,15 @@ jobs:
           npx playwright install --with-deps chromium webkit
       - name: NEW real Chromium and WebKit Worker acceptance
         run: node scripts/test-kiwi-snapshot-browser.mjs | tee kiwi-snapshot-browser.json
+      - name: Packaged helper -> Tetrp snapshot -> packaged WASM E2E
+        run: node scripts/test-kiwi-packaged-e2e.mjs kiwi-v1-browser tetrp-reference | tee kiwi-package-e2e.json
       - name: Finalize exact provenance and file hashes
         env:
           KIWI_SOURCE_SHA: ${{ github.sha }}
           KIWI_RUN_ID: ${{ github.run_id }}
           KIWI_RUN_ATTEMPT: ${{ github.run_attempt }}
         run: |
-          cp kiwi-snapshot-browser.json kiwi-v1-browser/
+          cp kiwi-snapshot-browser.json kiwi-package-e2e.json kiwi-v1-browser/
           node - <<'NODE'
           const fs=require('fs'),path=require('path'),crypto=require('crypto');
           const wasm=require('./pkg-node/cold_clear_2.js');
@@ -87,7 +91,7 @@ jobs:
             if(JSON.parse(fs.readFileSync(file,'utf8')).status!=='passed')throw new Error('Snapshot gate failed: '+file);
           }
           const manifest={
-            schema:'tetrp-kiwi-build/3',name:'Kiwi',product_version:'kiwi-v1-snapshot-v3',
+            schema:'tetrp-kiwi-build/3',name:'Kiwi',product_version:'kiwi-v1-snapshot-v3.1',
             source_repository:'jush0147/cold-clear-2',source_branch:'kiwi-v1',
             source_commit:process.env.KIWI_SOURCE_SHA,build_commit:process.env.KIWI_SOURCE_SHA,
             workflow_run_id:Number(process.env.KIWI_RUN_ID),workflow_run_attempt:Number(process.env.KIWI_RUN_ATTEMPT),
@@ -101,7 +105,12 @@ jobs:
             default_node_budget:200000,visible_next:5,
             snapshot_api:'analyze_snapshot_json',request_schema:'kiwi-snapshot/3',result_schema:'kiwi-snapshot-result/3',
             worker:'kiwi-snapshot-worker.mjs',
-            artifact_hash_contract:'exact file set plus SHA256; post-upload verification required',
+            compatibility_repairs:[
+              'placement helper is self-contained',
+              'TL garbageare/garbagearebump are preserved instead of pinned to zero',
+              '40L source is accepted only as explicit competitive_stacking with neutral combo/B2B and no TL attack clock'
+            ],
+            artifact_hash_contract:'exact file set plus SHA256; relative import closure; post-upload full packaged E2E required',
             capabilities:JSON.parse(wasm.snapshot_capabilities_json()),
             phase_4b_implemented:false,downstream_tetrp_pin_changed:false
           };
@@ -129,6 +138,7 @@ jobs:
             kiwi-native-tests.log
             kiwi-snapshot-acceptance.json
             kiwi-snapshot-browser.json
+            kiwi-package-e2e.json
             kiwi-rule-fixture-counts.json
             kiwi-rule-audit.log
           if-no-files-found: ignore
@@ -136,9 +146,15 @@ jobs:
   verify-archive:
     needs: build
     runs-on: ubuntu-22.04
-    timeout-minutes: 5
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: jush0147/tetrp
+          ref: 0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2
+          path: tetrp-reference
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -146,14 +162,27 @@ jobs:
         with:
           name: kiwi-v1-browser
           path: downloaded-artifact
-      - name: Verify actual downloaded file set and every hash
+      - name: Verify actual downloaded file set, hashes, and relative import closure
         run: node scripts/verify-kiwi-artifact.mjs downloaded-artifact
+      - name: Install pinned Tetrp Chromium test dependency
+        run: |
+          cd tetrp-reference
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: Re-test DOWNLOADED package helper -> Tetrp snapshot -> WASM
+        run: node scripts/test-kiwi-packaged-e2e.mjs downloaded-artifact tetrp-reference | tee postupload-package-e2e.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kiwi-v1-browser-postupload-verification
+          path: postupload-package-e2e.json
+          if-no-files-found: error
+          retention-days: 30
   notify:
     needs: verify-archive
     if: ${{ needs.verify-archive.result == 'success' }}
     uses: ./.github/workflows/ntfy-test.yml
     with:
       title: Kiwi snapshot artifact ready
-      message: Snapshot-v3 same-piece Hold/root-geometry artifact passed rule, browser, and post-upload hash verification. Review before Tetrp Phase 4A integration.
+      message: Snapshot-v3.1 artifact passed rule/browser tests plus downloaded-package helper -> Tetrp snapshot -> WASM verification. Review before Tetrp Phase 4A integration.
     secrets:
       NTFY_URL: ${{ secrets.NTFY_URL }}
