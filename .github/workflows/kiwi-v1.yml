@@ -34,9 +34,16 @@ jobs:
           targets: wasm32-unknown-unknown
       - uses: Swatinem/rust-cache@v2
         with:
-          shared-key: kiwi-snapshot-v2
-      - name: Native regressions including new snapshot contract tests
+          shared-key: kiwi-snapshot-v3
+      - name: Generate pinned Tetrp differential fixtures
+        run: |
+          set -euo pipefail
+          node scripts/rule-audit/export-fixtures.mjs tetrp-reference kiwi-rule-fixtures.json | tee kiwi-rule-fixture-counts.json
+          cp scripts/rule-audit/kiwi_rule_fixtures.rs tests/kiwi_rule_fixtures.rs
+      - name: Native regressions including snapshot v3 and rule fixtures
         run: cargo test --release --lib --bins --tests 2>&1 | tee kiwi-native-tests.log
+      - name: Dedicated rule differential audit log
+        run: cargo test --release --test kiwi_rule_fixtures -- --nocapture 2>&1 | tee kiwi-rule-audit.log
       - name: Check WASM target
         run: cargo check --target wasm32-unknown-unknown --lib
       - name: Install wasm-pack
@@ -58,7 +65,7 @@ jobs:
           cp scripts/lib/kiwi-snapshot-adapter.mjs scripts/lib/tetrp-authority-adapter.mjs scripts/lib/tetrp-placement-path.mjs kiwi-v1-browser/
           cp scripts/kiwi-snapshot-worker.mjs scripts/verify-kiwi-artifact.mjs kiwi-v1-browser/
           cp KIWI_V1_HANDOFF.md CODEX_TETRP_KIWI_TASK.md TETRP_RULE_PARITY_GAPS.md LICENSE-MIT LICENSE-APACHE THIRD_PARTY_NOTICES.md kiwi-v1-browser/
-          cp kiwi-snapshot-acceptance.json kiwi-wasm-smoke.json kiwi-native-tests.log kiwi-v1-browser/
+          cp kiwi-snapshot-acceptance.json kiwi-wasm-smoke.json kiwi-native-tests.log kiwi-rule-fixture-counts.json kiwi-rule-audit.log kiwi-v1-browser/
       - name: Install pinned Tetrp browser-test dependencies
         run: |
           cd tetrp-reference
@@ -80,17 +87,20 @@ jobs:
             if(JSON.parse(fs.readFileSync(file,'utf8')).status!=='passed')throw new Error('Snapshot gate failed: '+file);
           }
           const manifest={
-            schema:'tetrp-kiwi-build/2',name:'Kiwi',product_version:'kiwi-v1-snapshot-v2',
+            schema:'tetrp-kiwi-build/3',name:'Kiwi',product_version:'kiwi-v1-snapshot-v3',
             source_repository:'jush0147/cold-clear-2',source_branch:'kiwi-v1',
             source_commit:process.env.KIWI_SOURCE_SHA,build_commit:process.env.KIWI_SOURCE_SHA,
             workflow_run_id:Number(process.env.KIWI_RUN_ID),workflow_run_attempt:Number(process.env.KIWI_RUN_ATTEMPT),
             artifact_name:'kiwi-v1-browser',
-            rule_source_commit:'e8aabe80240b5cf5051d60e3d777afd31e633354',
+            baseline_artifact_id:10600729877,baseline_build_run_id:35500047026,
+            baseline_source_commit:'15135ae8066c95308a3ae87ce149f5cdc7e13043',
+            rule_repair_lineage_commit:'2b6c197e8bcb1cd9e86c8888e5dd7b66cc41c9d0',
             tetrp_test_ref:'0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2',
             product_handoff_blob:'eb7ece11f289b670d2953368dfa2166846ec4a8a',
             strategy_profile:'review_h9_h12',strategy_promotion:false,
             default_node_budget:200000,visible_next:5,
-            snapshot_api:'analyze_snapshot_json',worker:'kiwi-snapshot-worker.mjs',
+            snapshot_api:'analyze_snapshot_json',request_schema:'kiwi-snapshot/3',result_schema:'kiwi-snapshot-result/3',
+            worker:'kiwi-snapshot-worker.mjs',
             artifact_hash_contract:'exact file set plus SHA256; post-upload verification required',
             capabilities:JSON.parse(wasm.snapshot_capabilities_json()),
             phase_4b_implemented:false,downstream_tetrp_pin_changed:false
@@ -119,6 +129,8 @@ jobs:
             kiwi-native-tests.log
             kiwi-snapshot-acceptance.json
             kiwi-snapshot-browser.json
+            kiwi-rule-fixture-counts.json
+            kiwi-rule-audit.log
           if-no-files-found: ignore
           retention-days: 7
   verify-archive:
@@ -142,6 +154,6 @@ jobs:
     uses: ./.github/workflows/ntfy-test.yml
     with:
       title: Kiwi snapshot artifact ready
-      message: Snapshot-v2 artifact passed new acceptance and post-upload hash verification. Review before Tetrp integration.
+      message: Snapshot-v3 same-piece Hold/root-geometry artifact passed rule, browser, and post-upload hash verification. Review before Tetrp Phase 4A integration.
     secrets:
       NTFY_URL: ${{ secrets.NTFY_URL }}
