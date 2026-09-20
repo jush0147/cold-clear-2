@@ -126,7 +126,10 @@ impl Forecast {
                 if self.len==0 || self.packets[0].ready_at>self.elapsed_frames {break;}
                 let hole=self.packets[0].hole;
                 self.consume(1);
-                if board.cols.iter().any(|&c|c>>39!=0) {self.topped_out=true;break;}
+                // Pinned Tetrp pushLine rejects only when the storage top row is FULL.
+                // A partially occupied top row is shifted out by the authority; using
+                // any() here made the forecast spuriously garbagesmash early.
+                if board.cols.iter().all(|&c|c>>39!=0) {self.topped_out=true;break;}
                 for (x,col) in board.cols.iter_mut().enumerate(){*col=(*col<<1)|u64::from(x!=hole as usize);}
                 board.garbage_rows=(board.garbage_rows<<1)|1;
             }
@@ -137,6 +140,19 @@ impl Forecast {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn garbage_top_boundary_matches_tetrp_full_row_rule(){
+        let p=[GarbagePacket{lines:1,active:true}];
+        let mut partial=Board::default();partial.cols[0]=1u64<<39;
+        let mut f=Forecast::new(&p,20,0,1,0,0).unwrap();
+        f.resolve(&mut partial,&[],0);
+        assert!(!f.topped_out);
+        let mut full=Board::default();
+        for c in &mut full.cols {*c|=1u64<<39;}
+        let mut f=Forecast::new(&p,20,0,1,0,0).unwrap();
+        f.resolve(&mut full,&[],0);
+        assert!(f.topped_out);
+    }
     #[test]
     fn opening_bonus_cancels_but_never_becomes_outgoing(){
         let p=[GarbagePacket{lines:5,active:true}];let mut f=Forecast::new(&p,0,0,12,20,0).unwrap();
