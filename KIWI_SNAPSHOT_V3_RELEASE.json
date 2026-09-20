@@ -1,0 +1,98 @@
+{
+  "schema": "kiwi-snapshot-release-receipt/3",
+  "status": "delivered_upstream_pending_tetrp_phase4a_integration",
+  "date": "2026-09-20",
+  "baseline": {
+    "artifact_id": 10600729877,
+    "workflow_run_id": 35500047026,
+    "source_commit": "15135ae8066c95308a3ae87ce149f5cdc7e13043"
+  },
+  "artifact": {
+    "name": "kiwi-v1-browser",
+    "product_version": "kiwi-v1-snapshot-v3",
+    "repository": "jush0147/cold-clear-2",
+    "branch": "kiwi-v1",
+    "source_commit": "5c40af8e2970ab40b50381979671f8d52267514c",
+    "build_commit": "5c40af8e2970ab40b50381979671f8d52267514c",
+    "workflow_run_id": 35503742126,
+    "artifact_id": 10602973298,
+    "size_in_bytes": 307823,
+    "expires_at_observed": "2026-12-19T09:58:12Z",
+    "archive_sha256": "13cf0771ed5c9cfe414a8f36b971ccea8ecc0c979792e67505bc508e95ee40c6",
+    "exact_file_set_verified": true,
+    "verified_files": 28,
+    "workflow_post_upload_redownload_verified": true,
+    "independent_redownload_verified": true
+  },
+  "contract": {
+    "snapshot_api": "analyze_snapshot_json",
+    "request_schema": "kiwi-snapshot/3",
+    "result_schema": "kiwi-snapshot-result/3",
+    "bag_knowledge": "unknown",
+    "unknown_tail": "finite_visible",
+    "history_scan": false,
+    "history_derived_bag": false,
+    "speculative_tail_expansion": false,
+    "same_piece_hold_search": true,
+    "hold_action_has_landing": false,
+    "post_hold_reanalysis": true,
+    "hold_information_gain_optimized": false,
+    "root_geometry_in_search": true,
+    "root_timing_in_search": false,
+    "structured_rejections": true,
+    "default_node_budget_per_request": 200000,
+    "phase_4b_implemented": false
+  },
+  "validation": {
+    "snapshot_acceptance": "passed",
+    "representative_default_budget": {
+      "actual_nodes": 197372,
+      "node_cap": 200000,
+      "completion": "visible_search_idle"
+    },
+    "browser_workers": [
+      {
+        "browser": "Chromium",
+        "version": "153.0.8010.12",
+        "passed": true,
+        "repeat_restart_deterministic": true,
+        "late_replies_after_termination": 0
+      },
+      {
+        "browser": "WebKit",
+        "version": "26.6",
+        "passed": true,
+        "repeat_restart_deterministic": true,
+        "late_replies_after_termination": 0
+      }
+    ],
+    "rule_differential": {
+      "total_fixtures": 3472,
+      "cancel": 3240,
+      "spawn_rescue": 224,
+      "clear_rescue": 2,
+      "garbage_top_boundary": 2,
+      "supported_public_rule_variants": 3,
+      "explicitly_rejected_tetrp_visible_rule_variants": 1,
+      "topout_observations": 78,
+      "garbagesmash_observations": 78
+    }
+  },
+  "unresolved": [
+    "Empty-Hold unknown-preview information gain is not optimized before the post-Hold request.",
+    "Geometry reachability is not a frame-accurate timing guarantee; timing remains Tetrp-authoritative.",
+    "Positive existing garbage ARE is rejected.",
+    "Pending uses explicit pace, ten hypothetical hole scenarios, integer timing and simplified ARE/bump.",
+    "Full opener, Clutch, terminal-reason and overall rules parity remain false.",
+    "No physical-phone certification was performed by the browser worker gate."
+  ],
+  "scope": {
+    "tetrp_repository_changed_by_this_task": false,
+    "tetrp_vendor_pin_changed": false,
+    "phase_4b_started": false,
+    "strategy_experiment_started": false,
+    "strategy_weights_changed": false,
+    "strategy_promotion": false,
+    "frozen_profile": "review_h9_h12"
+  }
+}

@@ -1,122 +1,143 @@
 # Tetrp / Kiwi rule-parity and snapshot-product ledger
 
-Updated 2026-09-20. Strategy tuning remains paused. Separate source implementation,
-behavioral evidence, accepted archive, and downstream adoption. Old green gates do
-not establish new product requirements. No Phase 4B is authorized by this ledger.
+Updated 2026-09-20. Strategy tuning remains paused. Tetrp remains Phase 4A.
+This round is a product/correctness follow-up to accepted artifact 10600729877,
+workflow 35500047026, source/build
+`15135ae8066c95308a3ae87ce149f5cdc7e13043`.
 
-## Product authority and proposal history
+Read Tetrp `docs/KIWI_SNAPSHOT_PRODUCT_HANDOFF.md`. No entry here authorizes
+Phase 4B, a Tetrp pin change, fresh H2, evaluator-weight changes, or a strength claim.
 
-Read Tetrp `docs/KIWI_SNAPSHOT_PRODUCT_HANDOFF.md` (blob
-`eb7ece11f289b670d2953368dfa2166846ec4a8a`) and `docs/PHASE_4_PLAN.md`.
-The snapshot supplement supersedes historical SevenBagObserver/prefix recovery.
-The contract below was recorded before implementation in research commit
-`e8aabe80240b5cf5051d60e3d777afd31e633354`. Implementation is on kiwi-v1,
-starting at `6d68c2ee9ed5f93852f1913fa3882984d0048a1e`. Research branch source
-has not silently been switched to this product search mode.
+## Invariants which must not regress
 
-## Implemented snapshot-v2 contract
+- No replay-prefix scan, historical SevenBag recovery, piece-count modulo bag
+  inference, hidden RNG/tail access, opponent future information or original-player
+  future placements.
+- Every external request is exactly current + NEXT5 with
+  `bag_knowledge=unknown`, finite visible tail, public rules, clock/multiplier and
+  already observable pending facts.
+- Unknown tail is never expanded speculatively. A finite per-request search horizon
+  is not a total continuation-length cap.
+- Empty Hold consumes one draw and immediately refills visible NEXT5 before a new
+  `hold_locked=true` request. Occupied Hold consumes no draw.
+- Every lock/spawn refills from Tetrp's private isolated sequence; repeated requests
+  may pass the initial six visible pieces without exposing hidden sequence state.
+- Product requests are stateless and deterministic for the same allowed input.
+- Default request cap is 200,000 evaluator nodes; post-Hold is a separate request.
 
-- Every request uses only the detached current visible snapshot. No prior draw
-  log, prefix scan, bag remainder, piece-count-modulo inference, hidden tail/RNG,
-  opponent board or future original placement. Current combo/B2B, time,
-  multiplier, counters and already observable pending remain real current facts.
-- `bag_knowledge=unknown`, `unknown_tail=finite_visible`. No speculative expansion
-  beyond known queue layers; terminal leaves retain the existing heuristic.
-  The internal unused bag bitset is NOT a known fresh-bag distribution.
-  CC2's conservative empty-Hold normalization gives five known search layers;
-  occupied Hold gives six. This is a per-request horizon, NOT a continuation cap.
-- APIs: `analyze_snapshot_json(request)` and `snapshot_capabilities_json()`.
-  Strict schema kiwi-snapshot/2 rejects randomizer/bag/history/extra fields.
-  All public rule fields are explicit, not silently defaulted.
-- Tagged `hold` or `place` actions. A Hold result has NO landing or placement path.
-  Empty Hold consumes one draw, immediately reveals one preview and MUST be
-  followed by a new snapshot with hold_locked=true. Occupied Hold consumes none.
-  Place uses only current. Next lock/spawn restores Hold availability.
-- Same-type Hold is NOT separately ranked. This remains an explicit limitation,
-  not an inferred claim of complete Hold or information-gain search support.
-- All roots, including incoming=[] and non-unit multipliers, use the same
-  stateless clock-aware snapshot path. Each request creates a fresh DAG. Legacy
-  WasmBot and SevenBag entrypoints are compatibility APIs, not v2 product routing.
-- Tetrp owns original private sequence advancement. After each actual draw it
-  refills NEXT 5; only the new window crosses the Worker boundary. Do not use
-  original-player placement/frame indices or future boards as branch continuation.
-- Default hard cap is 200000 evaluated nodes PER REQUEST. Post-Hold re-analysis
-  is another request. Finite-visible search can become idle below that cap; report
-  actual nodes and completion. No performance/strength equivalence to the previous
-  SevenBag speculative 200k regime is established by these correctness tests.
-- Root pose is transported, but core generation is still spawn-based. Validate
-  actual-pose reachability on a detached Tetrp clone and expose filtered candidate
-  index. No reachable action means an explicit failure, not invented cell painting.
-- Reference module Worker loads local WASM. Host cancellation terminates the
-  Worker. Repeated/restarted requests are deterministic; no cross-request DAG or
-  analysis-history persistence. Preserve frozen recorded checkpoints on exit.
+## Snapshot-v3 repairs in this round
 
-## New product evidence, separate from old gates
+### Explicit same-piece Hold
 
-Release-source run 35499464310 passed native snapshot tests, WASM builds, Node
-protocol acceptance and actual Chromium/WebKit module-Worker tests. Evidence:
+Place and Hold are independent root actions. Same-type occupied Hold is not erased:
+although the piece type is unchanged, Tetrp respawns/resets the active piece and
+locks Hold, so the state transition is not generally identical to no-Hold.
 
-- Strict request boundary and throwing history/hidden-NEXT/RNG/opponent getters.
-- Unknown-tail speculative expansions remain zero with and without pending.
-- Hold results expose no landing; empty Hold immediately reveals a preview;
-  occupied Hold consumes zero draws; locked re-analysis places only current.
-- Ten locks plus three Holds through thirteen decisions, consuming twelve draws
-  against a separate authority-only original-sequence audit model. NEXT 5 is
-  replenished beyond the initial window; both recorded checkpoints are unchanged.
-- Pending, unknown activation rejection, explicit base-3 rules, late multipliers,
-  no-pending clock routing, small and default hard node caps.
-- Real Chromium/WebKit Workers: deterministic repeated/restarted requests,
-  responsive host timers, no late reply after termination, local-only requests.
-- Representative default-budget fixture used 159254 of 200000 nodes. This is
-  reported early-idle behavior, not evidence of a missing continuation window.
+Same-type empty Hold is also explicit and consumes NEXT[0] even when its type equals
+current. The Hold action contains no landing and always requires re-analysis.
 
-Archive from run 35499464310 is SUPERSEDED for delivery: its hash manifest included
-pkg/.gitignore, which upload-artifact excluded. The corrected packaging removes
-that generated hidden file and adds a post-upload re-download gate checking the
-exact file set and every SHA-256 before notification. Use the successful repaired
-build's kiwi-build.json and release receipt, not the superseded archive.
+The preview revealed by an empty Hold is unknown at the pre-Hold request. Kiwi
+does not infer or sample it and does not optimize its value-of-information.
+The Hold branch is evaluated only through the currently known post-Hold prefix.
+Capability `hold_information_gain_optimized=false` must remain false.
 
-## Public-rule repairs and bounded differential evidence
+### Actual root geometry before Kiwi scoring
 
-Repaired source carries b2bcharging, b2bcharge_at/base, b2bchaining,
-openerphase_pieces, allclears, allclear_garbage/b2b, garbagespecialbonus and clutch.
-Research authority explicitly selects base 3. Legacy defaults stay base 0;
-product requests carry the actual public rule contract. Root Hold lock,
-configurable opener limit, rule-gated Clutch rescue and snapshot clock are present.
+The pinned Tetrp helper enumerates the complete geometry-only current-piece landing
+set from the actual active pose before Kiwi's first Place expansion. That allowlist
+is applied inside root search. There is no top-K fallback; exceeding the explicit
+geometry-state bound is a rejection rather than truncation.
 
-Separate run 35499811778 tested exact product source
-`6d68c2ee9ed5f93852f1913fa3882984d0048a1e` against pinned Tetrp
-`0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2`: 546 fixtures passed, consisting
-of 432 normal-pending opener/cancellation cases, 112 spawn-rescue cases and two
-representative clear-to-rescue transitions. Artifact 10602360303 contains the
-fixtures, counts and audit log. This verifies those cases, NOT complete rule parity.
+x/y/rotation alone are insufficient. Root metadata now carries/audits hy, kick,
+rotated, spin, totalRotations, resets, rotationResets, locking, forceLock, safelock,
+softDropped and wall. The authority enumerator starts from the complete active Tetrp
+piece, preserving SRS+ geometry/spin history.
 
-Remaining limitations:
-- Full opener packet/ARE/shield/hardened behavior and cumulative-sent edge coverage
-  remain incomplete. Preserve false full-parity capability declarations.
-- Clutch spawn rescue and representative clear transitions are tested; full
-  terminal-reason/topout/garbage-smash classification is not certified.
-- Pending remains approximate: explicit assumed 24F/placement, ten hypothetical
-  clean-hole scenarios, integer time and simplified ARE/bump. Positive existing
-  ARE queue is rejected. Unknown activation fails, never guessed or discarded.
-- Unsupported public rule variants fail explicitly. Supported-rule coverage,
-  finite search, and actual-pose ranking remain bounded. Scores are not win odds.
+Geometry reachability remains separate from input timing. Lock/reset timers,
+handling/input state and future frame progression remain authoritative in Tetrp;
+timing validation uses an isolated Engine clone. Do not claim arbitrary replay
+positions are executable merely because a geometry candidate exists.
 
-## Delivery and downstream boundary
+Dedicated fixtures cover non-spawn, wall, rotated, near-lock and spin-related roots.
+Each result candidate is required to belong to the authority root allowlist and
+the downstream helper reports its filtered candidate index.
 
-Accepted package must include web WASM/glue, snapshot adapter and Worker,
-placement helper, capabilities, kiwi-build.json, sha256.json, a file verifier,
-Node and browser test reports, native log, licenses, notices and updated handoffs.
-A successful post-upload archive check is now required. Documentation alone is
-not a runtime repair; exact release commit/run/artifact are recorded separately.
+### Stable rule/packet rejection surface
 
-Tetrp's existing Phase 4A pin and history-scan routing are NOT changed by this work.
-Consuming the new artifact and validating the Phase 4A adapter is a separate
-integration step. No user-visible continuation or Phase 4B was implemented.
+Snapshot-v3 freezes an explicit supported mechanical rule envelope in the adapter.
+Values outside it reject with stable codes. Variable public attack rules continue
+to be transported explicitly; Surge base/threshold, opener limit, all-clear,
+garbage-special, Clutch switch, root Hold lock and attack clock/multiplier remain.
+
+Important rejection codes include positive existing ARE queue, unknown activation,
+hardened/shielded/unsupported pending status, unsupported rule values, and root
+geometry/timing failures. Unknown activation is never filled with zero or guessed.
+
+Pending that has not entered ARE remains a modeled approximation with explicit
+activation timing. Positive existing ARE remains unsupported.
+
+## Differential rule evidence
+
+The new release workflow generates fixtures from pinned Tetrp
+`0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2` and compares them against the exact
+Kiwi source being built. The grid expands opener double-cancel across pending
+amounts, cumulative-sent values and opener boundaries; Clutch spawn/clear rescue
+cases retain topout/garbagesmash authority observations; storage-top garbage
+insertion covers partial-vs-full top-row smash behavior. It also records pinned
+Tetrp public-rule variants: supported variable attack-rule values must round-trip
+field-for-field, while the Tetrp-visible b2bchaining=true variant must remain an
+explicit unsupported Kiwi rule rather than being silently normalized.
+
+The forecast was corrected so a partially occupied storage top row is not treated
+as an immediate garbage smash; pinned Tetrp rejects insertion only at the tested
+full-row boundary.
+
+These fixtures are bounded evidence, not full parity. Keep
+`rules_parity_verified=false`, full opener parity false, full Clutch parity false,
+and exact ARE/bump false unless later evidence genuinely closes them.
+
+## Remaining known limitations
+
+- Empty-Hold unknown-preview information gain is not optimized.
+- Geometry search is not a frame-accurate input-timing planner.
+- Positive existing garbage ARE is rejected.
+- Pending still uses the explicit review pace (normally 24F/placement), ten
+  hypothetical clean-hole scenarios, integer clocking and simplified ARE/bump.
+- Active-piece repair failure after an otherwise successful garbage insertion is
+  not represented by the between-placement Forecast model.
+- Complete terminal-reason/topout/garbage-smash classification is not certified.
+- Unsupported custom rule variants reject rather than falling back to legacy values.
+- Scores are evaluator heuristics, not win probabilities.
+- Snapshot-v3 changes root search/compute allocation for correctness. No claim is
+  made that its 200k request has the same strength as the historical speculative
+  SevenBag 200k regime.
+
+## Phase 4A downstream boundary
+
+Phase 4A may show a landing-free Hold recommendation. Missing landing is expected.
+If a post-Hold landing is desired, Tetrp must execute Hold in an isolated state,
+refill the preview from its own private sequence, and send a new locked request.
+Do not reuse any pre-Hold landing or infer a new one locally.
+
+That isolated protocol test is not permission to ship user-visible continuation.
+Tetrp's vendor pin is unchanged by this upstream task.
 
 ## Research validity
 
-Pre-repair H9/H2 outcomes remain base-0-context evidence. H2 run 35491099927 is
-completed_diagnostic_base0_only, not a real-TL finalist or promotion. No strategy
-experiment was opened for this product repair. Evaluator weights stay at
-review_h9_h12; the new unknown-tail policy has correctness, not strength evidence.
+Pre-repair H9/H2 results remain historical/base-0-context evidence. H2 run
+35491099927 remains `completed_diagnostic_base0_only`. No strategy experiment is
+opened by snapshot-v3 work and `review_h9_h12` stays frozen for this artifact.
+
+
+## Accepted snapshot-v3 release receipt
+
+The accepted upstream delivery is source/build
+`5c40af8e2970ab40b50381979671f8d52267514c`, workflow
+`35503742126`, artifact `10602973298` (`kiwi-v1-browser`).
+The uploaded archive passed the workflow's post-upload re-download verification
+and a second independent download/verification pass: exact 28-file set, every
+manifest SHA-256 valid, archive SHA-256
+`13cf0771ed5c9cfe414a8f36b971ccea8ecc0c979792e67505bc508e95ee40c6`.
+
+This receipt does not change the Tetrp pin, start Phase 4B, or create strategy
+evidence. Downstream Phase 4A adoption remains a separate Tetrp repository task.
