@@ -92,11 +92,13 @@ export function createPlacementTools({Engine, boardModule:B, rotationModule:R}) 
    * a separate authority validation step.
    */
   function enumerateRootPlacements(engine) {
-    const root=Engine.restore(engine.serialize());
-    if(!root.state.playing||!root.state.piece||root.state.piece.sleeping)
+    const state=engine.state;
+    if(!state.playing||!state.piece||state.piece.sleeping)
       throw new Error('ROOT_GEOMETRY_NOT_PLAYABLE');
-    const board=root.state.board,rules=root.state.rules;
-    const q=[copyPiece(root.state.piece)],seen=new Set(),placements=new Map();
+    // Deliberately clone ONLY current geometry inputs. Do not serialize the
+    // Engine: that would read hidden queue/RNG even though geometry needs neither.
+    const board=structuredClone(state.board),rules=structuredClone(state.rules);
+    const q=[copyPiece(state.piece)],seen=new Set(),placements=new Map();
     const actions=['moveLeft','moveRight','rotateCW','rotateCCW','rotate180','down'];
     let head=0;
     while(head<q.length) {
@@ -126,6 +128,33 @@ export function createPlacementTools({Engine, boardModule:B, rotationModule:R}) 
       semantics:'geometry_only_no_hold_no_frame_clock',
       timing_validated:false,
     };
+  }
+
+
+  function findCurrentPath(state,placement) {
+    const target=targetFor(placement);
+    if(upperPiece(state.piece.type)!==placement.location.type)
+      throw new Error('current-piece mismatch');
+    const board=structuredClone(state.board),rules=structuredClone(state.rules);
+    const targetKey=cellsKey(target.cells);
+    const q=[{piece:copyPiece(state.piece),moves:[]}],seen=new Set();
+    const actions=['moveLeft','moveRight','rotateCW','rotateCCW','rotate180','down'];
+    let head=0;
+    while(head<q.length) {
+      if(q.length>250000)throw new Error('ROOT_GEOMETRY_STATE_LIMIT');
+      const node=q[head++],p=node.piece,key=pathStateKey(p,rules);
+      if(seen.has(key))continue;
+      seen.add(key);
+      const drop=dropped(board,p);
+      const spin=p.rotated?R.classifySpin(board,p,rules.spinbonuses):'none';
+      if(cellsKey(B.cells(drop))===targetKey&&spin===target.spin)
+        return {useHold:false,moves:[...node.moves,'hardDrop'],target,geometryStates:seen.size};
+      for(const action of actions) {
+        const next=applyPathMove(board,p,action,rules);
+        if(next)q.push({piece:next,moves:[...node.moves,action]});
+      }
+    }
+    throw new Error('no current-pose Tetrp geometry path for '+JSON.stringify({placement,target,current:state.piece}));
   }
 
   function findPath(engine,placement) {
@@ -262,5 +291,5 @@ export function createPlacementTools({Engine, boardModule:B, rotationModule:R}) 
     }));
   }
 
-  return {findPath,enumerateRootPlacements,schedulePath,inputsForFrame,targetFor};
+  return {findPath,findCurrentPath,enumerateRootPlacements,schedulePath,inputsForFrame,targetFor};
 }
