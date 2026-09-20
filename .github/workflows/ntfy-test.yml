@@ -1,4 +1,4 @@
-name: ntfy test
+name: ntfy notify
 
 on:
   push:
@@ -6,20 +6,38 @@ on:
       - tetrp-authority
     paths:
       - '.github/workflows/ntfy-test.yml'
+  workflow_call:
+    inputs:
+      title:
+        required: false
+        type: string
+        default: Tetrp experiment finished
+      message:
+        required: false
+        type: string
+        default: GitHub Actions workflow finished.
+      run_url:
+        required: false
+        type: string
+        default: ''
+    secrets:
+      NTFY_URL:
+        required: true
 
 jobs:
   notify:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Send ntfy test
+      - name: Send ntfy notification
         env:
           NTFY_URL: ${{ secrets.NTFY_URL }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          TITLE: ${{ inputs.title || 'Tetrp ntfy test' }}
+          MESSAGE: ${{ inputs.message || 'GitHub Actions -> ntfy works.' }}
+          RUN_URL: ${{ inputs.run_url || format('{0}/{1}/actions/runs/{2}', github.server_url, github.repository, github.run_id) }}
         run: |
           test -n "$NTFY_URL"
           curl --fail-with-body --silent --show-error \
-            -H "Title: Tetrp ntfy test" \
+            -H "Title: $TITLE" \
             -H "Click: $RUN_URL" \
-            -d "GitHub Actions -> ntfy works." \
+            -d "$MESSAGE" \
             "$NTFY_URL"
