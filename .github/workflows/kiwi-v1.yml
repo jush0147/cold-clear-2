@@ -62,7 +62,7 @@ jobs:
           mkdir -p kiwi-v1-browser/pkg
           cp -r pkg/. kiwi-v1-browser/pkg/
           rm -f kiwi-v1-browser/pkg/.gitignore
-          cp scripts/lib/kiwi-snapshot-adapter.mjs scripts/lib/tetrp-authority-adapter.mjs scripts/lib/tetrp-placement-path.mjs kiwi-v1-browser/
+          cp scripts/lib/kiwi-snapshot-adapter.mjs scripts/lib/tetrp-placement-path.mjs kiwi-v1-browser/
           cp scripts/kiwi-snapshot-worker.mjs scripts/verify-kiwi-artifact.mjs kiwi-v1-browser/
           cp KIWI_V1_HANDOFF.md CODEX_TETRP_KIWI_TASK.md TETRP_RULE_PARITY_GAPS.md LICENSE-MIT LICENSE-APACHE THIRD_PARTY_NOTICES.md kiwi-v1-browser/
           cp kiwi-snapshot-acceptance.json kiwi-wasm-smoke.json kiwi-native-tests.log kiwi-rule-fixture-counts.json kiwi-rule-audit.log kiwi-v1-browser/
