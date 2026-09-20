@@ -36,8 +36,11 @@ export function createPlacementTools({Engine, boardModule:B, rotationModule:R}) 
     return p;
   }
 
-  function pathStateKey(p) {
-    return [p.x,Number(p.y).toFixed(6),p.r,p.kick,p.rotated?1:0,p.spin].join(',');
+  function pathStateKey(p,ruleset) {
+    // totalRotations changes SRS+ kick Y after lockresets+15. Once beyond
+    // that threshold, exact larger values are geometrically equivalent.
+    const rotationBucket=Math.min(p.totalRotations||0,(ruleset.lockresets||15)+16);
+    return [p.x,Number(p.y).toFixed(6),p.r,p.kick,p.rotated?1:0,p.spin,rotationBucket].join(',');
   }
 
   function applyPathMove(board,piece,action,ruleset) {
@@ -65,6 +68,66 @@ export function createPlacementTools({Engine, boardModule:B, rotationModule:R}) 
     return p;
   }
 
+
+  const orientationNames=['north','east','south','west'];
+  function ccPlacementsForAuthorityCells(type,cells,spin) {
+    const upper=upperPiece(type),actual=cellsKey(cells),out=[];
+    for(const orientation of orientationNames) {
+      const offsets=baseCells[upper].map(c=>rotateCell(c,orientation));
+      for(const [ax,ay] of cells) for(const [dx,dy] of offsets) {
+        const x=ax-dx,y=39-ay-dy;
+        if(!Number.isInteger(x)||!Number.isInteger(y))continue;
+        const placement={location:{type:upper,orientation,x,y},spin};
+        if(cellsKey(targetFor(placement).cells)===actual)out.push(placement);
+      }
+    }
+    const seen=new Set();
+    return out.filter(p=>{const k=JSON.stringify(p);if(seen.has(k))return false;seen.add(k);return true;});
+  }
+
+  /**
+   * Exhaustive geometry-only root landing enumeration from the ACTUAL active
+   * piece state. No Hold, no frame clock and no lock-reset auto-lock timing.
+   * The result is an allowlist for Kiwi's first search layer; scheduling remains
+   * a separate authority validation step.
+   */
+  function enumerateRootPlacements(engine) {
+    const root=Engine.restore(engine.serialize());
+    if(!root.state.playing||!root.state.piece||root.state.piece.sleeping)
+      throw new Error('ROOT_GEOMETRY_NOT_PLAYABLE');
+    const board=root.state.board,rules=root.state.rules;
+    const q=[copyPiece(root.state.piece)],seen=new Set(),placements=new Map();
+    const actions=['moveLeft','moveRight','rotateCW','rotateCCW','rotate180','down'];
+    let head=0;
+    while(head<q.length) {
+      if(q.length>250000)throw new Error('ROOT_GEOMETRY_STATE_LIMIT');
+      const p=q[head++],key=pathStateKey(p,rules);
+      if(seen.has(key))continue;
+      seen.add(key);
+      const drop=dropped(board,p);
+      const spin=p.rotated?R.classifySpin(board,p,rules.spinbonuses):'none';
+      for(const placement of ccPlacementsForAuthorityCells(p.type,B.cells(drop),spin)) {
+        placements.set(JSON.stringify(placement),placement);
+      }
+      for(const action of actions) {
+        const next=applyPathMove(board,p,action,rules);
+        if(next)q.push(next);
+      }
+    }
+    const list=[...placements.values()].sort((a,b)=>
+      a.location.type.localeCompare(b.location.type)||
+      a.location.x-b.location.x||a.location.y-b.location.y||
+      orientationNames.indexOf(a.location.orientation)-orientationNames.indexOf(b.location.orientation)||
+      a.spin.localeCompare(b.spin)
+    );
+    return {
+      placements:list,
+      states_explored:seen.size,
+      semantics:'geometry_only_no_hold_no_frame_clock',
+      timing_validated:false,
+    };
+  }
+
   function findPath(engine,placement) {
     const target=targetFor(placement);
     const root=Engine.restore(engine.serialize());
@@ -83,7 +146,7 @@ export function createPlacementTools({Engine, boardModule:B, rotationModule:R}) 
     const actions=['moveLeft','moveRight','rotateCW','rotateCCW','rotate180','down'];
     let head=0;
     while(head<q.length&&head<100000) {
-      const node=q[head++],p=node.piece,key=pathStateKey(p);
+      const node=q[head++],p=node.piece,key=pathStateKey(p,root.state.rules);
       if(seen.has(key)) continue;
       seen.add(key);
       const drop=dropped(board,p);
@@ -199,5 +262,5 @@ export function createPlacementTools({Engine, boardModule:B, rotationModule:R}) 
     }));
   }
 
-  return {findPath,schedulePath,inputsForFrame,targetFor};
+  return {findPath,enumerateRootPlacements,schedulePath,inputsForFrame,targetFor};
 }
