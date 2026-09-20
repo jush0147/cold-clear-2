@@ -1,0 +1,108 @@
+{
+  "schema": "kiwi-snapshot-release-receipt/2",
+  "status": "delivered_upstream_pending_tetrp_phase4a_integration",
+  "date": "2026-09-20",
+  "artifact": {
+    "name": "kiwi-v1-browser",
+    "product_version": "kiwi-v1-snapshot-v2",
+    "repository": "jush0147/cold-clear-2",
+    "branch": "kiwi-v1",
+    "source_commit": "15135ae8066c95308a3ae87ce149f5cdc7e13043",
+    "build_commit": "15135ae8066c95308a3ae87ce149f5cdc7e13043",
+    "workflow_run_id": 35500047026,
+    "artifact_id": 10600729877,
+    "zip_bytes": 268269,
+    "sha256": "bb8d95760d7d2fee6d84b964312fa32e7ce5027770f2729c0396bac4481267be",
+    "url": "https://github.com/jush0147/cold-clear-2/actions/runs/35500047026/artifacts/10600729877",
+    "expires_at_observed": "2026-12-19T08:37:05Z",
+    "exact_file_set_verified": true,
+    "hashed_files": 24,
+    "verification": "GitHub post-upload re-download job passed; independently downloaded ZIP SHA256 and all 24 file hashes verified in the working container."
+  },
+  "source_contract": {
+    "supplement_blob": "eb7ece11f289b670d2953368dfa2166846ec4a8a",
+    "proposal_record_commit": "e8aabe80240b5cf5051d60e3d777afd31e633354",
+    "implementation_commit": "6d68c2ee9ed5f93852f1913fa3882984d0048a1e",
+    "packaging_repair_commit": "15135ae8066c95308a3ae87ce149f5cdc7e13043",
+    "ledger": "TETRP_RULE_PARITY_GAPS.md",
+    "product_handoff": "KIWI_V1_HANDOFF.md in the artifact and kiwi-v1 branch",
+    "consumer_task": "CODEX_TETRP_KIWI_TASK.md in the artifact and kiwi-v1 branch",
+    "api": "analyze_snapshot_json",
+    "capability_api": "snapshot_capabilities_json",
+    "request_schema": "kiwi-snapshot/2",
+    "result_schema": "kiwi-snapshot-result/2",
+    "unknown_bag": "unknown",
+    "unknown_tail": "finite_visible",
+    "history_scan": false,
+    "history_derived_bag": false,
+    "tail_speculation": false,
+    "product_persistent_dag_reuse": false,
+    "all_roots_use_clocked_snapshot": true,
+    "default_node_budget_per_request": 200000,
+    "empty_hold_known_search_layers": 5,
+    "occupied_hold_known_search_layers": 6,
+    "continuation_length_limited_to_first_window": false,
+    "hold": "Standalone tagged action without landing; empty Hold reveals one preview immediately, then a NEW hold_locked=true snapshot analysis is required. Occupied Hold consumes zero draws.",
+    "same_piece_hold_search": false,
+    "current_pose_in_core_search": false,
+    "current_pose_authority_validation_required": true
+  },
+  "validation": {
+    "native_library_tests_passed": 59,
+    "native_library_tests_failed": 0,
+    "all_native_bins_and_integration_test_suites": "passed",
+    "new_native_contract_tests": [
+      "strict unknown-bag API rejects history, bag state, missing public rules and unknown activation",
+      "deterministic pending/nonpending requests with intervening other requests",
+      "no speculative expansion beyond known layers with and without pending",
+      "Hold action contains no executable landing; locked root can only place current",
+      "same-piece Hold exclusion explicitly declared"
+    ],
+    "node_wasm_acceptance": "passed",
+    "node_wasm_continuation": {"locks": 10, "holds": 3, "decisions": 13, "sequence_draws": 12},
+    "recorded_checkpoints_unchanged": true,
+    "representative_default_budget": {"actual_nodes": 159254, "node_cap": 200000},
+    "budget_note": "Finite-visible search may finish below the cap. This is not strength validation against the previous speculative 200k regime.",
+    "browser_workers": [
+      {"browser": "Chromium", "version": "153.0.8010.12", "passed": true, "repeat_restart_deterministic": true, "late_replies_after_termination": 0},
+      {"browser": "WebKit", "version": "26.6", "passed": true, "repeat_restart_deterministic": true, "late_replies_after_termination": 0}
+    ],
+    "browser_scope": "Actual headless browser module Workers with the released web WASM; responsive host timers and local-only requests. Not physical-phone or downstream Tetrp integration certification.",
+    "post_upload_archive_job": "passed",
+    "ntfy_job": "passed"
+  },
+  "bounded_rule_audit": {
+    "workflow_run_id": 35499811778,
+    "artifact_id": 10602360303,
+    "tested_kiwi_source": "6d68c2ee9ed5f93852f1913fa3882984d0048a1e",
+    "tetrp_ref": "0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2",
+    "total_fixtures": 546,
+    "normal_pending_cancellation_and_opener": 432,
+    "spawn_rescue": 112,
+    "representative_clear_to_rescue": 2,
+    "passed": true,
+    "source_equivalence": "Final release changes only workflow, ledger and archive verifier relative to tested source; production Rust/adapter/Worker code is unchanged.",
+    "not_certified": ["full ARE/bump timing", "all opener packet/shield/hardened cases", "complete terminal-reason/topout/garbage-smash parity"]
+  },
+  "superseded_archive": {
+    "run_id": 35499464310,
+    "artifact_id": 10600794218,
+    "reason": "Hash manifest included pkg/.gitignore omitted by artifact upload. Do not use this archive for new integrations."
+  },
+  "unresolved": [
+    "Same-piece Hold is not separately ranked.",
+    "Core move generation remains spawn-based; current-pose geometry is validated separately by Tetrp helpers.",
+    "Pending uses explicit hypothetical pace, ten hole scenarios, integer timing and simplified ARE/bump; positive existing ARE queue is rejected.",
+    "Unknown activation fails explicitly; unsupported rule variants remain rejected.",
+    "Full opener/Clutch/rules parity remains false despite the scoped differential fixtures.",
+    "Downstream Phase4A still needs to adopt the artifact, replace history-scan routing and pass integration tests."
+  ],
+  "scope": {
+    "tetrp_repository_changed_by_this_task": false,
+    "tetrp_vendor_pin_changed": false,
+    "phase_4b_started": false,
+    "new_strategy_experiment_started": false,
+    "strategy_promotion": false,
+    "frozen_evaluator_profile": "review_h9_h12"
+  }
+}
