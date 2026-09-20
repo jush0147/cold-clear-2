@@ -1,78 +1,104 @@
-# Tetrp / Kiwi rule-parity ledger
+# Tetrp / Kiwi rule-parity and snapshot-product ledger
 
 Date: 2026-09-20
 
-This file is the stop-sign for strategy tuning. Do not resume H-family promotion work
-until the public TL rule contract below is either verified against Tetrp or the
-remaining approximation is explicitly accepted for that experiment.
+Strategy tuning remains paused. This ledger separates implemented source, verified
+behavior, released artifacts, and downstream adoption. A green old gate is not
+acceptance evidence for a new product contract.
 
-## Repaired in `tetrp-authority`
+## Supplemental product authority
 
-- Public attack-rule transport now carries:
-  `b2bcharging`, `b2bcharge_at`, `b2bcharge_base`, `b2bchaining`,
-  `openerphase_pieces`, `allclears`, `allclear_garbage`,
-  `allclear_b2b`, `garbagespecialbonus`, and `clutch`.
-- The synchronous TL authority now uses `b2bcharge_base=3` instead of the old
-  base-0 default.
-- CC2 Surge calculation is rule-driven instead of hard-coded to base 0.
-- Snapshot analysis receives the same public rule contract as the authority.
-- Root Hold lock is represented explicitly. Search may not Hold again at that
-  root, while descendants regain Hold after the next lock/spawn.
-- Opener-phase length is no longer hard-coded in cancellation helpers.
-- Clutch spawn rescue is gated by the transported public `clutch` rule.
-- Non-unit attack multipliers are supported by snapshot analysis even when
-  `incoming=[]`, because the authority clock/multiplier is part of the request.
+Read Tetrp `docs/KIWI_SNAPSHOT_PRODUCT_HANDOFF.md` (blob
+`eb7ece11f289b670d2953368dfa2166846ec4a8a`) alongside `docs/PHASE_4_PLAN.md`.
+The supplement supersedes the earlier product requirement for SevenBagObserver
+history recovery. Tetrp remains at Phase 4A. This work authorizes Kiwi API/artifact
+repairs and isolated protocol tests, NOT user-visible Phase 4B or new experiments.
 
-Current repaired authority gates at commit
-`2b6c197e8bcb1cd9e86c8888e5dd7b66cc41c9d0` all pass:
-Tetrp authority correctness, A/A mirror, slot symmetry, and WASM.
+## New product gaps: implementation and acceptance pending
 
-## Still incomplete / not certified
+1. Each decision must use only a detached visible snapshot. No prior draw log,
+   replay-prefix scan, historical bag remainder, piece-count-modulo inference,
+   hidden tail/RNG, opponent board, future attack, or future original placement.
+   Combo/B2B, time, multiplier, counters and already observable pending are valid
+   current facts and must not be reset merely because history is forbidden.
+2. Unknown bag is not a fresh complete SevenBag. The proposed v2 policy is an
+   explicit unknown-bag, finite-visible-horizon search: no speculative piece beyond
+   the supplied window, terminal existing evaluator at its boundary. The existing
+   CC2 empty-Hold normalization has five known search layers; occupied Hold has
+   six. This is a conservative per-request horizon, NOT a continuation length cap.
+3. Proposed API: `analyze_snapshot_json(request)` and
+   `snapshot_capabilities_json()`, with a versioned snapshot-only request that
+   cannot accept `bag_state` or a randomizer. Return explicit tagged `hold` or
+   `place` actions. A Hold result contains NO executable landing placement.
+4. Empty Hold is executed alone by Tetrp, consumes one sequence draw, immediately
+   reveals one preview, and requires a new snapshot with `hold_locked=true`.
+   Occupied Hold consumes no draw and leaves NEXT 5 unchanged. A lock/spawn
+   restores availability and refills the window from Tetrp's private sequence.
+   Never execute a previously bundled pre-Hold landing after the reveal.
+5. The initial v2 search explicitly excludes a separate same-piece Hold branch.
+   This is a declared search limitation, not inferred general Hold support. All
+   represented Hold decisions have explicit action identity at the public API.
+6. Proposed product routing uses the stateless snapshot path for ALL requests,
+   including no-pending roots and non-unit multipliers. Legacy WasmBot interfaces
+   remain compatibility APIs, not conforming v2 product entrypoints. Recreating
+   the search for every request avoids history-dependent persistent-DAG reuse.
+7. Tetrp alone owns original-sequence consumption. Successive snapshots may
+   continue beyond the initial six visible pieces; only newly visible previews
+   cross the Worker boundary. Do not copy the original player's future board.
+8. Default budget is 200,000 evaluated nodes per request. Post-Hold re-analysis
+   is another request. Report actual nodes and early completion. Worker-only
+   execution, cancellation/disposal, unchanged recorded checkpoints, and no
+   analysis-history persistence remain required.
 
-1. **Opening double-cancel full parity is not certified.**
-   The forecast has the opener bonus cancellation mechanism and a configurable
-   opener-phase length, but `capabilities_json()` still reports
-   `opening_double_cancel=false`. Add direct Tetrp fixture comparisons for the
-   complete pending/cumulative-sent semantics before calling this parity-complete.
+Required new evidence: history/hidden-tail invariance; strict input boundary;
+unknown-tail nonexpansion with and without pending; explicit Hold action/no landing;
+empty-Hold immediate reveal and locked re-analysis; occupied-Hold zero draw;
+repeated lock/refill beyond six pieces; original-sequence consumption; rule/clock
+routing and hard budgets; detached replay checkpoints and discarded sessions.
+Old authority, A/A, symmetry and WASM gates do not establish these properties.
 
-2. **Clutch is only partially certified.**
-   Spawn rescue is implemented and rule-gated, but the browser capability still
-   reports `clutch_clears=false`. Verify the full clear -> spawn-rescue transition
-   against Tetrp fixtures, including topout/garbage-smash edge cases.
+## Rule repairs already in tetrp-authority source
 
-3. **Pending-garbage search remains an approximation.**
-   It uses an explicit assumed pace, currently 24 frames/piece for the review
-   regime, integer-frame timing, and ten equally weighted hypothetical clean-hole
-   scenarios. ARE / garbage-ARE-bump timing is not yet an exact authority replay
-   inside CC2. Unknown activation times must continue to fail explicitly rather
-   than be guessed or ignored.
+- Public rule transport: b2bcharging, b2bcharge_at/base, b2bchaining,
+  openerphase_pieces, allclears, allclear_garbage/b2b, garbagespecialbonus, clutch.
+- Synchronous research authority explicitly selects Surge base 3. Legacy
+  compatibility defaults remain base 0; a product must pass explicit public rules.
+- Rule-driven Surge and snapshot rules; root-only Hold locking; configurable
+  opener limit; rule-gated Clutch spawn rescue.
+- Snapshot analysis accepts incoming=[] and the complete attack clock.
 
-4. **Same-piece Hold is not a distinct search action.**
-   Root Hold locking is now supported, but when current and Hold/next can yield the
-   same piece type, action identity is still placement-based and does not rank
-   "Hold same piece" separately from "do not Hold".
+Existing repaired-source gates passed at
+`2b6c197e8bcb1cd9e86c8888e5dd7b66cc41c9d0`: authority correctness, A/A mirror,
+slot symmetry and WASM. They predate the snapshot supplement above.
 
-5. **Persistent no-pending search still needs product routing for late multipliers.**
-   The CC2 snapshot API can model `incoming=[]` with a non-unit multiplier, but
-   Tetrp/Kiwi must route such roots through that snapshot path until persistent DAG
-   state itself carries the authority attack clock.
+## Remaining rule limitations
 
-6. **Full rule parity remains false.**
-   Unsupported rule variants such as `b2bchaining=true` must fail explicitly.
-   Do not silently substitute legacy defaults for replay-visible public rules.
+- Full opener double-cancel parity is not certified. Forecast has an opener
+  mechanism, but direct Tetrp fixtures must cover packet/cumulative-sent and
+  opener-boundary behavior. Preserve truthful capability flags.
+- Clutch spawn rescue exists; full clear/spawn/topout/garbage-smash edge parity
+  remains uncertified and needs separate authority fixtures.
+- Pending search is approximate: explicit 24F/placement assumption, ten equally
+  weighted hypothetical clean-hole scenarios, integer timing and simplified
+  ARE/bump handling. Unknown activation must fail, not be guessed or discarded.
+  New snapshot visibility does not silently approve execution timing assumptions.
+- Unsupported public rule variants must fail explicitly. Full rules parity is
+  still false; finite-horizon search is not a win-probability guarantee.
 
-7. **The shipped Kiwi v1 artifact is still the old pin until rebuilt.**
-   Tetrp currently vendors Kiwi artifact commit
-   `89dcfe6cf544991bc9bb59098dd43d2ca2173945`. The repaired rule contract lives
-   on `tetrp-authority` and must be deliberately rebuilt/pinned into `kiwi-v1`
-   and then consumed by Tetrp before the browser limitation text can be removed.
+## Delivery gate
+
+Tetrp currently pins `kiwi-v1-browser` build `35444205867`, commit
+`89dcfe6cf544991bc9bb59098dd43d2ca2173945`. It still scans observed history and
+has the older Hold/rule behavior. Documentation updates are NOT runtime fixes.
+
+Release repaired source deliberately on kiwi-v1; include browser/WASM, new snapshot
+adapter, placement helper, updated capabilities, kiwi-build.json, hashes, test
+reports, licenses and handoff. Record exact source/build commit, run/artifact IDs
+and unresolved limits. Do not change Tetrp's vendor pin or begin 4B in this task.
 
 ## Research validity
 
-- H9 and H2 results produced before the real-TL base-3 repair remain useful only
-  as historical / diagnostic evidence for the old base-0 context.
-- H2 local refinement run 35491099927 completed successfully but is explicitly
-  archived as `completed_diagnostic_base0_only`; it cannot select or promote a
-  real-TL finalist.
-- Do not launch fresh H2 promotion research merely because the base-3 Surge fix
-  compiles. Finish the parity checks above first, then restart H2 with fresh seeds.
+Pre-repair H9/H2 outcomes remain base-0-context evidence only. H2 run 35491099927
+is archived as completed_diagnostic_base0_only and cannot select/promote a real-TL
+finalist. No strategy run is authorized here. Keep the incumbent and evaluator
+weights frozen during the product and correctness repairs.
