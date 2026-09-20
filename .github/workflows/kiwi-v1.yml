@@ -67,6 +67,8 @@ jobs:
           mkdir -p kiwi-v1-browser/tests
           cp scripts/test-kiwi-packaged-e2e.mjs kiwi-v1-browser/tests/
           cp KIWI_V1_HANDOFF.md CODEX_TETRP_KIWI_TASK.md TETRP_RULE_PARITY_GAPS.md LICENSE-MIT LICENSE-APACHE THIRD_PARTY_NOTICES.md kiwi-v1-browser/
+          mkdir -p kiwi-v1-browser/docs
+          cp docs/snapshot-v3.2-repair.md kiwi-v1-browser/docs/
           cp kiwi-snapshot-acceptance.json kiwi-wasm-smoke.json kiwi-native-tests.log kiwi-rule-fixture-counts.json kiwi-rule-audit.log kiwi-rule-fixtures.json snapshot-browser-request.json snapshot-example-result.json kiwi-v1-browser/
       - name: Install pinned Tetrp browser-test dependencies
         run: |
@@ -91,7 +93,7 @@ jobs:
             if(JSON.parse(fs.readFileSync(file,'utf8')).status!=='passed')throw new Error('Snapshot gate failed: '+file);
           }
           const manifest={
-            schema:'tetrp-kiwi-build/3',name:'Kiwi',product_version:'kiwi-v1-snapshot-v3.1',
+            schema:'tetrp-kiwi-build/3',name:'Kiwi',product_version:'kiwi-v1-snapshot-v3.2',
             source_repository:'jush0147/cold-clear-2',source_branch:'kiwi-v1',
             source_commit:process.env.KIWI_SOURCE_SHA,build_commit:process.env.KIWI_SOURCE_SHA,
             workflow_run_id:Number(process.env.KIWI_RUN_ID),workflow_run_attempt:Number(process.env.KIWI_RUN_ATTEMPT),
@@ -106,6 +108,8 @@ jobs:
             snapshot_api:'analyze_snapshot_json',request_schema:'kiwi-snapshot/3',result_schema:'kiwi-snapshot-result/3',
             worker:'kiwi-snapshot-worker.mjs',
             compatibility_repairs:[
+              'unknown observable activation remains null and is evaluated under three labeled timing hypotheses within one node cap',
+              'complete current-pose geometry reuses identical landings without truncating graph states or candidates',
               'placement helper is self-contained',
               'TL garbageare/garbagearebump are preserved instead of pinned to zero',
               '40L source is accepted only as explicit competitive_stacking with neutral combo/B2B and no TL attack clock'

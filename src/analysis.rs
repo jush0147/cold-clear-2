@@ -42,7 +42,10 @@ impl IncomingPacket {
             (Some(true), None) => Ok((self.lines, 0)),
             (Some(false), None) if fallback_delay <= 600 => Ok((self.lines, fallback_delay)),
             (Some(false), None) => Err("pending_delay_frames exceeds analysis bound".into()),
-            (None, None) => Err("incoming packet needs active or ready_in_frames".into()),
+            // Snapshot null explicitly means unobserved activation time. The
+            // scenario loop replaces this validation placeholder, never the
+            // request, with labeled hypothetical times.
+            (None, None) => Ok((self.lines, 1)),
         }
     }
 }
@@ -301,7 +304,8 @@ fn analyze_with_profile_inner(
         return Err("authority attack clock fields must be supplied together".into());
     }
 
-    let scenarios: u32 = if request.incoming.is_empty() { 1 } else { 10 };
+    let unknown_timing = request.incoming.iter().any(|p|p.active.is_none() && p.ready_in_frames.is_none());
+    let scenarios: u32 = if request.incoming.is_empty() { 1 } else if unknown_timing { 30 } else { 10 };
     let mut scores: HashMap<Placement, (f64, f32, u32)> = HashMap::new();
     let mut nodes = 0u64;
     let tuner_config = tuner_config_from_profile(profile)?;
@@ -464,6 +468,17 @@ fn analyze_with_profile_inner(
     };
 
     for scenario in 0..scenarios {
+        // Cross three illustrative activation cases with ALL ten hole columns.
+        // These are sensitivity assumptions, not a probability distribution or
+        // a claim that an unknown packet really arrives at any of these times.
+        // The same hard node cap is shared across the entire cross product.
+        let scenario_incoming: Vec<_> = timed_incoming.iter().enumerate().map(|(i,&(lines,ready))| {
+            let p=request.incoming[i];
+            let delay=if p.active.is_none() && p.ready_in_frames.is_none() {
+                match scenario / 10 { 0=>1, 1=>request.frames_per_piece.saturating_add(1).min(600), _=>600 }
+            } else { ready };
+            (lines,delay)
+        }).collect();
         let start = Start {
             board: request.start.board,
             queue: request.start.queue.clone(),
@@ -475,7 +490,7 @@ fn analyze_with_profile_inner(
         };
         let forecast = match clock_fields {
             (Some(frame),Some(multiplier),Some(margin),Some(rate)) => Forecast::new_timed_with_clock(
-                &timed_incoming,
+                &scenario_incoming,
                 request.pieces_placed,
                 request.garbage_sent,
                 request.frames_per_piece,
@@ -486,7 +501,7 @@ fn analyze_with_profile_inner(
                 scenario,
             )?,
             _ => Forecast::new_timed(
-                &timed_incoming,
+                &scenario_incoming,
                 request.pieces_placed,
                 request.garbage_sent,
                 request.frames_per_piece,
@@ -575,6 +590,7 @@ fn analyze_with_profile_inner(
             "Only already observable incoming packets are modeled; no opponent board or future attacks.",
             "Unknown holes use ten equally weighted clean-hole scenarios when incoming garbage exists.",
             "Per-packet ready_in_frames is used when supplied; active-only callers fall back to pending_delay_frames.",
+            "Unknown activation crosses ten hole scenarios with hypothetical delays 1, frames_per_piece+1 (capped at 600), and 600 frames; equal weighting is a heuristic, not observed timing or calibrated probability.",
             "When supplied together, authority frame/multiplier/margin/rate drive time-based Tetrp attack scaling at each hypothetical lock frame.",
             "The caller must derive SevenBag bag_state only from information already visible in replay history.",
             "The hard evaluator-node budget is divided across modeled hole scenarios.",

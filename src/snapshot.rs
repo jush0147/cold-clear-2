@@ -48,7 +48,7 @@ struct RootState {
 }
 #[derive(Clone, Copy, Deserialize)]
 #[serde(deny_unknown_fields)]
-struct Incoming { lines: u32, ready_in_frames: u32 }
+struct Incoming { lines: u32, ready_in_frames: Option<u32> }
 #[derive(Clone, Copy, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 struct TimingRules {
@@ -119,6 +119,8 @@ pub struct Report {
     pub place_known_search_layers: usize,
     pub hold_known_search_layers: Option<usize>,
     pub scenarios: u32,
+    pub unknown_activation_packets: usize,
+    pub unknown_activation_delays: Vec<u32>,
     pub authority_attack_clock: bool,
     pub garbage_are_frames: u32,
     pub garbage_are_bump_frames: u32,
@@ -143,6 +145,11 @@ fn parse(text: &str) -> Result<Request, String> {
     for name in RULE_FIELDS {
         if !rules.contains_key(*name) {
             return Err(reject("RULE_FIELD_MISSING",format!("missing public rule {name}")));
+        }
+    }
+    if let Some(packets)=value.get("incoming").and_then(Value::as_array) {
+        if packets.iter().any(|p|p.get("ready_in_frames").is_none()) {
+            return Err(reject("REQUEST_SCHEMA_INVALID","ready_in_frames must be explicit frames or null for unknown"));
         }
     }
     let r: Request = serde_json::from_value(value)
@@ -264,7 +271,7 @@ fn analysis_request(r:&Request, root:Root, budget:u32, hold_locked:bool) -> anal
         rules: r.rules,
         hold_locked,
         incoming: r.incoming.iter().copied().map(|p| analysis::IncomingPacket {
-            lines:p.lines, active:None, ready_in_frames:Some(p.ready_in_frames),
+            lines:p.lines, active:None, ready_in_frames:p.ready_in_frames,
         }).collect(),
         pieces_placed:r.pieces_placed,
         garbage_sent:r.garbage_sent,
@@ -397,6 +404,10 @@ pub fn analyze_text(text:&str)->Result<Report,String>{
         place_known_search_layers:if r.start.hold.is_none(){5}else{6},
         hold_known_search_layers:hold_layers,
         scenarios:place_report.scenarios,
+        unknown_activation_packets:r.incoming.iter().filter(|p|p.ready_in_frames.is_none()).count(),
+        unknown_activation_delays:if r.incoming.iter().any(|p|p.ready_in_frames.is_none()) {
+            vec![1,r.frames_per_piece.saturating_add(1).min(600),600]
+        } else {vec![]},
         authority_attack_clock:place_report.authority_attack_clock,
         garbage_are_frames:r.timing_rules.garbage_are_frames,
         garbage_are_bump_frames:r.timing_rules.garbage_are_bump_frames,
@@ -421,6 +432,7 @@ pub fn analyze_text(text:&str)->Result<Report,String>{
             "Real garbageare/garbagearebump rule values are preserved in the request/result. Positive existing ARE is rejected; exact ARE/bump timing is not simulated.",
             "competitive_stacking is a distinct 40L-source heuristic mode with neutral root combo/B2B and no TL attack clock; it is neither TL parity nor 40L score optimization.",
             "Pending uses explicit frames_per_piece and ten hypothetical clean-hole scenarios; ARE/bump timing remains approximate.",
+            "Null activation remains unknown in the request; the shared node budget covers a cross product with three labeled timing hypotheses, not observed arrival times or calibrated probabilities.",
         ],
     })
 }
@@ -457,7 +469,7 @@ pub fn capabilities()->Value{
         "garbage_are_effect_model":"preserved rule values; positive existing ARE rejected; exact ARE/bump timing not simulated",
         "no_pending_nonunit_multiplier":true,
         "public_rule_contract":true,
-        "pending_unknown_activation":"reject",
+        "pending_unknown_activation":"three_explicit_timing_scenarios_shared_node_budget",
         "pending_positive_are_queue":"reject",
         "pending_hole_scenarios":10,
         "structured_rejections":true,
@@ -549,6 +561,19 @@ mod tests{
         assert!(analyze_text(&v.to_string()).unwrap_err().starts_with("REQUEST_SCHEMA_INVALID:"));
         let mut v=base.clone();v["root_legal_placements"][0]["location"]["type"]=json!("I");
         assert!(analyze_text(&v.to_string()).unwrap_err().starts_with("ROOT_GEOMETRY_PIECE_MISMATCH:"));
+    }
+    #[test]
+    fn unknown_activation_is_preserved_and_uses_one_shared_budget(){
+        let mut v=input(Some(Piece::L),Piece::I,true);
+        v["incoming"][0]["ready_in_frames"]=Value::Null;
+        let a=analyze_text(&v.to_string()).unwrap();
+        let b=analyze_text(&v.to_string()).unwrap();
+        assert_eq!(a.scenarios,30);
+        assert_eq!(a.unknown_activation_packets,1);
+        assert_eq!(a.unknown_activation_delays,vec![1,25,600]);
+        assert!(a.nodes<=a.node_budget as u64);
+        assert_eq!(serde_json::to_value(a).unwrap(),serde_json::to_value(b).unwrap());
+        assert!(v["incoming"][0]["ready_in_frames"].is_null());
     }
     #[test]
     fn real_tl_are_rules_are_preserved_but_not_claimed_exact(){

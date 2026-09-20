@@ -1,4 +1,10 @@
-# Kiwi v1 browser handoff: snapshot API revision 3.1
+# Kiwi v1 browser handoff: snapshot API revision 3.2
+
+Revision 3.2 supersedes the unknown-activation rejection described in the
+historical 3.1 sections below. Explicit null activation is supported with bounded
+timing hypotheses, and complete geometry avoids repeated landing conversions.
+See [the v3.2 repair contract](docs/snapshot-v3.2-repair.md). The artifact includes
+this contract. Positive existing ARE remains a separate outstanding limitation.
 
 This revision is the compatibility/packaging follow-up to snapshot-v3. The previous
 v3 archive exposed a placement helper whose relative import was not shipped, and

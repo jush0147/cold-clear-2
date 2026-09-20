@@ -226,7 +226,12 @@ checks.push('40L uses explicit competitive_stacking mode with neutral combo/B2B 
 }
 {
   const e=make(51);e.state.attack.pending=[{cid:1,amt:2,active:false,activeFrame:null,hardened:false,shielded:false,status:'spawn'}];
-  assert.equal(codeOf(()=>captureSnapshotFromEngine(e,tools)),'PENDING_ACTIVATION_UNKNOWN');
+  const unknownRequest=request(e),unknownResult=analyze(unknownRequest);
+  assert.equal(unknownRequest.incoming[0].ready_in_frames,null);
+  assert.equal(unknownResult.unknown_activation_packets,1);
+  assert.equal(unknownResult.scenarios,30);
+  assert.ok(unknownResult.nodes<=unknownRequest.node_budget);
+  assert.deepEqual(analyze(unknownRequest),unknownResult);
   e.state.attack.pending[0]={...e.state.attack.pending[0],active:true,hardened:true};
   assert.equal(codeOf(()=>captureSnapshotFromEngine(e,tools)),'PENDING_PACKET_HARDENED_UNSUPPORTED');
   e.state.attack.pending[0]={...e.state.attack.pending[0],hardened:false,shielded:true};
@@ -255,7 +260,10 @@ checks.push('stable structured rejection codes and supported-vs-exact rule contr
 // Pending that has not entered ARE and late multiplier use the same clocked API.
 {
   const e=make(60),cid=e.receive({from:'P2',iid:1,ackiid:0,amt:4});
-  assert.equal(codeOf(()=>request(e)),'PENDING_ACTIVATION_UNKNOWN');
+  const unknown=request(e),unknownResult=analyze(unknown);
+  assert.equal(unknown.incoming[0].ready_in_frames,null);
+  assert.equal(unknownResult.scenarios,30);
+  assert.deepEqual(unknownResult.unknown_activation_delays,[1,25,600]);
   e.confirm(cid);
   const r=request(e),result=analyze(r);
   assert.equal(result.scenarios,10);assert.equal(result.authority_attack_clock,true);

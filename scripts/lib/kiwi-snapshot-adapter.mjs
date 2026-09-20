@@ -84,10 +84,8 @@ function incomingTL(state){
     if(p.status!=='spawn')fail('PENDING_PACKET_STATUS_UNSUPPORTED','Pending packet status is unsupported',{cid:p.cid,status:p.status});
     let ready=0;
     if(!p.active){
-      if(!Number.isInteger(p.activeFrame))
-        fail('PENDING_ACTIVATION_UNKNOWN','Observable pending packet has no confirmed activation frame',{cid:p.cid});
-      ready=p.activeFrame-state.frame;
-      if(ready<=0)fail('PENDING_ACTIVATION_INVALID','Inactive packet activation is not in the future',{cid:p.cid,activeFrame:p.activeFrame,frame:state.frame});
+      ready=Number.isInteger(p.activeFrame)?p.activeFrame-state.frame:null;
+      if(ready!==null&&ready<=0)fail('PENDING_ACTIVATION_INVALID','Inactive packet activation is not in the future',{cid:p.cid,activeFrame:p.activeFrame,frame:state.frame});
     }
     out.push({lines:p.amt,ready_in_frames:ready});
   }
@@ -197,8 +195,8 @@ export function buildSnapshotRequest(v,{nodeBudget=200000,framesPerPiece=24}={})
     root_legal_placements:structuredClone(v.root_legal_placements),
     rules:publicRules(v.rules),hold_locked:Boolean(v.hold_locked),
     incoming:v.incoming.map(p=>{
-      if(!Number.isInteger(p.ready_in_frames))
-        fail('PENDING_ACTIVATION_UNKNOWN','Explicit packet activation is required');
+      if(p.ready_in_frames!==null&&(!Number.isInteger(p.ready_in_frames)||p.ready_in_frames<0))
+        fail('PENDING_ACTIVATION_INVALID','Activation must be known nonnegative frames or explicit null');
       return {lines:p.lines,ready_in_frames:p.ready_in_frames};
     }),
     pieces_placed:v.pieces_placed,garbage_sent:v.garbage_sent,
@@ -293,7 +291,6 @@ export function snapshotRuleContract(){
     },
     rejections:{
       positive_are:'PENDING_ARE_QUEUE_UNSUPPORTED',
-      unknown_activation:'PENDING_ACTIVATION_UNKNOWN',
       hardened:'PENDING_PACKET_HARDENED_UNSUPPORTED',
       shielded:'PENDING_PACKET_SHIELDED_UNSUPPORTED',
       unsupported_status:'PENDING_PACKET_STATUS_UNSUPPORTED',

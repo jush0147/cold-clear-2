@@ -160,3 +160,10 @@ misrepresented as TL.
 
 Tetrp Phase 4B remains unauthorized. No strategy experiment or evaluator-weight
 change is part of this compatibility repair.
+# Snapshot v3.2 adoption update
+
+Unknown observable activation is now supported as explicit null with three
+labeled timing hypotheses sharing the request node cap. Earlier statements below
+that unknown activation rejects are historical and superseded. Complete root
+geometry retains all candidates while caching repeated landing conversion.
+See docs/snapshot-v3.2-repair.md for precise assumptions and remaining limits.

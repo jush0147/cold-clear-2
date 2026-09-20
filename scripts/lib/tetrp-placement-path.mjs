@@ -28,7 +28,9 @@ export function createPlacementTools({Engine, boardModule:B, rotationModule:R}) 
   }
 
   const cellsKey=cells=>cells.map(c=>c[0]+','+Math.ceil(c[1])).sort().join(';');
-  const copyPiece=p=>structuredClone(p);
+  // Active-piece fields are scalars. Copying them through structuredClone in
+  // every graph edge dominates traversal time and provides no extra isolation.
+  const copyPiece=p=>({...p});
 
   function dropped(board,piece) {
     const p=copyPiece(piece);
@@ -106,15 +108,25 @@ export function createPlacementTools({Engine, boardModule:B, rotationModule:R}) 
     const board=structuredClone(state.board),rules=structuredClone(state.rules);
     const initial=copyPiece(state.piece);
     const q=[initial],seen=new Set([pathStateKey(initial,rules)]),placements=new Map();
+    const landingCache=new Set();
     const actions=['moveLeft','moveRight','rotateCW','rotateCCW','rotate180','down'];
     let head=0;
     while(head<q.length) {
       if(seen.size>250000)throw new Error('ROOT_GEOMETRY_STATE_LIMIT');
       const p=q[head++];
-      const drop=dropped(board,p);
-      const spin=p.rotated?R.classifySpin(board,p,rules.spinbonuses):'none';
-      for(const placement of ccPlacementsForAuthorityCells(p.type,B.cells(drop),spin)) {
-        placements.set(JSON.stringify(placement),placement);
+      const poseKey=[p.x,p.y,p.r,p.kick,p.rotated?1:0].join(',');
+      if(!landingCache.has(poseKey)) {
+        const drop=dropped(board,p);
+        const spin=p.rotated?R.classifySpin(board,p,rules.spinbonuses):'none';
+        // Rotation/reset history changes future edges, but not the landing
+        // of an identical pose. Keep all graph states; map each landing once.
+        const landingKey=cellsKey(B.cells(drop))+':'+spin;
+        if(!landingCache.has(landingKey)) {
+          for(const placement of ccPlacementsForAuthorityCells(p.type,B.cells(drop),spin))
+            placements.set(JSON.stringify(placement),placement);
+          landingCache.add(landingKey);
+        }
+        landingCache.add(poseKey);
       }
       for(const action of actions) {
         const next=applyPathMove(board,p,action,rules);
