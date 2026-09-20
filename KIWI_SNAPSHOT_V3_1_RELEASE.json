@@ -1,0 +1,127 @@
+{
+  "schema": "kiwi-snapshot-release-receipt/3.1",
+  "status": "delivered_upstream_pending_tetrp_phase4a_integration",
+  "date": "2026-09-20",
+  "supersedes": {
+    "artifact_id": 10602973298,
+    "reason": "snapshot-v3 downstream verification found an unshipped placement-helper dependency and over-restrictive mode/ARE rule gates"
+  },
+  "baseline": {
+    "artifact_id": 10600729877,
+    "workflow_run_id": 35500047026,
+    "source_commit": "15135ae8066c95308a3ae87ce149f5cdc7e13043"
+  },
+  "artifact": {
+    "name": "kiwi-v1-browser",
+    "product_version": "kiwi-v1-snapshot-v3.1",
+    "repository": "jush0147/cold-clear-2",
+    "branch": "kiwi-v1",
+    "source_commit": "60e75395be109e58d255a85ecd1cf0c981e696b3",
+    "build_commit": "60e75395be109e58d255a85ecd1cf0c981e696b3",
+    "workflow_run_id": 35510089741,
+    "artifact_id": 10605097237,
+    "postupload_verification_artifact_id": 10605385940,
+    "size_in_bytes": 318133,
+    "archive_sha256": "2b839ec06ec38a4297cbc673f14ff3913d4d396e94b761cabe0bb1f0d23feec3",
+    "exact_file_set_verified": true,
+    "verified_files": 30,
+    "relative_import_closure_verified": true,
+    "workflow_post_upload_redownload_verified": true,
+    "independent_redownload_verified": true
+  },
+  "fixes": {
+    "placement_helper_dependency": "self-contained; no tetrp-authority-adapter.mjs import",
+    "tl_are_rules": {
+      "garbageare_nonzero_supported": true,
+      "garbagearebump_nonzero_supported": true,
+      "verified_values": {
+        "garbageare": 5,
+        "garbagearebump": 12
+      },
+      "exact_are_bump_timing": false,
+      "positive_existing_are_queue": "reject:PENDING_ARE_QUEUE_UNSUPPORTED",
+      "unknown_activation": "reject:PENDING_ACTIVATION_UNKNOWN"
+    },
+    "source_modes": {
+      "tl": {
+        "analysis_mode": "tl",
+        "authority_attack_clock": true
+      },
+      "40l": {
+        "analysis_mode": "competitive_stacking",
+        "neutral_root_combo_b2b": true,
+        "pending_garbage": false,
+        "tl_attack_clock": false,
+        "claims_tl_parity": false,
+        "claims_40l_score_optimization": false
+      }
+    }
+  },
+  "validation": {
+    "native_and_rule_suites": "passed",
+    "snapshot_acceptance": "passed",
+    "representative_default_budget": {
+      "actual_nodes": 197372,
+      "node_cap": 200000,
+      "completion": "visible_search_idle"
+    },
+    "browser_workers": [
+      {
+        "browser": "Chromium",
+        "version": "153.0.8010.12",
+        "passed": true
+      },
+      {
+        "browser": "WebKit",
+        "version": "26.6",
+        "passed": true
+      }
+    ],
+    "preupload_packaged_e2e": {
+      "passed": true,
+      "evidence": "packaged placement helper -> pinned Tetrp snapshot -> packaged web WASM",
+      "tl_are_rules": [
+        5,
+        12
+      ],
+      "competitive_stacking_40l": true
+    },
+    "postupload_redownloaded_e2e": {
+      "passed": true,
+      "verification_artifact_id": 10605385940,
+      "evidence": "downloaded packaged placement helper -> pinned Tetrp snapshot -> downloaded packaged web WASM",
+      "tl_are_rules": [
+        5,
+        12
+      ],
+      "competitive_stacking_40l": true
+    },
+    "bounded_rule_differential": {
+      "total_fixtures": 3472,
+      "cancel": 3240,
+      "spawn_rescue": 224,
+      "clear_rescue": 2,
+      "garbage_top_boundary": 2,
+      "supported_public_rule_variants": 3,
+      "explicitly_rejected_public_rule_variants": 1
+    }
+  },
+  "unresolved": [
+    "Exact ARE/bump timing is not modeled; nonzero public values are preserved and disclosed.",
+    "Positive current ARE queue remains unsupported.",
+    "Empty-Hold unknown-preview information gain is not optimized before post-Hold reanalysis.",
+    "Geometry reachability is distinct from frame-accurate timing executability.",
+    "Full opener, Clutch, terminal-reason and overall rules parity remain false.",
+    "40L competitive_stacking is a board/placement heuristic, not sprint score/time optimization.",
+    "No physical-phone certification was added by this release."
+  ],
+  "scope": {
+    "tetrp_repository_changed_by_this_task": false,
+    "tetrp_vendor_pin_changed": false,
+    "phase_4b_started": false,
+    "strategy_experiment_started": false,
+    "strategy_weights_changed": false,
+    "strategy_promotion": false,
+    "frozen_profile": "review_h9_h12"
+  }
+}

@@ -141,3 +141,41 @@ manifest SHA-256 valid, archive SHA-256
 
 This receipt does not change the Tetrp pin, start Phase 4B, or create strategy
 evidence. Downstream Phase 4A adoption remains a separate Tetrp repository task.
+
+
+## Accepted snapshot-v3.1 compatibility release
+
+Snapshot-v3.1 supersedes the previous v3 delivery for new Tetrp integration.
+Accepted upstream identifiers:
+
+- source/build commit: `60e75395be109e58d255a85ecd1cf0c981e696b3`
+- workflow run: `35510089741`
+- main artifact: `kiwi-v1-browser`, artifact ID `10605097237`
+- post-upload verification artifact: `10605385940`
+- independently downloaded archive SHA-256:
+  `2b839ec06ec38a4297cbc673f14ff3913d4d396e94b761cabe0bb1f0d23feec3`
+- exact delivered file set: 30 hashed files, all manifest hashes verified.
+
+This release closes two adoption blockers found by downstream verification:
+
+1. `tetrp-placement-path.mjs` is self-contained; it no longer imports an
+   unshipped `tetrp-authority-adapter.mjs`.
+2. TL no longer requires `garbageare=0` / `garbagearebump=0`.
+   Real values are preserved, including synthetic/replay-compatible 5 / 12.
+   Exact ARE/bump timing remains explicitly false and a positive current ARE queue
+   remains an explicit unsupported state.
+
+40L is supported only as separately labeled `competitive_stacking`: neutral root
+combo/B2B, no pending garbage and no TL attack clock. It is neither represented as
+TL nor claimed to optimize 40L sprint score/time.
+
+Release acceptance now includes, after GitHub upload, re-downloading the artifact
+on a fresh job, verifying exact file/hash/import closure, importing the packaged
+placement helper, constructing real snapshots with pinned Tetrp, and searching
+with the packaged web WASM. Both TL with ARE rules 5/12 and 40L competitive
+stacking passed that downloaded-package E2E. Chromium/WebKit Worker tests and the
+existing 200k deterministic fixture also remain green; the representative 200k
+fixture completes at 197372 nodes with visible_search_idle.
+
+This receipt does not change the Tetrp pin, authorize Phase 4B, open strategy
+experiments, change evaluator weights, or claim improved playing strength.
