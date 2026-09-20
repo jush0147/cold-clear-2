@@ -198,6 +198,10 @@ checks.push('geometry reachability is distinct from frame/reset timing executabi
   assert.equal(codeOf(()=>captureSnapshotFromEngine(e,tools)),'RULE_VALUE_UNSUPPORTED');
 }
 {
+  const e=make(521);e.state.rules.b2bchaining=true;
+  assert.equal(codeOf(()=>captureSnapshotFromEngine(e,tools)),'RULE_VALUE_UNSUPPORTED');
+}
+{
   const e=make(53);
   Object.assign(e.state.rules,{b2bcharging:false,b2bcharge_at:7,b2bcharge_base:5,openerphase_pieces:20,
     allclears:false,allclear_garbage:7,allclear_b2b:2,garbagespecialbonus:false,clutch:false});

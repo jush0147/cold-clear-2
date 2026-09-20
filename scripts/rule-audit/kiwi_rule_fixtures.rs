@@ -73,6 +73,20 @@ fn pinned_tetrp_differential_fixtures() {
                 assert_eq!(!f.topped_out,c["expected_playing"].as_bool().unwrap(),
                     "garbage playing boundary case {index}: reason={}",c["authority_reason"]);
             }
+            "rule_variant_supported"=>{
+                let actual:TetrioRules=serde_json::from_value(c["actual"].clone()).unwrap();
+                actual.validate().unwrap();
+                let roundtrip=serde_json::to_value(actual).unwrap();
+                for (k,v) in c["requested"].as_object().unwrap() {
+                    assert_eq!(&roundtrip[k],v,"transported public rule {k} case {index}");
+                }
+            }
+            "rule_variant_rejected"=>{
+                let actual:TetrioRules=serde_json::from_value(c["actual"].clone()).unwrap();
+                let error=actual.validate().expect_err("fixture must remain unsupported");
+                assert!(error.contains(c["expected_rejection"].as_str().unwrap()),
+                    "unexpected rule rejection case {index}: {error}");
+            }
             _=>panic!("Unknown audit fixture {kind}"),
         }
     }

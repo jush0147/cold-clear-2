@@ -96,6 +96,40 @@ for(const fill of ['partial','full']){
   });
 }
 
+
+// Variable public attack-rule values that snapshot-v3 transports rather than
+// exact-pins. These are read back from the pinned Tetrp authority and compared
+// against the exact Kiwi rule struct in the Rust differential test.
+const supportedRuleVariants=[
+  {b2bcharging:false,b2bcharge_at:7,b2bcharge_base:5,b2bchaining:false,
+   openerphase_pieces:20,allclears:false,allclear_garbage:7,allclear_b2b:2,
+   garbagespecialbonus:false,clutch:false},
+  {b2bcharging:true,b2bcharge_at:1,b2bcharge_base:9,b2bchaining:false,
+   openerphase_pieces:0,allclears:true,allclear_garbage:0,allclear_b2b:0,
+   garbagespecialbonus:true,clutch:true},
+  {b2bcharging:true,b2bcharge_at:4,b2bcharge_base:3,b2bchaining:false,
+   openerphase_pieces:14,allclears:true,allclear_garbage:5,allclear_b2b:1,
+   garbagespecialbonus:true,clutch:true},
+];
+for(const requested of supportedRuleVariants){
+  const e=make(requested.clutch,requested);
+  fixtures.push({kind:'rule_variant_supported',requested,actual:publicRules(e.state)});
+}
+
+// Tetrp can expose rule combinations that this Kiwi contract intentionally does
+// not implement. Record the authority value; the comparator must keep rejecting
+// it rather than silently normalizing it to the supported rule.
+{
+  const requested={b2bchaining:true};
+  const e=make(true,requested);
+  fixtures.push({
+    kind:'rule_variant_rejected',
+    requested,
+    actual:publicRules(e.state),
+    expected_rejection:'b2bchaining=true is not supported'
+  });
+}
+
 fs.writeFileSync(out,JSON.stringify(fixtures));
 const kinds=Object.fromEntries([...new Set(fixtures.map(f=>f.kind))]
   .map(k=>[k,fixtures.filter(f=>f.kind===k).length]));
@@ -107,7 +141,8 @@ console.log(JSON.stringify({
     'opening cancellation across pending/cumulative-sent/opener boundaries',
     'spawn rescue and topout/garbagesmash reason observations',
     'representative clear-to-rescue transitions',
-    'full-vs-partial storage-top garbage-smash boundary'
+    'full-vs-partial storage-top garbage-smash boundary',
+    'supported transported public-rule variants plus an explicitly rejected Tetrp-visible variant'
   ],
   not_certified:[
     'positive existing ARE queue forecast',

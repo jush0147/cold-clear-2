@@ -83,7 +83,10 @@ The new release workflow generates fixtures from pinned Tetrp
 Kiwi source being built. The grid expands opener double-cancel across pending
 amounts, cumulative-sent values and opener boundaries; Clutch spawn/clear rescue
 cases retain topout/garbagesmash authority observations; storage-top garbage
-insertion covers partial-vs-full top-row smash behavior.
+insertion covers partial-vs-full top-row smash behavior. It also records pinned
+Tetrp public-rule variants: supported variable attack-rule values must round-trip
+field-for-field, while the Tetrp-visible b2bchaining=true variant must remain an
+explicit unsupported Kiwi rule rather than being silently normalized.
 
 The forecast was corrected so a partially occupied storage top row is not treated
 as an immediate garbage smash; pinned Tetrp rejects insertion only at the tested

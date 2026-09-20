@@ -146,8 +146,10 @@ to say full rules parity, full opener parity, full Clutch parity and exact ARE/b
 timing are false unless the final build's tests establish otherwise.
 
 The rule differential suite expands opener pending/cumulative-sent/opener-boundary
-coverage, Clutch spawn/clear rescue cases, topout observations, and full-vs-partial
-storage-top garbage-smash behavior. Limited fixtures must not be rewritten as a
+coverage, Clutch spawn/clear rescue cases, topout observations, full-vs-partial
+storage-top garbage-smash behavior, and pinned Tetrp public-rule variants. Supported
+variable attack-rule values are compared field-for-field against Kiwi; a Tetrp-visible
+b2bchaining=true fixture is required to remain an explicit Kiwi rejection. Limited fixtures must not be rewritten as a
 claim of complete parity. Active-piece repair failure after garbage insertion and
 complete terminal-reason classification remain outside the forecast model.
 
