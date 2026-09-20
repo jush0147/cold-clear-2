@@ -1,0 +1,55 @@
+name: Kiwi pinned rule fixture audit
+on:
+  push:
+    branches: [tetrp-authority]
+    paths: ['.github/workflows/kiwi-rule-fixtures.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: audit-source
+      - uses: actions/checkout@v4
+        with:
+          ref: 6d68c2ee9ed5f93852f1913fa3882984d0048a1e
+          path: kiwi-source
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: jush0147/tetrp
+          ref: 0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2
+          path: tetrp-reference
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: kiwi-source
+          shared-key: kiwi-snapshot-rule-audit
+      - name: Generate independent Tetrp fixtures
+        shell: bash
+        run: |
+          set -euo pipefail
+          node audit-source/scripts/rule-audit/export-fixtures.mjs tetrp-reference kiwi-source/kiwi-rule-fixtures.json | tee fixture-counts.json
+          cp audit-source/scripts/rule-audit/kiwi_rule_fixtures.rs kiwi-source/tests/kiwi_rule_fixtures.rs
+      - name: Compare released source primitives against authority fixtures
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo test --release --manifest-path kiwi-source/Cargo.toml --test kiwi_rule_fixtures -- --nocapture 2>&1 | tee rule-fixture-audit.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: kiwi-pinned-rule-fixture-audit
+          path: |
+            fixture-counts.json
+            rule-fixture-audit.log
+            kiwi-source/kiwi-rule-fixtures.json
+          retention-days: 14
