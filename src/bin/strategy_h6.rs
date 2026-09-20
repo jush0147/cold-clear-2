@@ -229,7 +229,7 @@ fn duel(seed: u64, swapped: bool, s: Settings) -> Result<Value, String> {
             let mut outgoing = vec![];
             for attack in tetrio::attack(&info).packets() {
                 let pending = p.incoming.iter().map(|p| p.lines).sum();
-                let (cancelled, sent) = cancel_plan(attack, pending, p.pieces, p.sent);
+                let (cancelled, sent) = cancel_plan(attack, pending, p.pieces, p.sent, 14);
                 consume(&mut p.incoming, cancelled);
                 p.sent = p.sent.checked_add(sent).ok_or("sent counter overflow")?;
                 if sent != 0 {
