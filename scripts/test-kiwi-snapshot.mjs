@@ -272,7 +272,8 @@ const browserRequest=buildSnapshotRequest(captureSnapshotFromEngine(browserEngin
 const full=analyze(browserRequest);
 assert.equal(browserRequest.node_budget,200000);assert.ok(full.nodes<=200000);
 assert.ok(['node_budget','visible_search_idle'].includes(full.completion));
-fs.writeFileSync('snapshot-browser-request.json',JSON.stringify(browserRequest));
+fs.writeFileSync('snapshot-browser-request.json',JSON.stringify(browserRequest,null,2)+'\n');
+fs.writeFileSync('snapshot-example-result.json',JSON.stringify(full,null,2)+'\n');
 const report={status:'passed',schema:'kiwi-snapshot-acceptance/3',checks,
   default_budget:{nodes:full.nodes,budget:full.node_budget,completion:full.completion},
   capabilities:caps,rule_contract:snapshotRuleContract(),
