@@ -1,133 +1,182 @@
-# Kiwi v1 browser handoff: snapshot API revision 2
+# Kiwi v1 browser handoff: snapshot API revision 3
 
-This supersedes the earlier history-derived SevenBag/persistent-product instructions.
+This revision is the correctness/product follow-up to accepted artifact 10600729877,
+workflow 35500047026, source/build commit
+`15135ae8066c95308a3ae87ce149f5cdc7e13043`.
+
 Read Tetrp `docs/KIWI_SNAPSHOT_PRODUCT_HANDOFF.md` and `docs/PHASE_4_PLAN.md`.
-Tetrp stays at Phase 4A. No Tetrp files or vendor pin are changed by this release.
-No strategy experiment or strength promotion is authorized by this work.
+Tetrp remains at Phase 4A. This release does not change the Tetrp vendor pin, does
+not implement user-visible continuation, does not authorize Phase 4B, and does not
+start or validate a strategy experiment. Evaluator coefficients remain
+`review_h9_h12`.
 
-## Contract chosen before implementation
+## Snapshot contract remains history-free
 
-The request schema is `kiwi-snapshot/2`. `bag_knowledge` must be `unknown` and
-`unknown_tail` must be `finite_visible`. There is no randomizer/bag_state input.
-Do not infer bag remainder from draw history, current counters or hidden state.
-Only known queue layers are searched; frontier leaves retain CC2's existing
-heuristic evaluation. This is an explicit finite-horizon choice, not probabilistic
-seven-bag inference. With the existing CC2 normalization the conservative known
-horizon is five lock layers when Hold is empty and six when occupied; it does not
-claim to use every possible terminal reserve placement. This search-policy change
-has correctness tests, not a new strength claim. Evaluator coefficients are frozen
-at `review_h9_h12`; do not treat old speculative-search KO results as validation.
+The product entrypoint is still `analyze_snapshot_json(requestJson)`. Revision 3
+uses request `kiwi-snapshot/3` and result `kiwi-snapshot-result/3`.
 
-The single product entrypoint is `analyze_snapshot_json(requestJson)`. Capabilities
-come from `snapshot_capabilities_json()`, NOT legacy WasmBot capabilities.
-Every request creates new search DAGs, including no-pending roots. Thus pending and
-non-unit multiplier roots cannot accidentally take a clock-less persistent path.
-The legacy `WasmBot`, `start`, `start_tetrp`, `analyze_pending_json`, and the old
-SevenBag adapter remain compatibility APIs; they are NOT v2 product entrypoints.
-There is deliberately no cross-request persistent DAG reuse in this version.
+Every request contains exactly current + NEXT 5 and explicitly declares an unknown
+bag with a finite visible tail. Do not send or derive a SevenBag remainder. Do not
+scan earlier draws, use piece-count modulo, inspect hidden queue/RNG state, or pass
+future original placements/opponent attacks. The Worker receives only the detached
+allowlisted request. Each request builds fresh search state; there is no product
+persistent DAG reuse.
 
-Use `kiwi-snapshot-adapter.mjs`:
+The finite known horizon is per request, not a continuation-length limit. Tetrp
+owns the private original sequence in an isolated authority branch and reveals a
+new preview only when an actual branch action consumes a draw.
 
-```js
-const visible = captureSnapshot(currentAuthorityState);
-const request = buildSnapshotRequest(visible, {nodeBudget: 200000, framesPerPiece: 24});
-worker.postMessage({type: 'analyze', id: requestGeneration, request});
-```
+All roots use the same clock-aware snapshot API, including incoming=[] and
+non-unit attack multipliers. The default hard cap remains 200,000 evaluated nodes
+per request. When both Place and Hold are available, that one request divides its
+cap deterministically between the two root branches. A required post-Hold search
+is a separate request and gets its own request cap. Always use the returned actual
+`nodes` and `completion` fields; finite-visible search may finish early.
 
-`captureSnapshot` reads only the current projection. It never seeks or scans a
-replay prefix. Pass only the resulting request into the dedicated Worker, not the
-Engine/checkpoint/replay. `kiwi-snapshot-worker.mjs` is a directly usable module
-Worker reference with local web WASM loading. Keep monotonic request generations
-on the host. Cancel/exit by `worker.terminate()`; a synchronous WASM search cannot
-process a queued cancel message. Do not add a UI-thread fallback. Drop branch,
-request and result state on exit; static offline program caching is separate.
+## Same-piece Hold is now an independent action
 
-Request fields: `schema`, `bag_knowledge`, `unknown_tail`, `start` (bottom-up board,
-current+NEXT5 queue, Hold, combo, back_to_back, b2b_count), `root_pose` (top-down x/y,
-Tetrp rotation 0..3), explicit `rules`, `hold_locked`, incoming packets with mandatory
-`ready_in_frames`, pieces_placed, garbage_sent, frames_per_piece, authority_frame,
-authority_subframe, garbage_multiplier, garbage_margin_frames,
-garbage_increase_per_second, and optional node_budget (default 200000).
-Missing public rule fields and additional history/bag/hidden fields fail explicitly.
-The adapter copies named fields; it does not forward unrelated caller properties.
+Revision 3 never infers Hold merely from a different piece type. Root choices are
+explicitly modeled as separate Place and Hold branches.
 
-## Explicit action protocol
-
-Results use `kiwi-snapshot-result/2`, including ranked candidates, actual evaluated
-nodes, budget, completion reason and assumptions. Each candidate's `action` is one
-of these disjoint variants:
+Examples:
 
 ```json
-{"kind":"hold","mode":"empty","requires_reanalysis":true}
-{"kind":"hold","mode":"occupied","requires_reanalysis":true}
-{"kind":"place","placement":{"location":{"type":"I","orientation":"north","x":4,"y":0},"spin":"none"}}
+{"kind":"place","placement":{"location":{"type":"T","orientation":"north","x":4,"y":0},"spin":"none"}}
+{"kind":"hold","mode":"empty","same_piece":true,"requires_reanalysis":true}
+{"kind":"hold","mode":"occupied","same_piece":true,"requires_reanalysis":true}
 ```
 
-Hold actions contain NO landing placement or executable placement path. Apply only
-Hold through Tetrp. Empty Hold consumes one draw and immediately reveals the next
-preview; occupied Hold consumes none. Submit the new current+NEXT5 window with
-hold_locked=true and perform a NEW search before any placement. A Place action uses
-only the current piece, never implicitly Hold. After lock/spawn, Tetrp unlocks Hold
-and refills the window. Each fresh request has its own node budget; a Hold request
-never silently receives double budget.
+A Hold action NEVER contains a landing or path.
 
-Same-type Hold is not a separately searched action in this version. The explicit
-protocol can validate such a Tetrp action, but Kiwi does not rank it as an alternative.
-The capability `same_piece_hold_search=false` is intentional. Do not infer general
-Hold support merely from differing placement types or claim information-gain
-optimization for same-piece empty Hold.
+Empty Hold consumes NEXT[0], changes Hold, immediately reveals one new preview,
+and then requires a fresh current+NEXT5 request with `hold_locked=true`. Occupied
+Hold consumes no draw, but still changes the active-piece spawn/pose and locks Hold,
+so even an occupied same-piece exchange is not treated as a type-equivalent no-op.
 
-The core is spawn-based and does not yet restrict search using current x/y/rotation.
-Tetrp must validate geometry from the actual root pose. The supplied
-`validateSnapshotAction(engine, action, {Engine, placementTools})` performs validation
-on an isolated clone, without mutating its input. `selectReachableSnapshotAction`
-can select the first reachable ranked action; it reports the candidate index.
-If no candidate is reachable, fail explicitly. Do not paint cells or silently
-execute a Hold-plus-placement bundle. The existing placement helper and reset-safe
-scheduler remain available for AUTHORITY-side execution, not for input-speed claims.
+The pre-Hold request cannot know the preview revealed by an empty Hold. Kiwi scores
+that Hold branch only over the already visible post-Hold prefix. It does NOT sample,
+infer, peek, or optimize the value of the unknown reveal. Capability
+`hold_information_gain_optimized=false` is intentional. The real revealed preview
+is considered only by the mandatory post-Hold request.
 
-## Progressive reveal is not a six-piece demonstration limit
+Minimal Phase 4A pattern:
 
-Tetrp alone retains the original private sequence/generator in an isolated branch.
-Advance it according to actual branch Hold/lock actions, not original-player frames
-or placement numbers. Send only the now-visible six-piece window each time.
-The acceptance harness executes ten locks plus Holds across repeated requests,
-checking the branch sequence against a separate private audit model. This is an
-API protocol test, NOT implementation or authorization of user-visible Phase 4B.
-Never replay original-player future placements or future opponent attacks.
-Both recorded players remain frozen; leaving analysis returns paused to the same
-unchanged recorded checkpoint.
+```js
+const visible = captureSnapshotFromEngine(authorityFork, placementTools);
+const request = buildSnapshotRequest(visible, {
+  nodeBudget: 200000,
+  framesPerPiece: 24,
+});
+worker.postMessage({type: "analyze", id, request});
 
-## Rules and unresolved limits
+// result.action.kind === "hold" is a valid Phase 4A recommendation.
+// Do NOT invent or reuse a landing.
+if (result.action.kind === "hold") {
+  const postHoldFork = applyHoldForReanalysis(authorityFork, result.action, {Engine});
+  const postVisible = captureSnapshotFromEngine(postHoldFork, placementTools);
+  const postRequest = buildSnapshotRequest(postVisible, {
+    nodeBudget: 200000,
+    framesPerPiece: 24,
+  });
+  // Send postRequest as a NEW Worker request. It has hold_locked=true.
+}
+```
 
-Explicit Surge base/threshold, opener limit, all-clear rules, garbage bonus and
-Clutch switch are included from the repaired `tetrp-authority` source. The new
-snapshot API always carries the authority clock, even with incoming=[] and
-multiplier != 1. Unknown packet activation is rejected, not ignored or guessed.
+Phase 4A may display "建議 Hold" directly. A missing landing is not an error.
+Obtaining a landing after Hold requires the isolated Hold/refill/new-request
+sequence above. That protocol does not authorize user-visible Phase 4B continuation.
 
-Full opener packet/ARE parity and full Clutch clear/topout/garbage-smash parity are
-still not certified. Do not change those capability flags just because the new
-snapshot tests pass. Pending remains an approximation: explicit assumed pace,
-ten hypothetical clean-hole scenarios, integer clock and simplified ARE/bump
-handling. An existing positive ARE queue is rejected by the v2 projection. Nonzero
-garbage-ARE/bump delays are not exactly modeled. Rules outside the projection's
-supported contract fail; root geometry remains separately validated. Full parity
-is false. Solo replay scoring requires separately disclosed neutral competitive
-counter interpretation and compatible public rules; this release does not certify
-all solo/custom-rule variants.
+## Actual root-pose geometry is constrained before first search expansion
+
+Revision 2 searched from spawn and filtered afterward. Revision 3 instead asks the
+pinned Tetrp authority helper to enumerate the complete geometry-only landing set
+reachable from the ACTUAL active piece without Hold. That allowlist is transported
+in the detached request and applied to Kiwi's first Place expansion before scoring.
+
+The authority enumerator has no top-K cutoff. If its explicit state bound is
+exceeded it rejects rather than silently truncating. The result reports the ranked
+candidate index; the adapter's selection helper also reports the post-filter
+candidate index. A Place candidate outside the root allowlist is a contract error.
+
+x/y/rotation alone are insufficient. The snapshot now also transports/audits
+`hy`, `kick`, `rotated`, `spin`, `totalRotations`, `resets`,
+`rotationResets`, `locking`, `forceLock`, `safelock`, `softDropped`, and
+`wall`. Geometry enumeration consumes the real Tetrp active-piece state, including
+SRS+ kick/spin history. Exact input-timing executability additionally depends on
+the complete authority state and handling/input timers, so it remains a separate
+Tetrp-side validation boundary.
+
+The package deliberately distinguishes:
+
+- geometry reachability: used to constrain the first Kiwi Place layer;
+- input timing/reset executability: optionally checked with
+  `validateSnapshotTimingAction` on an isolated Tetrp clone.
+
+Passing geometry does not claim a move can be executed at an arbitrary requested
+lock frame. Never paint a board to substitute for authority execution.
+
+Acceptance fixtures cover non-spawn positions, wall positions, rotated states,
+near-lock states and spin-related states.
+
+## Rules and stable rejection contract
+
+The repaired Surge/public-rule/root-Hold-lock/clock behavior is retained. The
+adapter exports `snapshotRuleContract()` and rejects unsupported mechanical rule
+values instead of silently substituting defaults.
+
+Important stable rejection codes include:
+
+- `PENDING_ARE_QUEUE_UNSUPPORTED`: a positive existing garbage ARE queue;
+- `PENDING_ACTIVATION_UNKNOWN`: observable pending packet lacks confirmed activation;
+- `PENDING_PACKET_HARDENED_UNSUPPORTED`;
+- `PENDING_PACKET_SHIELDED_UNSUPPORTED`;
+- `PENDING_PACKET_STATUS_UNSUPPORTED`;
+- `RULE_VALUE_UNSUPPORTED`;
+- root geometry / timing / Hold-specific codes exposed by
+  `normalizeSnapshotError()`.
+
+Pending which has not entered ARE remains supported only with an explicit
+`ready_in_frames`. Unknown activation is never replaced with zero or guessed.
+Positive existing ARE is still rejected.
+
+Pending forecasting remains approximate: explicit 24 frames/placement in the
+product review regime, ten hypothetical clean-hole scenarios when incoming exists,
+integer-frame clocking, and simplified ARE/bump behavior. Capability flags continue
+to say full rules parity, full opener parity, full Clutch parity and exact ARE/bump
+timing are false unless the final build's tests establish otherwise.
+
+The rule differential suite expands opener pending/cumulative-sent/opener-boundary
+coverage, Clutch spawn/clear rescue cases, topout observations, and full-vs-partial
+storage-top garbage-smash behavior. Limited fixtures must not be rewritten as a
+claim of complete parity. Active-piece repair failure after garbage insertion and
+complete terminal-reason classification remain outside the forecast model.
+
+## Worker, determinism and disposal
+
+Use `kiwi-snapshot-worker.mjs` as a dedicated module Worker. Do not run WASM on the
+UI thread. A synchronous search cannot service a cancel message while executing;
+cancel/exit by terminating the Worker. Repeated and restarted requests with the
+same allowed input/search settings must be deterministic and independent of prior
+analysis or replay history.
+
+The original recorded checkpoint must remain unchanged. Any Hold/placement
+validation happens on isolated Tetrp clones. Discard branch/request/result state on
+exit. Static offline program caching is separate from analysis-history persistence.
 
 ## Release verification
 
-`kiwi-build.json` records exact source/build commit, source branch, workflow run,
-artifact name, rule-source revision, product API and actual capabilities.
-`kiwi-snapshot-acceptance.json` records Node-WASM protocol tests;
-`kiwi-snapshot-browser.json` records real Chromium/WebKit dedicated-Worker tests.
-Native snapshot tests prove unknown-tail nonexpansion, strict input handling,
-determinism and locked roots with and without pending. These are NEW gates, not
-claims borrowed from old A/A/WASM checks. Native regression log is included.
-`sha256.json` records every artifact file except the hash manifest itself.
-Both upstream licenses and THIRD_PARTY_NOTICES.md are shipped.
+Consume only a successful `kiwi-v1-browser` whose `kiwi-build.json` says
+`kiwi-v1-snapshot-v3` and whose post-upload archive verification succeeded.
 
-Consume only a successful `kiwi-v1-browser` artifact whose snapshot-v2 acceptance
-reports both say passed. Changing Tetrp's pin and replacing its old history-scan
-routing is a separate Phase 4A integration task; it has not happened automatically.
+The artifact includes web WASM/glue, snapshot adapter and Worker, placement helper,
+capabilities through the WASM API, `kiwi-build.json`, `sha256.json`, native and
+Node-WASM acceptance logs, Chromium/WebKit Worker evidence, rule differential
+evidence, licenses/notices, this handoff and the Tetrp consumer task.
+
+The workflow re-downloads the uploaded artifact and verifies the exact file set and
+all SHA-256 hashes before ntfy completion notification. Exact final commit/run/
+artifact IDs live in `kiwi-build.json` and the release receipt recorded after the
+accepted workflow.
+
+Do not infer strategy strength from this release. No H2/H9 promotion evidence is
+created by snapshot-v3 correctness testing.
