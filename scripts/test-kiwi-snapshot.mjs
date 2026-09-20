@@ -3,8 +3,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {createRequire} from 'node:module';
-import {captureSnapshot,buildSnapshotRequest,validateSnapshotAction,selectReachableSnapshotAction} from './lib/kiwi-snapshot-adapter.mjs';
+import {
+  KiwiSnapshotError,captureSnapshot,captureSnapshotFromEngine,buildSnapshotRequest,
+  normalizeSnapshotError,selectReachableSnapshotAction,validateSnapshotAction,
+  validateSnapshotTimingAction,assertSupportedSnapshotRules,snapshotRuleContract
+} from './lib/kiwi-snapshot-adapter.mjs';
 import {createPlacementTools} from './lib/tetrp-placement-path.mjs';
+
 const require=createRequire(import.meta.url);
 const wasm=require('../pkg-node/cold_clear_2.js');
 const root=path.resolve(process.argv[2]||'tetrp-reference');
@@ -13,129 +18,261 @@ const {Engine}=await load('engine.js');
 const B=await load('board.js'),R=await load('rotation.js');
 const {createBag,pullBag}=await load('random.js');
 const tools=createPlacementTools({Engine,boardModule:B,rotationModule:R});
-const dependencies={Engine,placementTools:tools};
-const make=seed=>new Engine({seed,mode:'tl',rules:{g:0,gincrease:0,b2bcharge_base:3},handling:{arr:0,das:1,dcd:0,sdf:20,safelock:false,cancel:false,may20g:true,irs:'off',ihs:'off'}});
-const request=(e,nodes=5000)=>buildSnapshotRequest(captureSnapshot(e.state),{nodeBudget:nodes});
+const deps={Engine,placementTools:tools};
+const handling={arr:0,das:1,dcd:0,sdf:20,safelock:false,cancel:false,may20g:true,irs:'off',ihs:'off'};
+const make=(seed=1,rules={})=>new Engine({mode:'tl',seed,rules:{g:0,gincrease:0,b2bcharge_base:3,...rules},handling});
+const request=(e,nodes=5000)=>buildSnapshotRequest(captureSnapshotFromEngine(e,tools),{nodeBudget:nodes,framesPerPiece:24});
 const analyze=r=>JSON.parse(wasm.analyze_snapshot_json(JSON.stringify(r)));
+const codeOf=fn=>{try{fn();assert.fail('expected rejection');}catch(e){return normalizeSnapshotError(e).code;}};
 const checks=[];
-const cap=JSON.parse(wasm.snapshot_capabilities_json());
-assert.equal(cap.snapshot_api,'analyze_snapshot_json');
-assert.equal(cap.history_derived_bag,false);assert.equal(cap.speculative_tail_expansion,false);
-assert.equal(cap.same_piece_hold_search,false);assert.equal(cap.product_persistent_dag_reuse,false);
+const caps=JSON.parse(wasm.snapshot_capabilities_json());
+assert.equal(caps.schema,'kiwi-snapshot-capabilities/3');
+assert.equal(caps.same_piece_hold_search,true);
+assert.equal(caps.hold_information_gain_optimized,false);
+assert.equal(caps.root_geometry_in_search,true);
+assert.equal(caps.root_timing_in_search,false);
 
-// Hidden state and prior history must not even be read by capture/builder.
-const original=make(42),before=original.serialize();
-const a=request(original),modified=JSON.parse(before);
-modified.bag.queue=new Proxy(modified.bag.queue,{get(t,key){
-  if(/^\d+$/.test(String(key))&&Number(key)>=5)throw new Error('Hidden NEXT read');
-  return Reflect.get(t,key);
-}});
-Object.defineProperty(modified.bag,'rng',{get(){throw new Error('RNG read');}});
-Object.defineProperty(modified,'observedDraws',{get(){throw new Error('History read');}});
-Object.defineProperty(modified,'opponent',{get(){throw new Error('Opponent read');}});
-const projected=captureSnapshot(modified);
-Object.defineProperty(projected,'bag_state',{get(){throw new Error('Bag recovery');}});
-assert.deepEqual(a,buildSnapshotRequest(projected,{nodeBudget:5000}));
-const ar=analyze(a);
-analyze(request(make(99)));
-assert.deepEqual(ar,analyze(buildSnapshotRequest(projected,{nodeBudget:5000})));
-assert.equal(original.serialize(),before);
-for(const forbidden of ['randomizer','bag_state','observedDraws','rng','hidden_next','opponent']){
-  assert.ok(!JSON.stringify(a).includes('"'+forbidden+'"'));
-  assert.throws(()=>analyze({...a,[forbidden]:[]}));
+// Pure current-snapshot boundary: geometry and request construction must not
+// inspect hidden queue tail, RNG, history or opponent state.
+{
+  const e=make(42),s=e.state;
+  s.bag.queue=new Proxy(s.bag.queue,{get(t,k,r){
+    if(/^\d+$/.test(String(k))&&Number(k)>=5)throw new Error('HIDDEN_NEXT_READ');
+    return Reflect.get(t,k,r);
+  }});
+  Object.defineProperty(s.bag,'rng',{get(){throw new Error('HIDDEN_RNG_READ')}});
+  Object.defineProperty(s,'observedDraws',{get(){throw new Error('HISTORY_READ')}});
+  Object.defineProperty(s,'opponent',{get(){throw new Error('OPPONENT_READ')}});
+  const v=captureSnapshotFromEngine(e,tools);
+  const a=buildSnapshotRequest(v,{nodeBudget:5000});
+  assert.equal(a.start.queue.length,6);
+  assert.ok(!JSON.stringify(a).includes('observedDraws'));
+  assert.ok(!JSON.stringify(a).includes('randomizer'));
+  assert.ok(!JSON.stringify(a).includes('bag_state'));
+  analyze(a);
 }
-checks.push('allowlisted request and deterministic result ignore history/hidden NEXT/RNG/opponent');
+checks.push('root geometry + request projection read only current visible state, never hidden NEXT/RNG/history/opponent');
 
-// Exact separate empty-Hold example; a hidden L is revealed only after Hold.
-const ex=make(7);
-ex.state.piece.type='t';ex.state.hold={piece:null,locked:false};
-ex.state.bag.queue=['i','o','s','z','j','l','t','s','z','j','o','i'];
-const pre=request(ex),exBefore=ex.serialize();
-assert.deepEqual(pre.start.queue,['T','I','O','S','Z','J']);
-const hold={kind:'hold',mode:'empty',requires_reanalysis:true};
-assert.deepEqual(validateSnapshotAction(ex,hold,dependencies),{action:hold});
-assert.equal(ex.serialize(),exBefore);
-assert.throws(()=>validateSnapshotAction(ex,{...hold,placement:{fake:true}},dependencies));
-assert.ok(ex.hold());
-const post=request(ex);
-assert.deepEqual(post.start.queue,['I','O','S','Z','J','L']);
-assert.equal(post.start.hold,'T');assert.equal(post.hold_locked,true);
-assert.equal(ex.state.stats.pieces,0);
-const postResult=analyze(post);
-assert.ok(postResult.candidates.every(c=>c.action.kind==='place'&&c.action.placement.location.type==='I'));
-assert.ok(!ex.hold());
-checks.push('empty Hold alone reveals one preview immediately; post-Hold request is locked and reanalyzed');
-
-// Occupied Hold, including a same-type authority action, consumes no draw.
-// Same-type Hold is accepted by Tetrp but not separately ranked by Kiwi search.
-for(const same of [false,true]){
-  const e=make(8);e.state.hold.piece=same?e.state.piece.type:'t';
-  const q=JSON.stringify(e.state.bag),old=e.state.piece.type,held=e.state.hold.piece;
-  const action={kind:'hold',mode:'occupied',requires_reanalysis:true};
-  validateSnapshotAction(e,action,dependencies);assert.ok(e.hold());
-  assert.equal(JSON.stringify(e.state.bag),q);assert.equal(e.state.piece.type,held);
-  assert.equal(e.state.hold.piece,old);assert.equal(request(e).hold_locked,true);
+// Same visible snapshot with different hidden tails yields byte-identical request
+// and result. Use plain state holders so no serializer can accidentally save us.
+{
+  const a=make(10),b=make(11);
+  b.state=structuredClone(a.state);
+  const visible=a.state.bag.queue.slice(0,5);
+  b.state.bag.queue=[...visible,'z','z','z','z','z'];
+  b.state.bag.rng={seed:999};
+  const ra=request(a),rb=request(b);
+  assert.deepEqual(ra,rb);
+  assert.deepEqual(analyze(ra),analyze(rb));
 }
-checks.push('occupied Hold changes no sequence state; same-piece search exclusion is explicit');
+checks.push('hidden tail/RNG invariance');
 
-// Independently consume the original sequence in an authority-only audit model.
-// The model and original generator NEVER cross the request/Worker boundary.
-const recorded=make(123),recordedBytes=recorded.serialize();
-const other=make(321),otherBytes=other.serialize();
-let branch=Engine.restore(recordedBytes);
-const model=createBag(123);let modelCurrent=pullBag(model),modelHold=null;
-let locks=0,holds=0,decisions=0,draws=1;
-while(locks<10&&decisions<30){
-  const req=request(branch,5000);const result=analyze(req);decisions++;
-  assert.ok(result.nodes<=req.node_budget);
-  let chosen=selectReachableSnapshotAction(branch,result,dependencies);
-  if(decisions===1)chosen=validateSnapshotAction(branch,hold,dependencies);
-  const oldPieces=branch.state.stats.pieces;
-  if(chosen.action.kind==='hold'){
-    assert.ok(branch.hold());holds++;
-    if(modelHold===null){modelHold=modelCurrent;modelCurrent=pullBag(model);draws++;}
-    else [modelCurrent,modelHold]=[modelHold,modelCurrent];
-    assert.equal(branch.state.stats.pieces,oldPieces);
-    assert.equal(request(branch).hold_locked,true);
+// Explicit same-piece Hold: empty and occupied branches are separate actions and
+// never carry a landing. Empty pre-reveal scoring cannot see the new preview.
+for(const variant of ['empty','occupied']){
+  const e=make(20+(variant==='occupied'));
+  const current=e.state.piece.type;
+  if(variant==='empty'){
+    e.state.hold={piece:null,locked:false};
+    e.state.bag.queue[0]=current;
   }else{
-    const start=branch.state.frame,end=start+23;
-    const inputs=tools.schedulePath(start,end,chosen.path.moves,branch);
-    for(let frame=start;frame<=end;frame++)branch.step(tools.inputsForFrame(inputs,frame));
-    assert.equal(branch.state.stats.pieces,oldPieces+1);
-    assert.equal(branch.state.hold.locked,false);
-    modelCurrent=pullBag(model);draws++;locks++;
+    e.state.hold={piece:current,locked:false};
   }
-  assert.equal(branch.state.piece.type,modelCurrent);
-  assert.equal(branch.state.hold.piece,modelHold);
-  assert.deepEqual(branch.state.bag.queue.slice(0,5),model.queue.slice(0,5));
-  assert.equal(request(branch).start.queue.length,6);
-  assert.equal(recorded.serialize(),recordedBytes);assert.equal(other.serialize(),otherBytes);
+  const r=request(e),result=analyze(r);
+  const h=result.candidates.find(c=>c.action.kind==='hold');
+  assert.ok(h,variant+' same-piece Hold missing');
+  assert.equal(h.action.mode,variant);
+  assert.equal(h.action.same_piece,true);
+  assert.equal(h.action.requires_reanalysis,true);
+  assert.ok(!('placement'in h.action));
+  if(variant==='empty')assert.equal(h.search_basis,'post_empty_hold_known_prefix_without_revealed_next');
+  else assert.equal(h.search_basis,'post_hold_visible_state');
+  validateSnapshotAction(e,h.action,deps);
 }
-assert.equal(locks,10);assert.ok(draws>6);assert.ok(holds>0);
-branch=null;
-assert.equal(recorded.serialize(),recordedBytes);
-checks.push('ten lock/spawn cycles plus Holds refill NEXT 5 from original branch sequence, beyond initial window');
-checks.push('isolated branch disposal leaves both recorded checkpoints unchanged');
+checks.push('empty/occupied same-piece Hold is explicit, landing-free, and empty reveal information gain is not fabricated');
 
-// Pending and late clock use the SAME v2 path. Unknown activation is an error.
-const pending=make(51);const cid=pending.receive({from:'P2',iid:1,ackiid:0,amt:4});
-assert.throws(()=>request(pending),/activation/);
-pending.confirm(cid);
-const pr=request(pending),pResult=analyze(pr);
-assert.equal(pResult.scenarios,10);assert.equal(pResult.authority_attack_clock,true);
-assert.equal(pr.rules.b2bcharge_base,3);assert.ok(pResult.nodes<=5000);
-const late=make(52);late.state.attack.multiplier=1.75;
-const lr=request(late),lResult=analyze(lr);
-assert.equal(lr.incoming.length,0);assert.equal(lr.garbage_multiplier,1.75);
-assert.equal(lResult.search_path,'stateless_clocked_snapshot');assert.equal(lResult.authority_attack_clock,true);
-const defaultRequest=buildSnapshotRequest(captureSnapshot(original.state));
-assert.equal(defaultRequest.node_budget,200000);
-const full=analyze(defaultRequest);assert.ok(full.nodes<=200000);assert.equal(full.node_budget,200000);
-checks.push('pending, empty incoming with non-unit multiplier, public rules, default and small hard budgets');
+// Actually execute Hold only after a product choice, then reveal/refill and run a
+// NEW locked request. This authority-side test is allowed to consume the private
+// sequence precisely because it models the post-choice branch.
+{
+  const e=make(30),current=e.state.piece.type;
+  e.state.bag.queue[0]=current;
+  const before=e.state.bag.queue.slice(0,6);
+  const pre=analyze(request(e));
+  const hold=pre.candidates.find(c=>c.action.kind==='hold'&&c.action.same_piece).action;
+  assert.ok(e.hold());
+  const post=request(e);
+  assert.equal(post.hold_locked,true);
+  assert.equal(post.start.hold,current.toUpperCase());
+  assert.deepEqual(post.start.queue.slice(0,5),before.slice(0,5).map(x=>x.toUpperCase()));
+  assert.equal(post.start.queue[5],before[5].toUpperCase());
+  const rr=analyze(post);
+  assert.ok(rr.candidates.every(c=>c.action.kind==='place'));
+  assert.ok(!e.hold());
+}
+{
+  const e=make(31),current=e.state.piece.type;
+  e.state.hold={piece:current,locked:false};
+  const q=JSON.stringify(e.state.bag.queue);
+  const h=analyze(request(e)).candidates.find(c=>c.action.kind==='hold'&&c.action.same_piece).action;
+  assert.ok(e.hold());
+  assert.equal(JSON.stringify(e.state.bag.queue),q);
+  assert.equal(request(e).hold_locked,true);
+  assert.equal(h.mode,'occupied');
+}
+checks.push('post-Hold reanalysis: empty consumes one draw/refills preview; occupied consumes zero draws; root is locked');
 
-// Save the actual allowlisted fixture for a real browser Worker test, not a fake bot.
-fs.writeFileSync('snapshot-browser-request.json',JSON.stringify(defaultRequest));
-const report={status:'passed',schema:'kiwi-snapshot-acceptance/2',checks,
-  continuation:{locks,holds,decisions,draws},default_budget:{nodes:full.nodes,budget:full.node_budget},
-  capabilities:cap,scope:'isolated protocol harness only; Tetrp Phase 4B not implemented'};
+// Geometry fixtures: actual non-spawn positions, wall, rotated, near-lock, and
+// an immobile spin-tagged state. Every Place candidate must be in the exhaustive
+// authority-derived root allowlist. No top-K fallback exists.
+const geometryFixtures=[];
+{
+  const e=make(40);e.move(-1);e.descend(4);geometryFixtures.push(['non_spawn',e]);
+}
+{
+  const e=make(41);while(e.move(-1)){}geometryFixtures.push(['wall',e]);
+}
+{
+  const e=make(42);assert.ok(e.rotate(1));e.descend(2);geometryFixtures.push(['rotated',e]);
+}
+{
+  const e=make(43);e.slam();geometryFixtures.push(['near_lock',e]);
+}
+{
+  const e=make(44);
+  e.state.piece.type='t';e.state.piece.x=4;e.state.piece.y=20;e.state.piece.hy=20;
+  e.state.piece.r=0;e.state.piece.rotated=true;e.state.piece.totalRotations=1;
+  const occupied=new Set(B.cells(e.state.piece).map(([x,y])=>x+','+Math.ceil(y)));
+  for(let y=18;y<=22;y++)for(let x=2;x<=6;x++){
+    if(!occupied.has(x+','+y))e.state.board.rows[y][x]='i';
+  }
+  e.state.piece.spin=R.classifySpin(e.state.board,e.state.piece,e.state.rules.spinbonuses);
+  assert.notEqual(e.state.piece.spin,'none');
+  geometryFixtures.push(['spin_state',e]);
+}
+for(const [name,e] of geometryFixtures){
+  const geo=tools.enumerateRootPlacements(e);
+  assert.ok(geo.states_explored>0,name);
+  const req=buildSnapshotRequest(captureSnapshot(e.state,{rootGeometry:geo}),{nodeBudget:5000});
+  const result=analyze(req),allowed=new Set(req.root_legal_placements.map(JSON.stringify));
+  for(const c of result.candidates){
+    if(c.action.kind==='place')assert.ok(allowed.has(JSON.stringify(c.action.placement)),name+' leaked spawn-only candidate');
+  }
+  const selected=selectReachableSnapshotAction(e,result,deps);
+  assert.ok(Number.isInteger(selected.candidate_index));
+  if(selected.action.kind==='place')assert.equal(selected.geometry_validated,true);
+}
+checks.push('root geometry fixtures: non-spawn/wall/rotated/near-lock/spin states are filtered inside search and candidate index is reported');
+
+// Geometry and input timing are deliberately separate claims.
+{
+  const e=make(45);e.slam();
+  const result=analyze(request(e));
+  const place=result.candidates.find(c=>c.action.kind==='place');
+  assert.ok(place);
+  const g=validateSnapshotAction(e,place.action,deps);
+  assert.equal(g.geometry_validated,true);assert.equal(g.timing_validated,false);
+  assert.equal(codeOf(()=>validateSnapshotTimingAction(e,place.action,{...deps,framesPerPiece:1})),'ROOT_TIMING_UNEXECUTABLE');
+}
+checks.push('geometry reachability is distinct from frame/reset timing executability');
+
+// Stable rejection contract for pending/ARE and rule states.
+{
+  const e=make(50);e.state.attack.are=[{amt:2}];
+  assert.equal(codeOf(()=>captureSnapshotFromEngine(e,tools)),'PENDING_ARE_QUEUE_UNSUPPORTED');
+}
+{
+  const e=make(51);e.state.attack.pending=[{cid:1,amt:2,active:false,activeFrame:null,hardened:false,shielded:false,status:'spawn'}];
+  assert.equal(codeOf(()=>captureSnapshotFromEngine(e,tools)),'PENDING_ACTIVATION_UNKNOWN');
+  e.state.attack.pending[0]={...e.state.attack.pending[0],active:true,hardened:true};
+  assert.equal(codeOf(()=>captureSnapshotFromEngine(e,tools)),'PENDING_PACKET_HARDENED_UNSUPPORTED');
+  e.state.attack.pending[0]={...e.state.attack.pending[0],hardened:false,shielded:true};
+  assert.equal(codeOf(()=>captureSnapshotFromEngine(e,tools)),'PENDING_PACKET_SHIELDED_UNSUPPORTED');
+  e.state.attack.pending[0]={...e.state.attack.pending[0],shielded:false,status:'other'};
+  assert.equal(codeOf(()=>captureSnapshotFromEngine(e,tools)),'PENDING_PACKET_STATUS_UNSUPPORTED');
+}
+{
+  const e=make(52);e.state.rules.garbagecap=9;
+  assert.equal(codeOf(()=>captureSnapshotFromEngine(e,tools)),'RULE_VALUE_UNSUPPORTED');
+}
+{
+  const e=make(53);
+  Object.assign(e.state.rules,{b2bcharging:false,b2bcharge_at:7,b2bcharge_base:5,openerphase_pieces:20,
+    allclears:false,allclear_garbage:7,allclear_b2b:2,garbagespecialbonus:false,clutch:false});
+  assert.doesNotThrow(()=>assertSupportedSnapshotRules(e.state.rules));
+  assert.doesNotThrow(()=>captureSnapshotFromEngine(e,tools));
+}
+assert.equal(snapshotRuleContract().rejections.positive_are,'PENDING_ARE_QUEUE_UNSUPPORTED');
+checks.push('stable structured rejection codes and supported-vs-exact rule contract');
+
+// Pending that has not entered ARE and late multiplier use the same clocked API.
+{
+  const e=make(60),cid=e.receive({from:'P2',iid:1,ackiid:0,amt:4});
+  assert.equal(codeOf(()=>request(e)),'PENDING_ACTIVATION_UNKNOWN');
+  e.confirm(cid);
+  const r=request(e),result=analyze(r);
+  assert.equal(result.scenarios,10);assert.equal(result.authority_attack_clock,true);
+  assert.ok(result.nodes<=r.node_budget);
+}
+{
+  const e=make(61);e.state.attack.multiplier=1.75;
+  const r=request(e),result=analyze(r);
+  assert.equal(r.incoming.length,0);assert.equal(r.garbage_multiplier,1.75);
+  assert.equal(result.search_path,'stateless_clocked_snapshot_split_root_actions');
+}
+checks.push('pre-ARE pending and no-pending late multiplier share the clock-aware snapshot API');
+
+// Progressive reveal across more than the initial window. The private sequence is
+// consumed only by this isolated branch executor, never by Worker input.
+{
+  const recorded=make(70),recordedBytes=recorded.serialize();
+  let branch=Engine.restore(recordedBytes);
+  const model=createBag(70);let modelCurrent=pullBag(model),modelHold=null;
+  let locks=0,holds=0,decisions=0,draws=1;
+  while(locks<8&&decisions<30){
+    const req=request(branch,5000),result=analyze(req);decisions++;
+    let chosen=selectReachableSnapshotAction(branch,result,deps);
+    if(decisions===1){
+      const h=result.candidates.find(c=>c.action.kind==='hold');
+      if(h)chosen={...validateSnapshotAction(branch,h.action,deps),candidate_index:result.candidates.indexOf(h)};
+    }
+    if(chosen.action.kind==='hold'){
+      assert.ok(branch.hold());holds++;
+      if(modelHold===null){modelHold=modelCurrent;modelCurrent=pullBag(model);draws++;}
+      else [modelCurrent,modelHold]=[modelHold,modelCurrent];
+      assert.equal(request(branch).hold_locked,true);
+    }else{
+      const timed=validateSnapshotTimingAction(branch,chosen.action,{...deps,framesPerPiece:24});
+      for(let frame=timed.startFrame;frame<=timed.lockFrame;frame++)branch.step(tools.inputsForFrame(timed.inputs,frame));
+      modelCurrent=pullBag(model);draws++;locks++;
+    }
+    assert.equal(branch.state.piece.type,modelCurrent);
+    assert.equal(branch.state.hold.piece,modelHold);
+    assert.deepEqual(branch.state.bag.queue.slice(0,5),model.queue.slice(0,5));
+    assert.equal(request(branch).start.queue.length,6);
+    assert.equal(recorded.serialize(),recordedBytes);
+  }
+  assert.equal(locks,8);assert.ok(draws>6);
+}
+checks.push('progressive reveal continues beyond six pieces without altering recorded checkpoint');
+
+// Determinism across unrelated prior analyses.
+{
+  const e=make(80),r=request(e,5000);
+  const a=analyze(r);analyze(request(make(81),5000));const b=analyze(r);
+  assert.deepEqual(a,b);
+}
+checks.push('same allowed request is independent of prior analyses/replay history');
+
+// Default 200k hard cap, actual nodes and completion reason.
+const browserEngine=make(90);
+const browserRequest=buildSnapshotRequest(captureSnapshotFromEngine(browserEngine,tools));
+const full=analyze(browserRequest);
+assert.equal(browserRequest.node_budget,200000);assert.ok(full.nodes<=200000);
+assert.ok(['node_budget','visible_search_idle'].includes(full.completion));
+fs.writeFileSync('snapshot-browser-request.json',JSON.stringify(browserRequest));
+const report={status:'passed',schema:'kiwi-snapshot-acceptance/3',checks,
+  default_budget:{nodes:full.nodes,budget:full.node_budget,completion:full.completion},
+  capabilities:caps,rule_contract:snapshotRuleContract(),
+  scope:'Phase 4A contract/fixture validation only; no user-visible Phase 4B and no strategy experiment'};
 console.log(JSON.stringify(report,null,2));
