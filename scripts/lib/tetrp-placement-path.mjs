@@ -75,7 +75,13 @@ export function createPlacementTools({Engine, boardModule:B, rotationModule:R}) 
     for(const orientation of orientationNames) {
       const offsets=baseCells[upper].map(c=>rotateCell(c,orientation));
       for(const [ax,ay] of cells) for(const [dx,dy] of offsets) {
-        const x=ax-dx,y=39-ay-dy;
+        // Tetrp keeps the active piece at fractional y (for example 17.96).
+        // Board occupancy, and cellsKey above, use ceil(y). Convert that
+        // occupied row rather than requiring the transient floating y itself
+        // to be integral, otherwise an ordinary fresh spawn yields no CC2
+        // placement at all.
+        const occupiedY=Math.ceil(ay);
+        const x=ax-dx,y=39-occupiedY-dy;
         if(!Number.isInteger(x)||!Number.isInteger(y))continue;
         const placement={location:{type:upper,orientation,x,y},spin};
         if(cellsKey(targetFor(placement).cells)===actual)out.push(placement);
