@@ -80,14 +80,29 @@ impl Mode for Freestyle {
             {
                 puffin::profile_scope!("eval");
                 for next in next_possibilities {
-                    let reserve_moves: &[(Placement,u32)] =
-                        if next == state.reserve || options.root_hold_locked && node.depth() == 1 {
-                            &[]
+                    let is_root = node.depth() == 1;
+                    let next_moves: &[(Placement,u32)] = &moves[next];
+                    let reserve_moves: &[(Placement,u32)] = &moves[state.reserve];
+                    let empty: &[(Placement,u32)] = &[];
+                    let selected: Vec<(Placement,u32)> = if is_root && options.root_no_hold_only {
+                        // Empty-Hold normalization stores current in reserve and
+                        // NEXT[0] in the known layer. Occupied Hold is the opposite.
+                        let source = if options.root_hold_is_empty { reserve_moves } else { next_moves };
+                        source.to_vec()
+                    } else {
+                        let reserve = if next == state.reserve || options.root_hold_locked && is_root {
+                            empty
                         } else {
-                            &moves[state.reserve]
+                            reserve_moves
                         };
-                    let moves = moves[next].iter().chain(reserve_moves.iter());
-                    for &(mv, sd_distance) in moves {
+                        next_moves.iter().chain(reserve.iter()).copied().collect()
+                    };
+                    for (mv, sd_distance) in selected {
+                        if is_root {
+                            if let Some(allowed) = &options.root_legal_placements {
+                                if !allowed.contains(&mv) { continue; }
+                            }
+                        }
                         if new_stats.nodes == budget {
                             // Charge evaluated nodes, but never publish a partially
                             // enumerated action set as a completed expansion.

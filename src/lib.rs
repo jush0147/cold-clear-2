@@ -5,7 +5,7 @@ use enumset::EnumSet;
 use tbp::Randomizer;
 
 use crate::bot::Bot;
-use crate::data::{GameState, TetrioRules};
+use crate::data::{GameState, Placement, TetrioRules};
 
 #[cfg(not(target_arch = "wasm32"))]
 use std::convert::Infallible;
@@ -101,14 +101,38 @@ pub fn try_create_bot_with_context(start: tbp::Start, config: Arc<BotConfig>, ru
     if hold_locked && start.hold.is_none() {
         return Err("hold_locked=true requires an occupied Hold slot".into());
     }
-    Ok(create_bot_with_context(start, config, rules, hold_locked))
+    Ok(create_bot_with_search_context(start, config, rules, hold_locked, false, None))
+}
+
+/// Snapshot-product constructor. The root action gate and authority-derived
+/// placement allowlist are search constraints, not claims about Hold occupancy.
+pub(crate) fn try_create_bot_with_search_context(
+    start: tbp::Start,
+    config: Arc<BotConfig>,
+    rules: TetrioRules,
+    root_hold_locked: bool,
+    root_no_hold_only: bool,
+    root_legal_placements: Option<Vec<Placement>>,
+) -> Result<Bot, String> {
+    start.validate()?;
+    rules.validate()?;
+    Ok(create_bot_with_search_context(
+        start, config, rules, root_hold_locked, root_no_hold_only, root_legal_placements,
+    ))
 }
 
 pub fn create_bot(start: tbp::Start, config: Arc<BotConfig>) -> Bot {
-    create_bot_with_context(start, config, TetrioRules::default(), false)
+    create_bot_with_search_context(start, config, TetrioRules::default(), false, false, None)
 }
 
-fn create_bot_with_context(mut start: tbp::Start, config: Arc<BotConfig>, rules: TetrioRules, root_hold_locked: bool) -> Bot {
+fn create_bot_with_search_context(
+    mut start: tbp::Start,
+    config: Arc<BotConfig>,
+    rules: TetrioRules,
+    root_hold_locked: bool,
+    root_no_hold_only: bool,
+    root_legal_placements: Option<Vec<Placement>>,
+) -> Bot {
     let hold_is_empty = start.hold.is_none();
     // Empty hold normalization is only internal: reserve represents current,
     // queue represents NEXT. Bot::player_pieces reverses this representation.
@@ -134,7 +158,14 @@ fn create_bot_with_context(mut start: tbp::Start, config: Arc<BotConfig>, rules:
         rules,
         forecast: crate::forecast::Forecast::default(),
     };
-    let mut bot = Bot::new(BotOptions { speculate, config, root_hold_locked }, state, &start.queue);
+    let mut bot = Bot::new(BotOptions {
+        speculate,
+        config,
+        root_hold_locked,
+        root_no_hold_only,
+        root_hold_is_empty: hold_is_empty,
+        root_legal_placements: root_legal_placements.map(Arc::new),
+    }, state, &start.queue);
     bot.set_initial_empty_hold(hold_is_empty);
     bot
 }

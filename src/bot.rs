@@ -128,6 +128,15 @@ pub struct BotOptions {
     /// Root-only Hold lock from the visible player state. Descendants may Hold
     /// normally because a lock/spawn resets Tetrp's one-Hold-per-piece gate.
     pub root_hold_locked: bool,
+    /// Snapshot-product root search can explicitly forbid Hold without
+    /// pretending that an empty Hold slot is occupied.
+    pub root_no_hold_only: bool,
+    /// Needed to distinguish the normalized empty-Hold current branch from
+    /// an actual occupied-Hold reserve branch at the root.
+    pub root_hold_is_empty: bool,
+    /// Complete authority-derived geometric landing set for the current root
+    /// piece. None preserves legacy spawn-based behavior.
+    pub root_legal_placements: Option<Arc<Vec<Placement>>>,
 }
 #[enum_dispatch]
 enum ModeEnum { Freestyle }
@@ -184,6 +193,9 @@ impl Bot {
         let info = self.current.advance(self.queue.pop_front().expect("cannot advance an exhausted search queue"), mv);
         if self.hold_is_empty && use_hold { self.hold_is_empty = false; }
         self.options.root_hold_locked = false;
+        self.options.root_no_hold_only = false;
+        self.options.root_hold_is_empty = self.hold_is_empty;
+        self.options.root_legal_placements = None;
         if let Some(to) = self.mode.advance(&self.options, mv) { self.switch(to); }
         info
     }

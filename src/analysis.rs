@@ -10,7 +10,7 @@ use crate::{
     forecast::Forecast,
     ko_support::with_search_seed,
     tbp::{Randomizer, Start},
-    try_create_bot_with_context,
+    try_create_bot_with_context, try_create_bot_with_search_context,
 };
 
 #[derive(Deserialize, Clone, Copy, Debug)]
@@ -248,13 +248,36 @@ pub fn analyze(request: Request) -> Result<Report, String> {
 }
 
 pub fn analyze_with_profile(request: Request, profile: &str) -> Result<Report, String> {
+    analyze_with_profile_inner(request, profile, 6, false, None)
+}
+
+/// Product-only finite-visible branch search. This does not change the legacy
+/// analyze_pending contract: callers choose the known queue length explicitly,
+/// disallow a root Hold, and may provide a complete authority-derived root
+/// placement allowlist.
+pub(crate) fn analyze_snapshot_branch(
+    request: Request,
+    profile: &str,
+    expected_queue_len: usize,
+    root_legal_placements: Option<Vec<Placement>>,
+) -> Result<Report, String> {
+    analyze_with_profile_inner(request, profile, expected_queue_len, true, root_legal_placements)
+}
+
+fn analyze_with_profile_inner(
+    request: Request,
+    profile: &str,
+    expected_queue_len: usize,
+    root_no_hold_only: bool,
+    root_legal_placements: Option<Vec<Placement>>,
+) -> Result<Report, String> {
     request.start.validate()?;
     request.rules.validate()?;
     if request.hold_locked && request.start.hold.is_none() {
         return Err("hold_locked=true requires an occupied Hold slot".into());
     }
-    if request.start.queue.len() != 6 {
-        return Err("exactly current + five NEXT pieces are required".into());
+    if request.start.queue.len() != expected_queue_len {
+        return Err(format!("expected {expected_queue_len} known queue pieces for this search branch"));
     }
     if !(1000..=2_000_000).contains(&request.node_budget) {
         return Err("node_budget must be 1000..2000000 evaluator nodes".into());
@@ -470,7 +493,18 @@ pub fn analyze_with_profile(request: Request, profile: &str) -> Result<Report, S
                 scenario,
             )?,
         };
-        let mut bot = try_create_bot_with_context(start, config.clone(), request.rules, request.hold_locked)?;
+        let mut bot = if root_no_hold_only {
+            try_create_bot_with_search_context(
+                start,
+                config.clone(),
+                request.rules,
+                request.hold_locked,
+                true,
+                root_legal_placements.clone(),
+            )?
+        } else {
+            try_create_bot_with_context(start, config.clone(), request.rules, request.hold_locked)?
+        };
         let mut forecast = forecast;
         forecast.set_opener_phase_pieces(request.rules.opener_phase_pieces);
         bot.set_forecast(forecast);
