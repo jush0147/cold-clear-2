@@ -49,12 +49,23 @@ struct RootState {
 #[derive(Clone, Copy, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct Incoming { lines: u32, ready_in_frames: u32 }
+#[derive(Clone, Copy, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+struct TimingRules {
+    garbage_are_frames: u32,
+    garbage_are_bump_frames: u32,
+    garbage_locked_until_frame: u32,
+}
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct Request {
     schema: String,
+    analysis_mode: String,
+    source_mode: String,
     bag_knowledge: String,
     unknown_tail: String,
+    timing_rules: TimingRules,
+    existing_are_lines: u32,
     start: Root,
     root_state: RootState,
     root_legal_placements: Vec<Placement>,
@@ -64,11 +75,11 @@ struct Request {
     pieces_placed: u32,
     garbage_sent: u32,
     frames_per_piece: u32,
-    authority_frame: u32,
+    authority_frame: Option<u32>,
     authority_subframe: f64,
-    garbage_multiplier: f64,
-    garbage_margin_frames: u32,
-    garbage_increase_per_second: f64,
+    garbage_multiplier: Option<f64>,
+    garbage_margin_frames: Option<u32>,
+    garbage_increase_per_second: Option<f64>,
     #[serde(default = "default_budget")]
     node_budget: u32,
 }
@@ -100,6 +111,8 @@ pub struct Report {
     pub node_budget: u32,
     pub completion: &'static str,
     pub search_path: &'static str,
+    pub analysis_mode: &'static str,
+    pub source_mode: &'static str,
     pub config_profile: &'static str,
     pub bag_knowledge: &'static str,
     pub unknown_tail: &'static str,
@@ -107,6 +120,11 @@ pub struct Report {
     pub hold_known_search_layers: Option<usize>,
     pub scenarios: u32,
     pub authority_attack_clock: bool,
+    pub garbage_are_frames: u32,
+    pub garbage_are_bump_frames: u32,
+    pub garbage_locked_until_frame: u32,
+    pub exact_are_bump_timing: bool,
+    pub competitive_stacking_neutral_root_counters: bool,
     pub root_geometry_filtered: bool,
     pub root_geometry_candidates: usize,
     pub candidate_truncation: &'static str,
@@ -131,6 +149,42 @@ fn parse(text: &str) -> Result<Request, String> {
         .map_err(|e| reject("REQUEST_SCHEMA_INVALID",e))?;
     if r.schema != "kiwi-snapshot/3" || r.bag_knowledge != "unknown" || r.unknown_tail != "finite_visible" {
         return Err(reject("SNAPSHOT_POLICY_INVALID","expected kiwi-snapshot/3, unknown bag, finite_visible tail policy"));
+    }
+    let tl = r.analysis_mode == "tl" && r.source_mode == "tl";
+    let stacking = r.analysis_mode == "competitive_stacking" && r.source_mode == "40l";
+    if !tl && !stacking {
+        return Err(reject("ANALYSIS_MODE_UNSUPPORTED",
+            format!("unsupported analysis/source mode pair {}/{}", r.analysis_mode, r.source_mode)));
+    }
+    if r.existing_are_lines != 0 {
+        return Err(reject("PENDING_ARE_QUEUE_UNSUPPORTED",
+            format!("positive current ARE queue has {} lines", r.existing_are_lines)));
+    }
+    for (name,value) in [
+        ("garbageare", r.timing_rules.garbage_are_frames),
+        ("garbagearebump", r.timing_rules.garbage_are_bump_frames),
+    ] {
+        if value > 10_000 {
+            return Err(reject("ARE_RULE_VALUE_OUT_OF_RANGE", format!("{name} exceeds 10000 frames")));
+        }
+    }
+    if stacking {
+        if !r.incoming.is_empty() || r.garbage_sent != 0 || r.start.combo != 0
+            || r.start.back_to_back || r.start.b2b_count != 0
+        {
+            return Err(reject("STACKING_NEUTRAL_STATE_INVALID",
+                "competitive_stacking requires no incoming/garbage-sent and neutral root combo/B2B counters"));
+        }
+        if r.authority_frame.is_some() || r.garbage_multiplier.is_some()
+            || r.garbage_margin_frames.is_some() || r.garbage_increase_per_second.is_some()
+        {
+            return Err(reject("STACKING_ATTACK_CLOCK_INVALID",
+                "competitive_stacking must not carry a TL attack clock"));
+        }
+    } else if !(r.authority_frame.is_some() && r.garbage_multiplier.is_some()
+        && r.garbage_margin_frames.is_some() && r.garbage_increase_per_second.is_some())
+    {
+        return Err(reject("ATTACK_CLOCK_INCOMPLETE","TL snapshot requires the complete attack clock"));
     }
     if r.start.queue.len() != 6 {
         return Err(reject("VISIBLE_QUEUE_INVALID","snapshot requires current plus exactly NEXT 5"));
@@ -173,11 +227,15 @@ fn parse(text: &str) -> Result<Request, String> {
     if !(1..=600).contains(&r.frames_per_piece) {
         return Err(reject("PACE_ASSUMPTION_INVALID","frames_per_piece must be 1..600"));
     }
-    if !r.garbage_multiplier.is_finite() || r.garbage_multiplier <= 0.0 || r.garbage_multiplier > 100.0 {
-        return Err(reject("ATTACK_MULTIPLIER_INVALID","garbage multiplier must be finite and within (0,100]"));
+    if let Some(multiplier)=r.garbage_multiplier {
+        if !multiplier.is_finite() || multiplier <= 0.0 || multiplier > 100.0 {
+            return Err(reject("ATTACK_MULTIPLIER_INVALID","garbage multiplier must be finite and within (0,100]"));
+        }
     }
-    if !r.garbage_increase_per_second.is_finite() || r.garbage_increase_per_second < 0.0 || r.garbage_increase_per_second > 10.0 {
-        return Err(reject("ATTACK_GROWTH_INVALID","garbage increase must be finite and within [0,10]"));
+    if let Some(rate)=r.garbage_increase_per_second {
+        if !rate.is_finite() || rate < 0.0 || rate > 10.0 {
+            return Err(reject("ATTACK_GROWTH_INVALID","garbage increase must be finite and within [0,10]"));
+        }
     }
     if !(1000..=2_000_000).contains(&r.node_budget) {
         return Err(reject("NODE_BUDGET_INVALID","node_budget must be 1000..2000000"));
@@ -212,10 +270,10 @@ fn analysis_request(r:&Request, root:Root, budget:u32, hold_locked:bool) -> anal
         garbage_sent:r.garbage_sent,
         frames_per_piece:r.frames_per_piece,
         pending_delay_frames:0,
-        authority_frame:Some(r.authority_frame),
-        garbage_multiplier:Some(r.garbage_multiplier),
-        garbage_margin_frames:Some(r.garbage_margin_frames),
-        garbage_increase_per_second:Some(r.garbage_increase_per_second),
+        authority_frame:r.authority_frame,
+        garbage_multiplier:r.garbage_multiplier,
+        garbage_margin_frames:r.garbage_margin_frames,
+        garbage_increase_per_second:r.garbage_increase_per_second,
         node_budget:budget,
     }
 }
@@ -326,7 +384,13 @@ pub fn analyze_text(text:&str)->Result<Report,String>{
         branch_nodes:BranchNodes{place:place_report.nodes,hold:hold_nodes,total:nodes},
         node_budget:r.node_budget,
         completion:if nodes==r.node_budget as u64{"node_budget"}else{"visible_search_idle"},
-        search_path:"stateless_clocked_snapshot_split_root_actions",
+        search_path:if r.analysis_mode=="tl" {
+            "stateless_clocked_snapshot_split_root_actions"
+        } else {
+            "stateless_competitive_stacking_snapshot_split_root_actions"
+        },
+        analysis_mode:if r.analysis_mode=="tl"{"tl"}else{"competitive_stacking"},
+        source_mode:if r.source_mode=="tl"{"tl"}else{"40l"},
         config_profile:place_report.config_profile,
         bag_knowledge:"unknown",
         unknown_tail:"finite_visible",
@@ -334,6 +398,11 @@ pub fn analyze_text(text:&str)->Result<Report,String>{
         hold_known_search_layers:hold_layers,
         scenarios:place_report.scenarios,
         authority_attack_clock:place_report.authority_attack_clock,
+        garbage_are_frames:r.timing_rules.garbage_are_frames,
+        garbage_are_bump_frames:r.timing_rules.garbage_are_bump_frames,
+        garbage_locked_until_frame:r.timing_rules.garbage_locked_until_frame,
+        exact_are_bump_timing:false,
+        competitive_stacking_neutral_root_counters:r.analysis_mode=="competitive_stacking",
         root_geometry_filtered:true,
         root_geometry_candidates:r.root_legal_placements.len(),
         candidate_truncation:"none: complete authority allowlist is scored directly; if it cannot fit the Place root budget the request rejects",
@@ -349,6 +418,8 @@ pub fn analyze_text(text:&str)->Result<Report,String>{
             "Same-piece Hold is a distinct action. It is not assumed equivalent because Hold respawns/resets the active piece and changes Hold lock state.",
             "Empty-Hold pre-reveal scoring deliberately omits the newly revealed unknown preview. Information-gain value is NOT optimized; the real revealed piece is used only by the required post-Hold request.",
             "The request node cap is split deterministically between Place and Hold branches when Hold is available; post-Hold reanalysis is a separate request with its own cap.",
+            "Real garbageare/garbagearebump rule values are preserved in the request/result. Positive existing ARE is rejected; exact ARE/bump timing is not simulated.",
+            "competitive_stacking is a distinct 40L-source heuristic mode with neutral root combo/B2B and no TL attack clock; it is neither TL parity nor 40L score optimization.",
             "Pending uses explicit frames_per_piece and ten hypothetical clean-hole scenarios; ARE/bump timing remains approximate.",
         ],
     })
@@ -378,6 +449,12 @@ pub fn capabilities()->Value{
         "empty_hold_unknown_reveal_scoring":"known_prefix_only_until_required_post_hold_reanalysis",
         "product_persistent_dag_reuse":false,
         "all_roots_use_snapshot":true,
+        "supported_source_modes":["tl","40l"],
+        "competitive_stacking_mode":true,
+        "competitive_stacking_semantics":"40L source; neutral root combo/B2B; no pending or TL attack clock",
+        "garbage_are_rule_transport":true,
+        "garbage_are_bump_rule_transport":true,
+        "garbage_are_effect_model":"preserved rule values; positive existing ARE rejected; exact ARE/bump timing not simulated",
         "no_pending_nonunit_multiplier":true,
         "public_rule_contract":true,
         "pending_unknown_activation":"reject",
@@ -418,7 +495,10 @@ mod tests{
     }
     fn input(held:Option<Piece>,next0:Piece,pending:bool)->Value{
         json!({
-            "schema":"kiwi-snapshot/3","bag_knowledge":"unknown","unknown_tail":"finite_visible",
+            "schema":"kiwi-snapshot/3","analysis_mode":"tl","source_mode":"tl",
+            "bag_knowledge":"unknown","unknown_tail":"finite_visible",
+            "timing_rules":{"garbage_are_frames":5,"garbage_are_bump_frames":12,"garbage_locked_until_frame":0},
+            "existing_are_lines":0,
             "start":{"board":[],"queue":["T",next0,"O","S","Z","J"],"hold":held,
                 "combo":0,"back_to_back":false,"b2b_count":0},
             "root_state":{"x":4,"y":17.96,"hy":18.0,"rotation":0,"kick":0,"rotated":false,"spin":"none","total_rotations":0,
@@ -469,6 +549,37 @@ mod tests{
         assert!(analyze_text(&v.to_string()).unwrap_err().starts_with("REQUEST_SCHEMA_INVALID:"));
         let mut v=base.clone();v["root_legal_placements"][0]["location"]["type"]=json!("I");
         assert!(analyze_text(&v.to_string()).unwrap_err().starts_with("ROOT_GEOMETRY_PIECE_MISMATCH:"));
+    }
+    #[test]
+    fn real_tl_are_rules_are_preserved_but_not_claimed_exact(){
+        let r=analyze_text(&input(Some(Piece::L),Piece::I,false).to_string()).unwrap();
+        assert_eq!(r.analysis_mode,"tl");
+        assert_eq!(r.source_mode,"tl");
+        assert_eq!(r.garbage_are_frames,5);
+        assert_eq!(r.garbage_are_bump_frames,12);
+        assert!(!r.exact_are_bump_timing);
+        assert!(r.authority_attack_clock);
+    }
+    #[test]
+    fn positive_existing_are_is_a_distinct_rejection(){
+        let mut v=input(Some(Piece::L),Piece::I,false);
+        v["existing_are_lines"]=json!(2);
+        assert!(analyze_text(&v.to_string()).unwrap_err().starts_with("PENDING_ARE_QUEUE_UNSUPPORTED:"));
+    }
+    #[test]
+    fn competitive_stacking_is_explicit_40l_with_neutral_root_and_no_attack_clock(){
+        let mut v=input(Some(Piece::L),Piece::I,false);
+        v["analysis_mode"]=json!("competitive_stacking");
+        v["source_mode"]=json!("40l");
+        v["authority_frame"]=Value::Null;
+        v["garbage_multiplier"]=Value::Null;
+        v["garbage_margin_frames"]=Value::Null;
+        v["garbage_increase_per_second"]=Value::Null;
+        let r=analyze_text(&v.to_string()).unwrap();
+        assert_eq!(r.analysis_mode,"competitive_stacking");
+        assert_eq!(r.source_mode,"40l");
+        assert!(!r.authority_attack_clock);
+        assert!(r.competitive_stacking_neutral_root_counters);
     }
     #[test]
     fn deterministic_requests_do_not_share_search_state(){
