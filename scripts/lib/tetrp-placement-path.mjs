@@ -98,14 +98,13 @@ export function createPlacementTools({Engine, boardModule:B, rotationModule:R}) 
     // Deliberately clone ONLY current geometry inputs. Do not serialize the
     // Engine: that would read hidden queue/RNG even though geometry needs neither.
     const board=structuredClone(state.board),rules=structuredClone(state.rules);
-    const q=[copyPiece(state.piece)],seen=new Set(),placements=new Map();
+    const initial=copyPiece(state.piece);
+    const q=[initial],seen=new Set([pathStateKey(initial,rules)]),placements=new Map();
     const actions=['moveLeft','moveRight','rotateCW','rotateCCW','rotate180','down'];
     let head=0;
     while(head<q.length) {
-      if(q.length>250000)throw new Error('ROOT_GEOMETRY_STATE_LIMIT');
-      const p=q[head++],key=pathStateKey(p,rules);
-      if(seen.has(key))continue;
-      seen.add(key);
+      if(seen.size>250000)throw new Error('ROOT_GEOMETRY_STATE_LIMIT');
+      const p=q[head++];
       const drop=dropped(board,p);
       const spin=p.rotated?R.classifySpin(board,p,rules.spinbonuses):'none';
       for(const placement of ccPlacementsForAuthorityCells(p.type,B.cells(drop),spin)) {
@@ -113,7 +112,11 @@ export function createPlacementTools({Engine, boardModule:B, rotationModule:R}) 
       }
       for(const action of actions) {
         const next=applyPathMove(board,p,action,rules);
-        if(next)q.push(next);
+        if(!next)continue;
+        const key=pathStateKey(next,rules);
+        if(seen.has(key))continue;
+        seen.add(key);
+        q.push(next);
       }
     }
     const list=[...placements.values()].sort((a,b)=>
@@ -137,21 +140,24 @@ export function createPlacementTools({Engine, boardModule:B, rotationModule:R}) 
       throw new Error('current-piece mismatch');
     const board=structuredClone(state.board),rules=structuredClone(state.rules);
     const targetKey=cellsKey(target.cells);
-    const q=[{piece:copyPiece(state.piece),moves:[]}],seen=new Set();
+    const initial=copyPiece(state.piece);
+    const q=[{piece:initial,moves:[]}],seen=new Set([pathStateKey(initial,rules)]);
     const actions=['moveLeft','moveRight','rotateCW','rotateCCW','rotate180','down'];
     let head=0;
     while(head<q.length) {
-      if(q.length>250000)throw new Error('ROOT_GEOMETRY_STATE_LIMIT');
-      const node=q[head++],p=node.piece,key=pathStateKey(p,rules);
-      if(seen.has(key))continue;
-      seen.add(key);
+      if(seen.size>250000)throw new Error('ROOT_GEOMETRY_STATE_LIMIT');
+      const node=q[head++],p=node.piece;
       const drop=dropped(board,p);
       const spin=p.rotated?R.classifySpin(board,p,rules.spinbonuses):'none';
       if(cellsKey(B.cells(drop))===targetKey&&spin===target.spin)
         return {useHold:false,moves:[...node.moves,'hardDrop'],target,geometryStates:seen.size};
       for(const action of actions) {
         const next=applyPathMove(board,p,action,rules);
-        if(next)q.push({piece:next,moves:[...node.moves,action]});
+        if(!next)continue;
+        const key=pathStateKey(next,rules);
+        if(seen.has(key))continue;
+        seen.add(key);
+        q.push({piece:next,moves:[...node.moves,action]});
       }
     }
     throw new Error('no current-pose Tetrp geometry path for '+JSON.stringify({placement,target,current:state.piece}));
