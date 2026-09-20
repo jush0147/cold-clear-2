@@ -32,11 +32,19 @@ struct Root {
 struct RootState {
     x: i8,
     y: f64,
+    hy: f64,
     rotation: u8,
     kick: u8,
     rotated: bool,
     spin: Spin,
     total_rotations: u32,
+    resets: u32,
+    rotation_resets: u32,
+    locking: f64,
+    force_lock: bool,
+    safelock: u32,
+    soft_dropped: bool,
+    wall: bool,
 }
 #[derive(Clone, Copy, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -78,6 +86,7 @@ pub struct ActionCandidate {
     pub worst_score: f32,
     pub scenarios: u32,
     pub search_basis: &'static str,
+    pub candidate_index: usize,
 }
 #[derive(Serialize)]
 pub struct BranchNodes { pub place: u64, pub hold: u64, pub total: u64 }
@@ -126,10 +135,22 @@ fn parse(text: &str) -> Result<Request, String> {
     if r.start.queue.len() != 6 {
         return Err(reject("VISIBLE_QUEUE_INVALID","snapshot requires current plus exactly NEXT 5"));
     }
-    if !r.root_state.y.is_finite() || !(-4..=13).contains(&r.root_state.x)
-        || !(-4.0..=40.0).contains(&r.root_state.y) || r.root_state.rotation > 3 {
-        return Err(reject("ROOT_STATE_INVALID","invalid current piece geometry"));
+    if !r.root_state.y.is_finite() || !r.root_state.hy.is_finite()
+        || !r.root_state.locking.is_finite() || r.root_state.locking < 0.0
+        || !(-4..=13).contains(&r.root_state.x)
+        || !(-4.0..=40.0).contains(&r.root_state.y)
+        || !(-4.0..=40.0).contains(&r.root_state.hy) || r.root_state.rotation > 3 {
+        return Err(reject("ROOT_STATE_INVALID","invalid current piece geometry/timing metadata"));
     }
+    // These fields are transported because x/y/rotation alone do not describe
+    // SRS+ spin/kick history or lock-state semantics. Geometry uses the
+    // authority-derived allowlist; exact timing remains an authority-side check.
+    let _root_metadata = (
+        r.root_state.kick, r.root_state.rotated, r.root_state.spin,
+        r.root_state.total_rotations, r.root_state.resets,
+        r.root_state.rotation_resets, r.root_state.force_lock,
+        r.root_state.safelock, r.root_state.soft_dropped, r.root_state.wall,
+    );
     if r.root_legal_placements.len() > 512 {
         return Err(reject("ROOT_GEOMETRY_SET_TOO_LARGE","more than 512 authority root placements"));
     }
@@ -239,6 +260,7 @@ pub fn analyze_text(text:&str)->Result<Report,String>{
         worst_score:c.worst_score,
         scenarios:c.scenarios,
         search_basis:"authority_root_geometry_filtered",
+        candidate_index:0,
     }).collect();
 
     let mut hold_nodes=0u64;
@@ -267,6 +289,7 @@ pub fn analyze_text(text:&str)->Result<Report,String>{
             worst_score:worst,
             scenarios,
             search_basis:basis,
+            candidate_index:0,
         });
     }
     candidates.sort_by(|a,b|{
@@ -278,6 +301,9 @@ pub fn analyze_text(text:&str)->Result<Report,String>{
                 _=>std::cmp::Ordering::Equal,
             })
     });
+    for (index,candidate) in candidates.iter_mut().enumerate() {
+        candidate.candidate_index=index;
+    }
     let action=candidates.first()
         .ok_or_else(||reject("NO_ROOT_ACTION","no geometrically reachable placement and Hold is locked"))?
         .action.clone();
@@ -388,7 +414,8 @@ mod tests{
             "schema":"kiwi-snapshot/3","bag_knowledge":"unknown","unknown_tail":"finite_visible",
             "start":{"board":[],"queue":["T",next0,"O","S","Z","J"],"hold":held,
                 "combo":0,"back_to_back":false,"b2b_count":0},
-            "root_state":{"x":4,"y":17.96,"rotation":0,"kick":0,"rotated":false,"spin":"none","total_rotations":0},
+            "root_state":{"x":4,"y":17.96,"hy":18.0,"rotation":0,"kick":0,"rotated":false,"spin":"none","total_rotations":0,
+                "resets":0,"rotation_resets":0,"locking":0.0,"force_lock":false,"safelock":0,"soft_dropped":false,"wall":false},
             "root_legal_placements":[p(Piece::T,4)],
             "rules":TetrioRules{b2b_charge_base:3,..TetrioRules::default()},
             "hold_locked":false,
