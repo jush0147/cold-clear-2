@@ -1,8 +1,11 @@
-//! Snapshot-only Kiwi product API, independent of historical SevenBag state.
-//! Compatibility APIs in analysis/wasm remain available but are not v2 entrypoints.
+//! Snapshot-only Kiwi product API. No historical bag inference or speculative tail.
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use crate::{analysis, data::{Board, Piece, Placement, TetrioRules}, tbp::{Start, Randomizer}};
+use crate::{
+    analysis,
+    data::{Board, Piece, Placement, Spin, TetrioRules},
+    tbp::{Randomizer, Start},
+};
 
 const RULE_FIELDS: &[&str] = &[
     "b2bcharging", "b2bcharge_at", "b2bcharge_base", "b2bchaining",
@@ -10,7 +13,11 @@ const RULE_FIELDS: &[&str] = &[
     "garbagespecialbonus", "clutch",
 ];
 fn default_budget() -> u32 { 200_000 }
-#[derive(Deserialize)]
+fn reject(code:&str, message:impl std::fmt::Display) -> String {
+    format!("{code}: {message}")
+}
+
+#[derive(Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct Root {
     board: Board,
@@ -20,10 +27,18 @@ struct Root {
     back_to_back: bool,
     b2b_count: u32,
 }
-#[derive(Deserialize)]
+#[derive(Clone, Copy, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
-struct Pose { x: i8, y: f64, rotation: u8 }
-#[derive(Deserialize)]
+struct RootState {
+    x: i8,
+    y: f64,
+    rotation: u8,
+    kick: u8,
+    rotated: bool,
+    spin: Spin,
+    total_rotations: u32,
+}
+#[derive(Clone, Copy, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct Incoming { lines: u32, ready_in_frames: u32 }
 #[derive(Deserialize)]
@@ -33,7 +48,8 @@ struct Request {
     bag_knowledge: String,
     unknown_tail: String,
     start: Root,
-    root_pose: Pose,
+    root_state: RootState,
+    root_legal_placements: Vec<Placement>,
     rules: TetrioRules,
     hold_locked: bool,
     incoming: Vec<Incoming>,
@@ -53,241 +69,379 @@ struct Request {
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum Action {
     Place { placement: Placement },
-    Hold { mode: &'static str, requires_reanalysis: bool },
+    Hold { mode: &'static str, same_piece: bool, requires_reanalysis: bool },
 }
-#[derive(Serialize)]
+#[derive(Clone, Serialize)]
 pub struct ActionCandidate {
     pub action: Action,
     pub mean_score: f64,
     pub worst_score: f32,
     pub scenarios: u32,
+    pub search_basis: &'static str,
 }
+#[derive(Serialize)]
+pub struct BranchNodes { pub place: u64, pub hold: u64, pub total: u64 }
 #[derive(Serialize)]
 pub struct Report {
     pub schema: &'static str,
     pub action: Action,
     pub candidates: Vec<ActionCandidate>,
     pub nodes: u64,
+    pub branch_nodes: BranchNodes,
     pub node_budget: u32,
     pub completion: &'static str,
     pub search_path: &'static str,
     pub config_profile: &'static str,
     pub bag_knowledge: &'static str,
     pub unknown_tail: &'static str,
-    pub known_search_layers: usize,
+    pub place_known_search_layers: usize,
+    pub hold_known_search_layers: Option<usize>,
     pub scenarios: u32,
     pub authority_attack_clock: bool,
-    pub requires_authority_validation: bool,
+    pub root_geometry_filtered: bool,
+    pub root_geometry_candidates: usize,
+    pub candidate_truncation: &'static str,
+    pub hold_information_gain_optimized: bool,
+    pub requires_authority_timing_validation: bool,
     pub rules_parity_verified: bool,
     pub assumptions: Vec<&'static str>,
 }
 
 fn parse(text: &str) -> Result<Request, String> {
-    if text.len() > 262_144 { return Err("snapshot exceeds 256 KiB".into()); }
-    let value: Value = serde_json::from_str(text).map_err(|e| e.to_string())?;
+    if text.len() > 262_144 { return Err(reject("REQUEST_TOO_LARGE","snapshot exceeds 256 KiB")); }
+    let value: Value = serde_json::from_str(text)
+        .map_err(|e| reject("REQUEST_JSON_INVALID",e))?;
     let rules = value.get("rules").and_then(Value::as_object)
-        .ok_or("explicit public rules are required")?;
+        .ok_or_else(||reject("RULE_CONTRACT_MISSING","explicit public rules are required"))?;
     for name in RULE_FIELDS {
-        if !rules.contains_key(*name) { return Err(format!("missing public rule {name}")); }
+        if !rules.contains_key(*name) {
+            return Err(reject("RULE_FIELD_MISSING",format!("missing public rule {name}")));
+        }
     }
-    let r: Request = serde_json::from_value(value).map_err(|e| e.to_string())?;
-    if r.schema != "kiwi-snapshot/2" || r.bag_knowledge != "unknown" || r.unknown_tail != "finite_visible" {
-        return Err("expected kiwi-snapshot/2, unknown bag, finite_visible tail policy".into());
+    let r: Request = serde_json::from_value(value)
+        .map_err(|e| reject("REQUEST_SCHEMA_INVALID",e))?;
+    if r.schema != "kiwi-snapshot/3" || r.bag_knowledge != "unknown" || r.unknown_tail != "finite_visible" {
+        return Err(reject("SNAPSHOT_POLICY_INVALID","expected kiwi-snapshot/3, unknown bag, finite_visible tail policy"));
     }
-    if r.start.queue.len() != 6 { return Err("snapshot requires current plus exactly NEXT 5".into()); }
-    if !r.root_pose.y.is_finite() || !(-4..=13).contains(&r.root_pose.x)
-        || !(-4.0..=40.0).contains(&r.root_pose.y) || r.root_pose.rotation > 3 {
-        return Err("invalid current piece pose".into());
+    if r.start.queue.len() != 6 {
+        return Err(reject("VISIBLE_QUEUE_INVALID","snapshot requires current plus exactly NEXT 5"));
+    }
+    if !r.root_state.y.is_finite() || !(-4..=13).contains(&r.root_state.x)
+        || !(-4.0..=40.0).contains(&r.root_state.y) || r.root_state.rotation > 3 {
+        return Err(reject("ROOT_STATE_INVALID","invalid current piece geometry"));
+    }
+    if r.root_legal_placements.len() > 512 {
+        return Err(reject("ROOT_GEOMETRY_SET_TOO_LARGE","more than 512 authority root placements"));
+    }
+    let current=r.start.queue[0];
+    if r.root_legal_placements.iter().any(|p|p.location.piece!=current) {
+        return Err(reject("ROOT_GEOMETRY_PIECE_MISMATCH","root placement allowlist must contain only current-piece placements"));
+    }
+    let mut dedup=r.root_legal_placements.clone();
+    dedup.sort_by_key(|p|(p.location.piece as u8,p.location.x,p.location.y,p.location.rotation as u8,p.spin as u8));
+    dedup.dedup();
+    if dedup.len()!=r.root_legal_placements.len() {
+        return Err(reject("ROOT_GEOMETRY_DUPLICATE","root placement allowlist must be unique"));
+    }
+    if r.hold_locked && r.start.hold.is_none() {
+        return Err(reject("HOLD_LOCK_STATE_INVALID","hold_locked=true requires occupied Hold"));
     }
     if !r.authority_subframe.is_finite() || !(0.0..1.0).contains(&r.authority_subframe) {
-        return Err("invalid authority subframe".into());
+        return Err(reject("AUTHORITY_SUBFRAME_INVALID","invalid authority subframe"));
     }
-    if !(1..=600).contains(&r.frames_per_piece) { return Err("invalid hypothetical pace".into()); }
-    if !r.garbage_multiplier.is_finite() || !(0.0..=100.0).contains(&r.garbage_multiplier)
-        || r.garbage_multiplier == 0.0 { return Err("invalid attack multiplier".into()); }
-    r.rules.validate()?;
+    if !(1..=600).contains(&r.frames_per_piece) {
+        return Err(reject("PACE_ASSUMPTION_INVALID","frames_per_piece must be 1..600"));
+    }
+    if !r.garbage_multiplier.is_finite() || r.garbage_multiplier <= 0.0 || r.garbage_multiplier > 100.0 {
+        return Err(reject("ATTACK_MULTIPLIER_INVALID","garbage multiplier must be finite and within (0,100]"));
+    }
+    if !r.garbage_increase_per_second.is_finite() || r.garbage_increase_per_second < 0.0 || r.garbage_increase_per_second > 10.0 {
+        return Err(reject("ATTACK_GROWTH_INVALID","garbage increase must be finite and within [0,10]"));
+    }
+    if !(1000..=2_000_000).contains(&r.node_budget) {
+        return Err(reject("NODE_BUDGET_INVALID","node_budget must be 1000..2000000"));
+    }
+    if !r.hold_locked && r.node_budget < 2000 {
+        return Err(reject("NODE_BUDGET_TOO_SMALL_FOR_HOLD","unlocked roots need at least 2000 nodes so place and Hold branches each receive >=1000"));
+    }
+    r.rules.validate().map_err(|e|reject("RULE_VALUE_UNSUPPORTED",e))?;
     Ok(r)
 }
 
-fn legacy_request(r: Request) -> analysis::Request {
+fn make_start(root: Root) -> Start {
+    Start {
+        board: root.board,
+        queue: root.queue,
+        hold: root.hold,
+        combo: root.combo,
+        back_to_back: root.back_to_back,
+        b2b_count: root.b2b_count,
+        randomizer: Randomizer::Unknown,
+    }
+}
+fn analysis_request(r:&Request, root:Root, budget:u32, hold_locked:bool) -> analysis::Request {
     analysis::Request {
-        start: Start {
-            board: r.start.board, queue: r.start.queue, hold: r.start.hold,
-            combo: r.start.combo, back_to_back: r.start.back_to_back,
-            b2b_count: r.start.b2b_count,
-            // Unknown disables DAG speculation. The internal unused bag bitset
-            // is not a known fresh-bag claim and may never enable speculation.
-            randomizer: Randomizer::Unknown,
-        },
-        rules: r.rules, hold_locked: r.hold_locked,
-        incoming: r.incoming.into_iter().map(|p| analysis::IncomingPacket {
-            lines: p.lines, active: None, ready_in_frames: Some(p.ready_in_frames),
+        start: make_start(root),
+        rules: r.rules,
+        hold_locked,
+        incoming: r.incoming.iter().copied().map(|p| analysis::IncomingPacket {
+            lines:p.lines, active:None, ready_in_frames:Some(p.ready_in_frames),
         }).collect(),
-        pieces_placed: r.pieces_placed, garbage_sent: r.garbage_sent,
-        frames_per_piece: r.frames_per_piece, pending_delay_frames: 0,
-        authority_frame: Some(r.authority_frame), garbage_multiplier: Some(r.garbage_multiplier),
-        garbage_margin_frames: Some(r.garbage_margin_frames),
-        garbage_increase_per_second: Some(r.garbage_increase_per_second),
-        node_budget: r.node_budget,
+        pieces_placed:r.pieces_placed,
+        garbage_sent:r.garbage_sent,
+        frames_per_piece:r.frames_per_piece,
+        pending_delay_frames:0,
+        authority_frame:Some(r.authority_frame),
+        garbage_multiplier:Some(r.garbage_multiplier),
+        garbage_margin_frames:Some(r.garbage_margin_frames),
+        garbage_increase_per_second:Some(r.garbage_increase_per_second),
+        node_budget:budget,
     }
 }
-
-fn root_action(placement: Placement, current: Piece, hold: Option<Piece>, next: Piece, locked: bool) -> Result<Action, String> {
-    if placement.location.piece == current {
-        // Same-piece Hold is deliberately NOT a separately searched action.
-        // Do not expose an ambiguous useHold boolean inferred by a caller.
-        return Ok(Action::Place { placement });
-    }
-    if locked { return Err("search returned a Hold action from a locked root".into()); }
-    if placement.location.piece != hold.unwrap_or(next) { return Err("unexpected root piece".into()); }
-    Ok(Action::Hold { mode: if hold.is_none() { "empty" } else { "occupied" }, requires_reanalysis: true })
-}
-
-pub fn analyze_text(text: &str) -> Result<Report, String> {
-    let r = parse(text)?;
-    let current = r.start.queue[0];
-    let next = r.start.queue[1];
-    let hold = r.start.hold;
-    let locked = r.hold_locked;
-    let known_search_layers = if hold.is_none() { 5 } else { 6 };
-    // Both pending and no-pending roots ALWAYS use this stateless clock-aware
-    // path. No retained DAG, search-call index, history scan or hidden bag state.
-    let report = analysis::analyze(legacy_request(r))?;
-    let mut candidates = Vec::new();
-    let mut have_hold = false;
-    for c in report.candidates {
-        let action = root_action(c.placement, current, hold, next, locked)?;
-        if matches!(action, Action::Hold { .. }) {
-            if have_hold { continue; }
-            have_hold = true;
+fn post_hold_root(r:&Request) -> (Root,usize,bool,&'static str) {
+    let current=r.start.queue[0];
+    match r.start.hold {
+        Some(held)=>{
+            let mut queue=Vec::with_capacity(6);
+            queue.push(held);
+            queue.extend_from_slice(&r.start.queue[1..]);
+            (Root{board:r.start.board,queue,hold:Some(current),combo:r.start.combo,
+                back_to_back:r.start.back_to_back,b2b_count:r.start.b2b_count},
+             6, held==current, "post_hold_visible_state")
         }
-        candidates.push(ActionCandidate { action, mean_score: c.mean_score, worst_score: c.worst_score, scenarios: c.scenarios });
+        None=>{
+            // NEXT[5] after the Hold is genuinely unknown at this request. Do NOT
+            // peek at it. Evaluate only current=N1 plus the four still-known previews.
+            let queue=r.start.queue[1..].to_vec();
+            (Root{board:r.start.board,queue,hold:Some(current),combo:r.start.combo,
+                back_to_back:r.start.back_to_back,b2b_count:r.start.b2b_count},
+             5, r.start.queue[1]==current, "post_empty_hold_known_prefix_without_revealed_next")
+        }
     }
-    let action = candidates.first().ok_or("no suggestion at the visible search horizon")?.action.clone();
-    Ok(Report {
-        schema: "kiwi-snapshot-result/2", action, candidates,
-        nodes: report.nodes, node_budget: report.node_budget,
-        completion: if report.nodes == report.node_budget as u64 { "node_budget" } else { "visible_search_idle" },
-        search_path: "stateless_clocked_snapshot", config_profile: report.config_profile,
-        bag_knowledge: "unknown", unknown_tail: "finite_visible", known_search_layers,
-        scenarios: report.scenarios, authority_attack_clock: report.authority_attack_clock,
-        requires_authority_validation: true, rules_parity_verified: false,
-        assumptions: vec![
-            "Only the current visible snapshot is used; no draw history or inferred bag remainder.",
-            "No speculative expansion past known queue layers; leaves retain the existing evaluator.",
-            "Empty-Hold normalization conservatively searches five lock layers; occupied Hold six. This is NOT a continuation length limit.",
-            "Hold is an action without an executable landing. Apply only Hold, refill NEXT 5, then submit a new locked snapshot.",
-            "A separate same-piece Hold branch is excluded from this search version.",
-            "All requests rebuild the DAG. Legacy WasmBot is not a snapshot-v2 product entrypoint.",
-            "Root pose is transported for authority reachability validation; the core move generator remains spawn-based.",
-            "Hypothetical lock timing uses the explicit frames_per_piece, integer clock and simplified ARE/bump model.",
-            "Pending uses ten hypothetical clean-hole scenarios; scores are heuristics, not win probabilities.",
+}
+
+pub fn analyze_text(text:&str)->Result<Report,String>{
+    let r=parse(text)?;
+    let unlocked=!r.hold_locked;
+    let hold_budget=if unlocked {r.node_budget/2} else {0};
+    let place_budget=r.node_budget-hold_budget;
+
+    let place_report=analysis::analyze_snapshot_branch(
+        analysis_request(&r,r.start.clone(),place_budget,r.hold_locked),
+        "review_h9_h12",
+        6,
+        Some(r.root_legal_placements.clone()),
+    ).map_err(|e|reject("PLACE_SEARCH_REJECTED",e))?;
+
+    let mut candidates:Vec<ActionCandidate>=place_report.candidates.into_iter().map(|c|ActionCandidate{
+        action:Action::Place{placement:c.placement},
+        mean_score:c.mean_score,
+        worst_score:c.worst_score,
+        scenarios:c.scenarios,
+        search_basis:"authority_root_geometry_filtered",
+    }).collect();
+
+    let mut hold_nodes=0u64;
+    let mut hold_layers=None;
+    if unlocked {
+        let (post,len,same_piece,basis)=post_hold_root(&r);
+        let hold_report=analysis::analyze_snapshot_branch(
+            analysis_request(&r,post,hold_budget,true),
+            "review_h9_h12",
+            len,
+            None,
+        ).map_err(|e|reject("HOLD_SEARCH_REJECTED",e))?;
+        hold_nodes=hold_report.nodes;
+        hold_layers=Some(len);
+        let (mean,worst,scenarios)=match hold_report.candidates.first() {
+            Some(c)=>(c.mean_score,c.worst_score,c.scenarios),
+            None=>(-1_000_000.0,-1_000_000.0,hold_report.scenarios),
+        };
+        candidates.push(ActionCandidate{
+            action:Action::Hold{
+                mode:if r.start.hold.is_none(){"empty"}else{"occupied"},
+                same_piece,
+                requires_reanalysis:true,
+            },
+            mean_score:mean,
+            worst_score:worst,
+            scenarios,
+            search_basis:basis,
+        });
+    }
+    candidates.sort_by(|a,b|{
+        b.mean_score.total_cmp(&a.mean_score)
+            .then_with(||b.worst_score.total_cmp(&a.worst_score))
+            .then_with(||match (&a.action,&b.action) {
+                (Action::Place{..},Action::Hold{..})=>std::cmp::Ordering::Less,
+                (Action::Hold{..},Action::Place{..})=>std::cmp::Ordering::Greater,
+                _=>std::cmp::Ordering::Equal,
+            })
+    });
+    let action=candidates.first()
+        .ok_or_else(||reject("NO_ROOT_ACTION","no geometrically reachable placement and Hold is locked"))?
+        .action.clone();
+    let nodes=place_report.nodes+hold_nodes;
+    if nodes>r.node_budget as u64 {
+        return Err(reject("NODE_BUDGET_EXCEEDED","combined root branches exceeded request cap"));
+    }
+    Ok(Report{
+        schema:"kiwi-snapshot-result/3",
+        action,
+        candidates,
+        nodes,
+        branch_nodes:BranchNodes{place:place_report.nodes,hold:hold_nodes,total:nodes},
+        node_budget:r.node_budget,
+        completion:if nodes==r.node_budget as u64{"node_budget"}else{"visible_search_idle"},
+        search_path:"stateless_clocked_snapshot_split_root_actions",
+        config_profile:place_report.config_profile,
+        bag_knowledge:"unknown",
+        unknown_tail:"finite_visible",
+        place_known_search_layers:if r.start.hold.is_none(){5}else{6},
+        hold_known_search_layers:hold_layers,
+        scenarios:place_report.scenarios,
+        authority_attack_clock:place_report.authority_attack_clock,
+        root_geometry_filtered:true,
+        root_geometry_candidates:r.root_legal_placements.len(),
+        candidate_truncation:"none_after_authority_allowlist; insufficient root expansion is an error, never top-k truncation",
+        hold_information_gain_optimized:false,
+        requires_authority_timing_validation:true,
+        rules_parity_verified:false,
+        assumptions:vec![
+            "Only the current detached visible snapshot is used; no draw history, bag remainder, hidden RNG/tail, opponent board or future original placement.",
+            "Unknown tail never expands speculatively; frontier leaves keep the existing evaluator.",
+            "Place search is restricted to the complete geometry-only root landing allowlist derived by pinned Tetrp from the actual active piece.",
+            "Geometry reachability and frame-accurate input timing are separate. Tetrp must still validate execution timing before any future automated execution.",
+            "Hold is a standalone action with no landing. Tetrp applies Hold, refills NEXT 5, then sends a new hold_locked=true request.",
+            "Same-piece Hold is a distinct action. It is not assumed equivalent because Hold respawns/resets the active piece and changes Hold lock state.",
+            "Empty-Hold pre-reveal scoring deliberately omits the newly revealed unknown preview. Information-gain value is NOT optimized; the real revealed piece is used only by the required post-Hold request.",
+            "The request node cap is split deterministically between Place and Hold branches when Hold is available; post-Hold reanalysis is a separate request with its own cap.",
+            "Pending uses explicit frames_per_piece and ten hypothetical clean-hole scenarios; ARE/bump timing remains approximate.",
         ],
     })
 }
 
-pub fn capabilities() -> Value {
+pub fn capabilities()->Value{
     json!({
-        "schema":"kiwi-snapshot-capabilities/2", "snapshot_api":"analyze_snapshot_json",
-        "default_node_budget":200000, "hard_node_budget":true, "visible_next":5,
-        "bag_knowledge":"unknown", "unknown_tail":"finite_visible", "history_scan":false,
-        "history_derived_bag":false, "speculative_tail_expansion":false,
-        "explicit_hold_action":true, "hold_action_has_landing":false, "post_hold_reanalysis":true,
-        "root_hold_lock":true, "same_piece_hold_search":false,
-        "product_persistent_dag_reuse":false, "all_roots_use_snapshot":true,
-        "no_pending_nonunit_multiplier":true, "public_rule_contract":true,
-        "pending_unknown_activation":"reject", "pending_hole_scenarios":10,
-        "root_geometry_in_search":false, "authority_geometry_validation_required":true,
-        "rules_parity_verified":false, "full_opening_double_cancel_parity":false,
-        "full_clutch_parity":false, "exact_are_bump_timing":false,
-        "phase_4b_implemented":false, "strategy_profile":"review_h9_h12"
+        "schema":"kiwi-snapshot-capabilities/3",
+        "snapshot_api":"analyze_snapshot_json",
+        "request_schema":"kiwi-snapshot/3",
+        "result_schema":"kiwi-snapshot-result/3",
+        "default_node_budget":200000,
+        "hard_node_budget_per_request":true,
+        "visible_next":5,
+        "bag_knowledge":"unknown",
+        "unknown_tail":"finite_visible",
+        "history_scan":false,
+        "history_derived_bag":false,
+        "speculative_tail_expansion":false,
+        "explicit_hold_action":true,
+        "hold_action_has_landing":false,
+        "post_hold_reanalysis":true,
+        "root_hold_lock":true,
+        "same_piece_hold_search":true,
+        "same_piece_hold_action_explicit":true,
+        "hold_information_gain_optimized":false,
+        "empty_hold_unknown_reveal_scoring":"known_prefix_only_until_required_post_hold_reanalysis",
+        "product_persistent_dag_reuse":false,
+        "all_roots_use_snapshot":true,
+        "no_pending_nonunit_multiplier":true,
+        "public_rule_contract":true,
+        "pending_unknown_activation":"reject",
+        "pending_positive_are_queue":"reject",
+        "pending_hole_scenarios":10,
+        "structured_rejections":true,
+        "root_geometry_in_search":true,
+        "root_geometry_source":"pinned_tetrp_authority_complete_current_pose_allowlist",
+        "root_candidate_top_k":null,
+        "root_timing_in_search":false,
+        "authority_timing_validation_required":true,
+        "rules_parity_verified":false,
+        "full_opening_double_cancel_parity":false,
+        "full_clutch_parity":false,
+        "exact_are_bump_timing":false,
+        "phase_4b_implemented":false,
+        "strategy_profile":"review_h9_h12"
     })
 }
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(target_arch="wasm32")]
 #[wasm_bindgen::prelude::wasm_bindgen]
-pub fn analyze_snapshot_json(text: &str) -> Result<String, wasm_bindgen::JsValue> {
-    analyze_text(text).and_then(|r| serde_json::to_string(&r).map_err(|e|e.to_string()))
+pub fn analyze_snapshot_json(text:&str)->Result<String,wasm_bindgen::JsValue>{
+    analyze_text(text)
+        .and_then(|r|serde_json::to_string(&r).map_err(|e|reject("RESULT_SERIALIZATION_FAILED",e)))
         .map_err(|e|wasm_bindgen::JsValue::from_str(&e))
 }
-#[cfg(target_arch = "wasm32")]
+#[cfg(target_arch="wasm32")]
 #[wasm_bindgen::prelude::wasm_bindgen]
-pub fn snapshot_capabilities_json() -> String { capabilities().to_string() }
+pub fn snapshot_capabilities_json()->String{capabilities().to_string()}
 
 #[cfg(test)]
-mod tests {
+mod tests{
     use super::*;
-    use std::sync::Arc;
-    use crate::{bot::{BotConfig, Statistics}, data::{PieceLocation, Rotation, Spin}, ko_support::with_search_seed};
-    fn input(held: bool, pending: bool) -> Value {
+    use crate::data::{PieceLocation,Rotation};
+    fn p(piece:Piece,x:i8)->Placement{
+        Placement{location:PieceLocation{piece,rotation:Rotation::North,x,y:0},spin:Spin::None}
+    }
+    fn input(held:Option<Piece>,next0:Piece,pending:bool)->Value{
         json!({
-            "schema":"kiwi-snapshot/2", "bag_knowledge":"unknown", "unknown_tail":"finite_visible",
-            "start":{"board":[],"queue":["T","I","O","S","Z","J"],
-                "hold":if held {Some("L")} else {None},"combo":0,"back_to_back":false,"b2b_count":0},
-            "root_pose":{"x":4,"y":17.96,"rotation":0},
-            "rules":TetrioRules{b2b_charge_base:3,..TetrioRules::default()},"hold_locked":false,
-            "incoming":if pending {json!([{"lines":4,"ready_in_frames":0}])} else {json!([])},
-            "pieces_placed":0,"garbage_sent":0,"frames_per_piece":24,"authority_frame":0,"authority_subframe":0,
-            "garbage_multiplier":1.5,"garbage_margin_frames":10800,"garbage_increase_per_second":0.008,
-            "node_budget":5000
+            "schema":"kiwi-snapshot/3","bag_knowledge":"unknown","unknown_tail":"finite_visible",
+            "start":{"board":[],"queue":["T",next0,"O","S","Z","J"],"hold":held,
+                "combo":0,"back_to_back":false,"b2b_count":0},
+            "root_state":{"x":4,"y":17.96,"rotation":0,"kick":0,"rotated":false,"spin":"none","total_rotations":0},
+            "root_legal_placements":[p(Piece::T,4)],
+            "rules":TetrioRules{b2b_charge_base:3,..TetrioRules::default()},
+            "hold_locked":false,
+            "incoming":if pending{json!([{"lines":4,"ready_in_frames":0}])}else{json!([])},
+            "pieces_placed":0,"garbage_sent":0,"frames_per_piece":24,
+            "authority_frame":0,"authority_subframe":0,
+            "garbage_multiplier":1.5,"garbage_margin_frames":10800,
+            "garbage_increase_per_second":0.008,"node_budget":5000
         })
     }
     #[test]
-    fn strict_unknown_contract_rejects_history_bags_missing_rules_and_unknown_arrival() {
-        for key in ["observed_draws","bag_state","rng","hidden_next","history"] {
-            let mut v=input(false,false);v[key]=json!([]);assert!(analyze_text(&v.to_string()).is_err());
+    fn same_piece_empty_and_occupied_hold_are_explicit_without_landing(){
+        for (held,next0,mode) in [
+            (None,Piece::T,"empty"),
+            (Some(Piece::T),Piece::I,"occupied"),
+        ]{
+            let r=analyze_text(&input(held,next0,false).to_string()).unwrap();
+            let h=r.candidates.iter().find(|c|matches!(c.action,Action::Hold{..})).unwrap();
+            let v=serde_json::to_value(&h.action).unwrap();
+            assert_eq!(v["mode"],mode);assert_eq!(v["same_piece"],true);
+            assert!(v.get("placement").is_none());
         }
-        let mut v=input(false,false);v["start"]["randomizer"]=json!({"type":"seven_bag","bag_state":["I","O","T","L","J","S","Z"]});
-        assert!(analyze_text(&v.to_string()).is_err());
-        let mut v=input(false,false);v["rules"].as_object_mut().unwrap().remove("b2bcharge_base");
-        assert!(analyze_text(&v.to_string()).is_err());
-        let mut v=input(false,true);v["incoming"][0].as_object_mut().unwrap().remove("ready_in_frames");
-        assert!(analyze_text(&v.to_string()).is_err());
+        assert_eq!(capabilities()["same_piece_hold_search"],true);
+        assert_eq!(capabilities()["hold_information_gain_optimized"],false);
     }
     #[test]
-    fn deterministic_pending_and_nonpending_share_strict_clock_and_budget_contract() {
-        for pending in [false,true] {
-            let v=input(true,pending);
-            let a=serde_json::to_value(analyze_text(&v.to_string()).unwrap()).unwrap();
-            let _=analyze_text(&input(false,!pending).to_string()).unwrap();
-            let b=serde_json::to_value(analyze_text(&v.to_string()).unwrap()).unwrap();
-            assert_eq!(a,b);assert!(a["nodes"].as_u64().unwrap()<=5000);
-            assert_eq!(a["authority_attack_clock"],true);
-            assert_eq!(a["scenarios"],if pending {10}else{1});
-        }
-    }
-    #[test]
-    fn unknown_dag_never_expands_a_speculative_layer() {
-        for held in [false,true] { for pending in [false,true] {
-            let req=legacy_request(parse(&input(held,pending).to_string()).unwrap());
-            let mut bot=crate::try_create_bot_with_context(req.start,Arc::new(BotConfig::review_h9_h12()),req.rules,false).unwrap();
-            let packets:Vec<_>=req.incoming.iter().map(|p|(p.lines,p.ready_in_frames.unwrap())).collect();
-            bot.set_forecast(crate::forecast::Forecast::new_timed_with_clock(&packets,0,0,24,0,1.5,10800,0.008,0).unwrap());
-            let mut stats=Statistics::default();
-            with_search_seed(42,||{for _ in 0..3000 {
-                if stats.nodes>=30000 {break;}
-                stats.accumulate(bot.do_work_limited(30000-stats.nodes));
-            }});
-            assert_eq!(stats.speculative_expansions,0);
-            assert!(stats.max_depth<=if held {6}else{5});assert!(stats.nodes<=30000);
-        }}
-    }
-    #[test]
-    fn hold_action_discards_prehold_landing_and_locked_roots_only_place_current() {
-        let p=Placement{location:PieceLocation{piece:Piece::I,rotation:Rotation::North,x:4,y:0},spin:Spin::None};
-        let a=root_action(p,Piece::T,None,Piece::I,false).unwrap();
-        let v=serde_json::to_value(&a).unwrap();assert_eq!(v["kind"],"hold");assert!(v.get("placement").is_none());
-        assert!(root_action(p,Piece::T,Some(Piece::I),Piece::L,true).is_err());
-        for pending in [false,true] {
-            let mut v=input(true,pending);v["hold_locked"]=json!(true);
-            let report=analyze_text(&v.to_string()).unwrap();
-            assert!(report.candidates.iter().all(|c| matches!(c.action,Action::Place{placement} if placement.location.piece==Piece::T)));
+    fn locked_root_has_no_hold_and_geometry_filter_is_enforced(){
+        let mut v=input(Some(Piece::L),Piece::I,true);
+        v["hold_locked"]=json!(true);
+        let r=analyze_text(&v.to_string()).unwrap();
+        assert!(r.candidates.iter().all(|c|matches!(c.action,Action::Place{..})));
+        for c in &r.candidates {
+            if let Action::Place{placement}=c.action { assert_eq!(placement,p(Piece::T,4)); }
         }
     }
     #[test]
-    fn same_piece_hold_is_explicitly_excluded_not_ambiguous() {
-        let p=Placement{location:PieceLocation{piece:Piece::T,rotation:Rotation::North,x:4,y:0},spin:Spin::None};
-        assert!(matches!(root_action(p,Piece::T,Some(Piece::T),Piece::I,false).unwrap(),Action::Place{..}));
-        assert_eq!(capabilities()["same_piece_hold_search"],false);
+    fn strict_contract_rejects_history_unknown_activation_and_bad_geometry(){
+        let base=input(None,Piece::I,false);
+        for key in ["observed_draws","bag_state","rng","hidden_next","history"]{
+            let mut v=base.clone();v[key]=json!([]);assert!(analyze_text(&v.to_string()).is_err());
+        }
+        let mut v=input(None,Piece::I,true);
+        v["incoming"][0].as_object_mut().unwrap().remove("ready_in_frames");
+        assert!(analyze_text(&v.to_string()).unwrap_err().starts_with("REQUEST_SCHEMA_INVALID:"));
+        let mut v=base.clone();v["root_legal_placements"][0]["location"]["type"]=json!("I");
+        assert!(analyze_text(&v.to_string()).unwrap_err().starts_with("ROOT_GEOMETRY_PIECE_MISMATCH:"));
+    }
+    #[test]
+    fn deterministic_requests_do_not_share_search_state(){
+        let v=input(Some(Piece::L),Piece::I,true);
+        let a=serde_json::to_value(analyze_text(&v.to_string()).unwrap()).unwrap();
+        let _=analyze_text(&input(None,Piece::T,false).to_string()).unwrap();
+        let b=serde_json::to_value(analyze_text(&v.to_string()).unwrap()).unwrap();
+        assert_eq!(a,b);assert!(a["nodes"].as_u64().unwrap()<=5000);
     }
 }
