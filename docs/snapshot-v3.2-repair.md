@@ -30,6 +30,13 @@ repeat CC2 coordinate conversions. Piece copies use scalar object copies rather
 than structured cloning on every edge. Neither the rotation-state bound nor any
 candidate set is reduced.
 
+Successor geometry is also reused within each SRS+ anti-stall regime, while
+rotation counters still advance individually and every original graph state is
+retained. `scripts/compare-kiwi-geometry.mjs` compares the entire output to the
+unchanged v3.1 helper, including non-spawn wall/fractional poses on both sides of
+the anti-stall boundary and an immobile spin. The local reproduction report is
+`experiments/kiwi-v3.2-local-geometry.json`.
+
 Local before/after comparisons cover all seven pieces with exact equality of the
 entire output including state counts. Browser and non-spawn coverage remain CI
 gates. These JavaScript timings exclude WASM search and are not device promises.

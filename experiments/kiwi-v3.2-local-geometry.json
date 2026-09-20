@@ -1,0 +1,84 @@
+{
+  "status": "passed",
+  "reference": "60e75395be109e58d255a85ecd1cf0c981e696b3",
+  "equality": "all placements, ordering, state counts, metadata; no input mutation",
+  "results": [
+    {
+      "name": "i",
+      "beforeMs": 8226.1547,
+      "afterMs": 587.9735000000001,
+      "states": 99413,
+      "placements": 34
+    },
+    {
+      "name": "o",
+      "beforeMs": 4644.5108,
+      "afterMs": 252.3838999999989,
+      "states": 48906,
+      "placements": 36
+    },
+    {
+      "name": "t",
+      "beforeMs": 7638.538499999999,
+      "afterMs": 460.01800000000003,
+      "states": 85416,
+      "placements": 34
+    },
+    {
+      "name": "l",
+      "beforeMs": 7631.562900000001,
+      "afterMs": 414.52449999999953,
+      "states": 85416,
+      "placements": 34
+    },
+    {
+      "name": "j",
+      "beforeMs": 8395.810000000001,
+      "afterMs": 614.0501999999979,
+      "states": 85416,
+      "placements": 34
+    },
+    {
+      "name": "s",
+      "beforeMs": 8913.387499999997,
+      "afterMs": 445.20390000000043,
+      "states": 85416,
+      "placements": 34
+    },
+    {
+      "name": "z",
+      "beforeMs": 7671.1734,
+      "afterMs": 451.39910000000236,
+      "states": 85416,
+      "placements": 34
+    },
+    {
+      "name": "rotated_wall_fractional_counter_29",
+      "beforeMs": 304.71630000000005,
+      "afterMs": 48.29679999999644,
+      "states": 3588,
+      "placements": 34
+    },
+    {
+      "name": "rotated_wall_fractional_counter_30",
+      "beforeMs": 190.24139999999898,
+      "afterMs": 31.35779999999795,
+      "states": 2340,
+      "placements": 34
+    },
+    {
+      "name": "rotated_wall_fractional_counter_31",
+      "beforeMs": 98.4461999999985,
+      "afterMs": 13.433499999999185,
+      "states": 1098,
+      "placements": 34
+    },
+    {
+      "name": "immobile_spin",
+      "beforeMs": 0.23030000000289874,
+      "afterMs": 0.11759999999776483,
+      "states": 1,
+      "placements": 1
+    }
+  ]
+}

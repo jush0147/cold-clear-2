@@ -32,7 +32,7 @@ for(const name of actual.filter(n=>n.endsWith('.js')||n.endsWith('.mjs'))) {
 const read=name=>JSON.parse(fs.readFileSync(path.join(root,name),'utf8'));
 const build=read('kiwi-build.json');
 assert.equal(build.schema,'tetrp-kiwi-build/3');
-assert.equal(build.product_version,'kiwi-v1-snapshot-v3.1');
+assert.equal(build.product_version,'kiwi-v1-snapshot-v3.2');
 assert.equal(build.snapshot_api,'analyze_snapshot_json');
 assert.equal(build.request_schema,'kiwi-snapshot/3');
 assert.equal(build.result_schema,'kiwi-snapshot-result/3');
@@ -40,6 +40,7 @@ assert.equal(build.capabilities.same_piece_hold_search,true);
 assert.equal(build.capabilities.hold_information_gain_optimized,false);
 assert.equal(build.capabilities.root_geometry_in_search,true);
 assert.equal(build.capabilities.rules_parity_verified,false);
+assert.equal(build.capabilities.pending_unknown_activation,'three_explicit_timing_scenarios_shared_node_budget');
 assert.equal(read('kiwi-snapshot-acceptance.json').status,'passed');
 assert.equal(read('kiwi-snapshot-browser.json').status,'passed');
 assert.equal(read('kiwi-package-e2e.json').status,'passed');

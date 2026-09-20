@@ -42,6 +42,11 @@ try{
           const a=await run(1,request);
           const b=await run(2,request);
           const identical=JSON.stringify(a)===JSON.stringify(b);
+          const unknownRequest={...request,incoming:[{lines:4,ready_in_frames:null}]};
+          const unknownStart=performance.now();
+          const unknown=await run(10,unknownRequest);
+          const unknownMs=performance.now()-unknownStart;
+          const unknownRepeated=await run(11,unknownRequest);
           let rejectionCode=null;
           try{await run(20,{...request,history:[]});}catch(error){rejectionCode=error.code;}
           let lateReplies=0;
@@ -57,7 +62,13 @@ try{
             rejectionCode,ticks,lateReplies,
             nodes:a.result.nodes,budget:a.result.node_budget,action_kind:a.result.action.kind,
             same_piece_hold_search:a.capabilities.same_piece_hold_search,
-            root_geometry_in_search:a.capabilities.root_geometry_in_search
+            root_geometry_in_search:a.capabilities.root_geometry_in_search,
+            unknown_activation:{
+              scenarios:unknown.result.scenarios,packets:unknown.result.unknown_activation_packets,
+              delays:unknown.result.unknown_activation_delays,nodes:unknown.result.nodes,
+              budget:unknown.result.node_budget,ms:unknownMs,
+              deterministic:JSON.stringify(unknown)===JSON.stringify(unknownRepeated)
+            }
           };
         }finally{clearInterval(timer);worker.terminate();}
       },request);
@@ -66,6 +77,11 @@ try{
       assert.equal(result.rejectionCode,'REQUEST_SCHEMA_INVALID');
       assert.equal(result.same_piece_hold_search,true);
       assert.equal(result.root_geometry_in_search,true);
+      assert.equal(result.unknown_activation.scenarios,30);
+      assert.equal(result.unknown_activation.packets,1);
+      assert.deepEqual(result.unknown_activation.delays,[1,25,600]);
+      assert.ok(result.unknown_activation.nodes<=200000);
+      assert.equal(result.unknown_activation.deterministic,true);
       assert.ok(urls.every(u=>u.startsWith(base)),'browser must not contact a remote bot service');
       results.push({browser:name,version:browser.version(),...result});
     }finally{await browser.close();}

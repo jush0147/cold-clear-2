@@ -109,6 +109,7 @@ export function createPlacementTools({Engine, boardModule:B, rotationModule:R}) 
     const initial=copyPiece(state.piece);
     const q=[initial],seen=new Set([pathStateKey(initial,rules)]),placements=new Map();
     const landingCache=new Set();
+    const edgeCache=new Map();
     const actions=['moveLeft','moveRight','rotateCW','rotateCCW','rotate180','down'];
     let head=0;
     while(head<q.length) {
@@ -128,9 +129,20 @@ export function createPlacementTools({Engine, boardModule:B, rotationModule:R}) 
         }
         landingCache.add(poseKey);
       }
-      for(const action of actions) {
-        const next=applyPathMove(board,p,action,rules);
-        if(!next)continue;
+      // SRS+ kick geometry only distinguishes counters on either side of its
+      // anti-stall threshold. Cache edge geometry within each regime, but keep
+      // every original rotation-counter state in the traversal and seen set.
+      const edgeKey=poseKey+','+p.spin+','+((p.totalRotations||0)>rules.lockresets+15?1:0);
+      let edges=edgeCache.get(edgeKey);
+      if(!edges) {
+        edges=actions.map(action=>applyPathMove(board,p,action,rules));
+        edgeCache.set(edgeKey,edges);
+      }
+      for(let i=0;i<actions.length;i++) {
+        const edge=edges[i];
+        if(!edge)continue;
+        const rotating=actions[i].startsWith('rotate');
+        const next={...edge,totalRotations:(p.totalRotations||0)+(rotating?1:0)};
         const key=pathStateKey(next,rules);
         if(seen.has(key))continue;
         seen.add(key);

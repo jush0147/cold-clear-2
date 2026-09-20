@@ -187,6 +187,6 @@ jobs:
     uses: ./.github/workflows/ntfy-test.yml
     with:
       title: Kiwi snapshot artifact ready
-      message: Snapshot-v3.1 artifact passed rule/browser tests plus downloaded-package helper -> Tetrp snapshot -> WASM verification. Review before Tetrp Phase 4A integration.
+      message: Snapshot-v3.2 artifact passed rule/browser tests plus downloaded-package helper -> Tetrp snapshot -> WASM verification. Review before Tetrp Phase 4A integration.
     secrets:
       NTFY_URL: ${{ secrets.NTFY_URL }}
