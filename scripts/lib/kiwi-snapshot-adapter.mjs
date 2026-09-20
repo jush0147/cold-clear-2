@@ -151,8 +151,8 @@ export function buildSnapshotRequest(v,{nodeBudget=200000,framesPerPiece=24}={})
   };
 }
 function expectedSamePiece(root,mode){
-  const current=piece(root.state.piece.type);
-  const replacement=mode==='empty'?piece(root.state.bag.queue[0]):piece(root.state.hold.piece);
+  const current=piece(state.piece.type);
+  const replacement=mode==='empty'?piece(state.bag.queue[0]):piece(state.hold.piece);
   return replacement===current;
 }
 /**
@@ -160,21 +160,21 @@ function expectedSamePiece(root,mode){
  * check does not pull a hidden preview. Timing/reset exhaustion is separate.
  */
 export function validateSnapshotAction(engine,action,{Engine,placementTools}){
-  const root=Engine.restore(engine.serialize());
+  const state=engine.state;
   if(action?.kind==='hold'){
     if('placement'in action||'path'in action||action.requires_reanalysis!==true)
       fail('HOLD_ACTION_BUNDLED_LANDING','Hold action must not contain a landing');
-    const expectedMode=root.state.hold.piece==null?'empty':'occupied';
+    const expectedMode=state.hold.piece==null?'empty':'occupied';
     if(action.mode!==expectedMode)fail('HOLD_MODE_MISMATCH','Hold mode does not match authority state',{expected:expectedMode,actual:action.mode});
-    if(root.state.hold.locked||!root.state.rules.hold)fail('HOLD_LOCKED','Hold is not available at this root');
+    if(state.hold.locked||!state.rules.hold)fail('HOLD_LOCKED','Hold is not available at this root');
     const same=expectedSamePiece(root,expectedMode);
     if(Boolean(action.same_piece)!==same)fail('HOLD_SAME_PIECE_FLAG_MISMATCH','same_piece flag does not match visible replacement',{expected:same});
     return {action:structuredClone(action),geometry_validated:true,timing_validated:false};
   }
-  if(action?.kind!=='place'||action.placement?.location.type!==piece(root.state.piece.type))
+  if(action?.kind!=='place'||action.placement?.location.type!==piece(state.piece.type))
     fail('PLACE_CURRENT_PIECE_REQUIRED','Place action must use current piece without Hold');
   let path;
-  try{path=placementTools.findPath(root,action.placement);}
+  try{path=placementTools.findCurrentPath(state,action.placement);}
   catch(error){fail('ROOT_GEOMETRY_UNREACHABLE','Placement is not reachable from actual root pose',{cause:String(error?.message??error)});}
   if(path.useHold||path.moves.includes('hold'))fail('PLACE_IMPLICIT_HOLD','Place action cannot implicitly Hold');
   return {action:structuredClone(action),path,geometry_validated:true,timing_validated:false};
