@@ -12,6 +12,7 @@ pub struct Forecast {
     pub pieces_placed:u32,
     pub sent:u32,
     frames_per_piece:u32,
+    opener_phase_pieces:u32,
     authority_clock:bool,
     authority_frame:u32,
     garbage_margin_frames:u32,
@@ -43,7 +44,7 @@ impl Forecast {
         if packets.len()>16 {return Err("forecast supports at most 16 observable packets".into());}
         if !(1..=600).contains(&frames_per_piece) {return Err("invalid explicit timing assumption".into());}
         if sent>1_000_000 || pieces_placed>1_000_000 {return Err("history counter exceeds analysis bound".into());}
-        let mut f=Self{enabled:true,pieces_placed,sent,frames_per_piece,..Self::default()};
+        let mut f=Self{enabled:true,pieces_placed,sent,frames_per_piece,opener_phase_pieces:14,..Self::default()};
         for (i,&(lines,ready_in_frames)) in packets.iter().enumerate() {
             if lines==0 || lines>1000 {return Err("packet line count must be 1..1000".into());}
             if ready_in_frames>600 {return Err("packet activation delay exceeds analysis bound".into());}
@@ -100,6 +101,7 @@ impl Forecast {
     }
 
     pub fn authority_clock_enabled(&self)->bool { self.authority_clock }
+    pub fn set_opener_phase_pieces(&mut self, pieces:u32) { self.opener_phase_pieces=pieces; }
 
     pub fn remaining(&self)->u32 {self.packets[..self.len].iter().map(|p|p.lines).sum()}
     fn consume(&mut self,mut lines:u32)->u32 {
@@ -115,7 +117,7 @@ impl Forecast {
         if !self.enabled || self.topped_out {return;}
         self.elapsed_frames=self.elapsed_frames.saturating_add(self.frames_per_piece);
         for &attack in attacks {
-            let (cancelled, outgoing) = crate::ko_support::cancel_plan(attack, self.remaining(), self.pieces_placed, self.sent);
+            let (cancelled, outgoing) = crate::ko_support::cancel_plan(attack, self.remaining(), self.pieces_placed, self.sent, self.opener_phase_pieces);
             self.consume(cancelled);
             self.sent=self.sent.saturating_add(outgoing);
         }

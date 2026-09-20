@@ -10,6 +10,65 @@ pub struct Board {
     pub garbage_rows: u64,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct TetrioRules {
+    #[serde(rename = "b2bcharging")]
+    pub b2b_charging: bool,
+    #[serde(rename = "b2bcharge_at")]
+    pub b2b_charge_at: u32,
+    #[serde(rename = "b2bcharge_base")]
+    pub b2b_charge_base: u32,
+    #[serde(rename = "b2bchaining")]
+    pub b2b_chaining: bool,
+    #[serde(rename = "openerphase_pieces")]
+    pub opener_phase_pieces: u32,
+    #[serde(rename = "allclears")]
+    pub all_clears: bool,
+    #[serde(rename = "allclear_garbage")]
+    pub all_clear_garbage: u32,
+    #[serde(rename = "allclear_b2b")]
+    pub all_clear_b2b: u32,
+    #[serde(rename = "garbagespecialbonus")]
+    pub garbage_special_bonus: bool,
+    pub clutch: bool,
+}
+impl Default for TetrioRules {
+    fn default() -> Self {
+        Self {
+            b2b_charging: true,
+            b2b_charge_at: 4,
+            b2b_charge_base: 0,
+            b2b_chaining: false,
+            opener_phase_pieces: 14,
+            all_clears: true,
+            all_clear_garbage: 5,
+            all_clear_b2b: 1,
+            garbage_special_bonus: true,
+            clutch: true,
+        }
+    }
+}
+impl TetrioRules {
+    pub fn validate(self) -> Result<(), String> {
+        if self.b2b_chaining {
+            return Err("b2bchaining=true is not supported by the current Tetrp rule contract".into());
+        }
+        for (name, value) in [
+            ("b2bcharge_at", self.b2b_charge_at),
+            ("b2bcharge_base", self.b2b_charge_base),
+            ("openerphase_pieces", self.opener_phase_pieces),
+            ("allclear_garbage", self.all_clear_garbage),
+            ("allclear_b2b", self.all_clear_b2b),
+        ] {
+            if value > 10_000 {
+                return Err(format!("{name} exceeds the supported analysis bound"));
+            }
+        }
+        Ok(())
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct GameState {
     pub board: Board,
@@ -22,6 +81,7 @@ pub struct GameState {
     /// PlacementInfo::combo uses this number, then this field is incremented.
     /// This is not the displayed combo counter after the previous clear.
     pub combo: u8,
+    pub rules: TetrioRules,
     pub forecast: crate::forecast::Forecast,
 }
 
@@ -212,7 +272,7 @@ struct B2bTransition {
     count_before: u32,
 }
 
-fn tetrp_b2b_transition(active: bool, count: u16, lines: u32, spin: Spin, perfect_clear: bool) -> B2bTransition {
+fn tetrp_b2b_transition(active: bool, count: u16, lines: u32, spin: Spin, perfect_clear: bool, rules: TetrioRules) -> B2bTransition {
     let raw_before = if active { count as u32 + 1 } else { 0 };
     let count_before = raw_before.saturating_sub(1);
     if lines == 0 {
@@ -225,13 +285,14 @@ fn tetrp_b2b_transition(active: bool, count: u16, lines: u32, spin: Spin, perfec
         };
     }
     let difficult = lines == 4 || !matches!(spin, Spin::None);
-    let contribution = u32::from(perfect_clear) + u32::from(difficult);
+    let pc_contribution = if perfect_clear && rules.all_clears { rules.all_clear_b2b } else { 0 };
+    let contribution = pc_contribution + u32::from(difficult);
     if contribution != 0 {
         let raw_after = raw_before.saturating_add(contribution);
         B2bTransition {
             active: true,
             count: raw_after.saturating_sub(1).min(u16::MAX as u32) as u16,
-            normal_bonus: raw_after > 1 && !(perfect_clear && contribution == 1),
+            normal_bonus: raw_after > 1 && !(perfect_clear && contribution == rules.all_clear_b2b),
             broken: false,
             count_before,
         }
@@ -271,6 +332,7 @@ impl GameState {
             lines_cleared,
             placement.spin,
             perfect_clear,
+            self.rules,
         );
         self.back_to_back = b2b.active;
         self.b2b_count = b2b.count;
@@ -287,7 +349,7 @@ impl GameState {
         };
         if self.forecast.enabled {
             let multiplier=self.forecast.next_attack_multiplier();
-            let packets=crate::tetrio::attack_with_multiplier(&info,multiplier).packets();
+            let packets=crate::tetrio::attack_with_multiplier_and_rules(&info,multiplier,self.rules).packets();
             self.forecast.resolve(&mut self.board,&packets,lines_cleared);
         }
         info
@@ -319,17 +381,17 @@ mod tetrp_b2b_transition_tests {
     #[test]
     fn all_clear_and_difficult_clear_contribute_separately() {
         // First ordinary difficult clear establishes raw B2B=1 (display x0).
-        assert_eq!(tetrp_b2b_transition(false,0,4,Spin::None,false), B2bTransition { active:true, count:0, normal_bonus:false, broken:false, count_before:0 });
+        assert_eq!(tetrp_b2b_transition(false,0,4,Spin::None,false,TetrioRules::default()), B2bTransition { active:true, count:0, normal_bonus:false, broken:false, count_before:0 });
         // A PC Quad contributes both PC and difficult charge: raw=2 immediately.
-        assert_eq!(tetrp_b2b_transition(false,0,4,Spin::None,true), B2bTransition { active:true, count:1, normal_bonus:true, broken:false, count_before:0 });
+        assert_eq!(tetrp_b2b_transition(false,0,4,Spin::None,true,TetrioRules::default()), B2bTransition { active:true, count:1, normal_bonus:true, broken:false, count_before:0 });
         // An all-clear-only normal clear advances charge but suppresses the
         // normal B2B send bonus, matching pinned Tetrp v19.
-        assert_eq!(tetrp_b2b_transition(true,2,2,Spin::None,true), B2bTransition { active:true, count:3, normal_bonus:false, broken:false, count_before:2 });
+        assert_eq!(tetrp_b2b_transition(true,2,2,Spin::None,true,TetrioRules::default()), B2bTransition { active:true, count:3, normal_bonus:false, broken:false, count_before:2 });
     }
 
     #[test]
     fn ordinary_clear_breaks_live_chain() {
-        assert_eq!(tetrp_b2b_transition(true,4,2,Spin::None,false), B2bTransition { active:false, count:0, normal_bonus:false, broken:true, count_before:4 });
+        assert_eq!(tetrp_b2b_transition(true,4,2,Spin::None,false,TetrioRules::default()), B2bTransition { active:false, count:0, normal_bonus:false, broken:true, count_before:4 });
     }
 }
 

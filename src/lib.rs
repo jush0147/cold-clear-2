@@ -5,7 +5,7 @@ use enumset::EnumSet;
 use tbp::Randomizer;
 
 use crate::bot::Bot;
-use crate::data::GameState;
+use crate::data::{GameState, TetrioRules};
 
 #[cfg(not(target_arch = "wasm32"))]
 use std::convert::Infallible;
@@ -90,7 +90,17 @@ pub fn try_create_bot(start: tbp::Start, config: Arc<BotConfig>) -> Result<Bot, 
     Ok(create_bot(start, config))
 }
 
-pub fn create_bot(mut start: tbp::Start, config: Arc<BotConfig>) -> Bot {
+pub fn try_create_bot_with_rules(start: tbp::Start, config: Arc<BotConfig>, rules: TetrioRules) -> Result<Bot, String> {
+    start.validate()?;
+    rules.validate()?;
+    Ok(create_bot_with_rules(start, config, rules))
+}
+
+pub fn create_bot(start: tbp::Start, config: Arc<BotConfig>) -> Bot {
+    create_bot_with_rules(start, config, TetrioRules::default())
+}
+
+fn create_bot_with_rules(mut start: tbp::Start, config: Arc<BotConfig>, rules: TetrioRules) -> Bot {
     let hold_is_empty = start.hold.is_none();
     // Empty hold normalization is only internal: reserve represents current,
     // queue represents NEXT. Bot::player_pieces reverses this representation.
@@ -113,6 +123,7 @@ pub fn create_bot(mut start: tbp::Start, config: Arc<BotConfig>) -> Bot {
         combo: start.combo.try_into().unwrap_or(255),
         bag,
         board: start.board,
+        rules,
         forecast: crate::forecast::Forecast::default(),
     };
     let mut bot = Bot::new(BotOptions { speculate, config }, state, &start.queue);

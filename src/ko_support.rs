@@ -26,9 +26,9 @@ pub(crate) fn random_index(len: usize) -> usize {
 }
 /// Existing opening cancellation policy, shared by forecast and authority.
 /// Returns canceled incoming and unused ordinary attack. Bonus never sends.
-pub fn cancel_plan(attack: u32, incoming: u32, pieces: u32, sent: u32) -> (u32, u32) {
+pub fn cancel_plan(attack: u32, incoming: u32, pieces: u32, sent: u32, opener_phase_pieces: u32) -> (u32, u32) {
     let ordinary = attack.min(incoming);
-    let bonus = if pieces < 14 && incoming >= sent { attack.min(incoming - ordinary) } else { 0 };
+    let bonus = if pieces < opener_phase_pieces && incoming >= sent { attack.min(incoming - ordinary) } else { 0 };
     (ordinary + bonus, attack - ordinary)
 }
 pub fn board_danger(board: &Board, max_cover: u32) -> (u32, u32, u32) {
@@ -58,9 +58,9 @@ mod tests {
     }
     #[test]
     fn opening_bonus_never_sends() {
-        assert_eq!(cancel_plan(3,5,0,0),(5,0));
-        assert_eq!(cancel_plan(3,5,14,0),(3,0));
-        assert_eq!(cancel_plan(7,5,0,0),(5,2));
+        assert_eq!(cancel_plan(3,5,0,0,14),(5,0));
+        assert_eq!(cancel_plan(3,5,14,0,14),(3,0));
+        assert_eq!(cancel_plan(7,5,0,0,14),(5,2));
     }
     #[test]
     fn snapshot_does_not_invent_activation_times() {
