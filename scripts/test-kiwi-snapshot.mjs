@@ -21,6 +21,7 @@ const tools=createPlacementTools({Engine,boardModule:B,rotationModule:R});
 const deps={Engine,placementTools:tools};
 const handling={arr:0,das:1,dcd:0,sdf:20,safelock:false,cancel:false,may20g:true,irs:'off',ihs:'off'};
 const make=(seed=1,rules={})=>new Engine({mode:'tl',seed,rules:{g:0,gincrease:0,b2bcharge_base:3,...rules},handling});
+const make40l=(seed=1,rules={})=>new Engine({mode:'40l',seed,rules:{g:0,...rules},handling});
 const request=(e,nodes=5000)=>buildSnapshotRequest(captureSnapshotFromEngine(e,tools),{nodeBudget:nodes,framesPerPiece:24});
 const analyze=r=>JSON.parse(wasm.analyze_snapshot_json(JSON.stringify(r)));
 const codeOf=fn=>{try{fn();assert.fail('expected rejection');}catch(e){return normalizeSnapshotError(e).code;}};
@@ -31,6 +32,11 @@ assert.equal(caps.same_piece_hold_search,true);
 assert.equal(caps.hold_information_gain_optimized,false);
 assert.equal(caps.root_geometry_in_search,true);
 assert.equal(caps.root_timing_in_search,false);
+assert.deepEqual(caps.supported_source_modes,['tl','40l']);
+assert.equal(caps.competitive_stacking_mode,true);
+assert.equal(caps.garbage_are_rule_transport,true);
+assert.equal(caps.garbage_are_bump_rule_transport,true);
+assert.equal(caps.exact_are_bump_timing,false);
 
 // Pure current-snapshot boundary: geometry and request construction must not
 // inspect hidden queue tail, RNG, history or opponent state.
@@ -177,6 +183,41 @@ checks.push('root geometry fixtures: non-spawn/wall/rotated/near-lock/spin state
   assert.equal(codeOf(()=>validateSnapshotTimingAction(e,place.action,{...deps,framesPerPiece:1})),'ROOT_TIMING_UNEXECUTABLE');
 }
 checks.push('geometry reachability is distinct from frame/reset timing executability');
+
+// Real replay TL timing rules are preserved even though the forecast still
+// discloses that exact ARE/bump timing is not simulated.
+{
+  const e=make(49,{garbageare:5,garbagearebump:12});
+  const r=request(e),result=analyze(r);
+  assert.equal(r.analysis_mode,'tl');assert.equal(r.source_mode,'tl');
+  assert.deepEqual(r.timing_rules,{
+    garbage_are_frames:5,garbage_are_bump_frames:12,garbage_locked_until_frame:0
+  });
+  assert.equal(result.garbage_are_frames,5);
+  assert.equal(result.garbage_are_bump_frames,12);
+  assert.equal(result.exact_are_bump_timing,false);
+  assert.equal(result.authority_attack_clock,true);
+}
+checks.push('real TL garbageare=5 and garbagearebump=12 are preserved without being zero-filled or overclaimed');
+
+// 40L is a separately labeled competitive stacking heuristic. It has no TL
+// attack state, pending garbage or attack clock, and starts from neutral combo/B2B.
+{
+  const e=make40l(491);
+  const r=request(e),result=analyze(r);
+  assert.equal(r.source_mode,'40l');
+  assert.equal(r.analysis_mode,'competitive_stacking');
+  assert.equal(r.start.combo,0);assert.equal(r.start.back_to_back,false);assert.equal(r.start.b2b_count,0);
+  assert.deepEqual(r.incoming,[]);
+  assert.equal(r.authority_frame,null);assert.equal(r.garbage_multiplier,null);
+  assert.equal(r.garbage_margin_frames,null);assert.equal(r.garbage_increase_per_second,null);
+  assert.equal(result.source_mode,'40l');
+  assert.equal(result.analysis_mode,'competitive_stacking');
+  assert.equal(result.authority_attack_clock,false);
+  assert.equal(result.competitive_stacking_neutral_root_counters,true);
+  assert.equal(result.search_path,'stateless_competitive_stacking_snapshot_split_root_actions');
+}
+checks.push('40L uses explicit competitive_stacking mode with neutral combo/B2B and no fake TL attack clock');
 
 // Stable rejection contract for pending/ARE and rule states.
 {
