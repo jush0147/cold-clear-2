@@ -36,7 +36,11 @@ pub fn find_moves_with_clutch(board: &Board, piece: Piece, allow_clutch: bool) -
     } else {
         let mut spawned = PieceLocation { piece, rotation: Rotation::North, x: 4, y: 21 };
         while collision_map.obstructed(spawned) {
-            if !allow_clutch || spawned.y >= 39 { return vec![]; }
+            // Tetrp's spawn pivot is at top-down y=17.96. Clutch rescue moves
+            // it upward in whole rows, but B.occupied rejects raw y<0 BEFORE
+            // ceil(). The CC2 integer y=39 position corresponds to the illegal
+            // Tetrp pivot -0.04; y=38 is the highest legal rescued pivot.
+            if !allow_clutch || spawned.y >= 38 { return vec![]; }
             spawned.y += 1;
         }
         let spawned = Placement { location: spawned, spin: Spin::None };
