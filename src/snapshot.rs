@@ -79,7 +79,7 @@ pub enum Action {
     Place { placement: Placement },
     Hold { mode: &'static str, same_piece: bool, requires_reanalysis: bool },
 }
-#[derive(Clone, Serialize)]
+#[derive(Clone, Serialize, Debug)]
 pub struct ActionCandidate {
     pub action: Action,
     pub mean_score: f64,
@@ -88,9 +88,9 @@ pub struct ActionCandidate {
     pub search_basis: &'static str,
     pub candidate_index: usize,
 }
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 pub struct BranchNodes { pub place: u64, pub hold: u64, pub total: u64 }
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 pub struct Report {
     pub schema: &'static str,
     pub action: Action,
