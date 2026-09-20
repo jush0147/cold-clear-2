@@ -1,11 +1,13 @@
-// Kiwi snapshot-v3 boundary. No SevenBagObserver, draw log or replay-prefix input.
+// Kiwi snapshot-v3.1 boundary. No SevenBagObserver, draw log or replay-prefix input.
 const PIECES=new Set(['I','O','T','L','J','S','Z']);
 export const SNAPSHOT_RULE_FIELDS=Object.freeze([
   'b2bcharging','b2bcharge_at','b2bcharge_base','b2bchaining','openerphase_pieces',
   'allclears','allclear_garbage','allclear_b2b','garbagespecialbonus','clutch',
 ]);
+// Exact mechanical envelope shared by supported TL and 40L-source stacking snapshots.
+// mode and garbageare/garbagearebump are intentionally NOT pinned here.
 export const SNAPSHOT_EXACT_RULES=Object.freeze({
-  mode:'tl',boardwidth:10,boardheight:20,buffer:20,bagtype:'7-bag',nextcount:5,kickset:'SRS+',
+  boardwidth:10,boardheight:20,buffer:20,bagtype:'7-bag',nextcount:5,kickset:'SRS+',
   spinbonuses:'all-mini+',allow180:true,hold:true,infinite_hold:false,
   garbageblocking:'combo blocking',garbageentry:'instant',garbagecap:8,
   garbagecapmax:40,garbagecapincrease_per_second:0,garbageattackcap:0,
@@ -13,7 +15,7 @@ export const SNAPSHOT_EXACT_RULES=Object.freeze({
   receivemultiplier:1,cancelmultiplier:1,garbageabsolutecap:0,
   combotable:'multiplier',roundmode:'down',passthrough:'zero',nolockout:true,
   lockresets:15,locktime_frames:30,gravitymay20g:true,messiness_change:1,messiness_inner:0,
-  are:0,lineclear_are:0,garbageare:0,garbagearebump:0,
+  are:0,lineclear_are:0,
 });
 const rangedInteger=new Set(['b2bcharge_at','b2bcharge_base','openerphase_pieces','allclear_garbage','allclear_b2b']);
 const booleanRule=new Set(['b2bcharging','allclears','garbagespecialbonus','clutch']);
@@ -51,20 +53,31 @@ function publicRules(rules){
   }
   return out;
 }
+function integerTimingRule(rules,key){
+  const value=rules[key];
+  if(!Number.isInteger(value)||value<0||value>10000)
+    fail('RULE_VALUE_OUT_OF_RANGE','Unsupported timing rule value',{rule:key,value,min:0,max:10000});
+  return value;
+}
 export function assertSupportedSnapshotRules(rules){
+  if(!['tl','40l'].includes(rules.mode))
+    fail('ANALYSIS_MODE_UNSUPPORTED','Only TL and 40L-source competitive stacking are supported',{mode:rules.mode});
   for(const [key,value] of Object.entries(SNAPSHOT_EXACT_RULES)){
     if(rules[key]!==value)fail('RULE_VALUE_UNSUPPORTED','Unsupported snapshot rule '+key,{rule:key,value:rules[key],supported:value});
   }
+  integerTimingRule(rules,'garbageare');
+  integerTimingRule(rules,'garbagearebump');
   publicRules(rules);
   return true;
 }
-function incoming(state){
+function incomingTL(state){
   const a=state.attack;
   if(!a)fail('SNAPSHOT_ATTACK_STATE_MISSING','TL snapshot requires current attack state');
-  if(a.are.some(p=>p.amt>0))
-    fail('PENDING_ARE_QUEUE_UNSUPPORTED','Positive ARE queue is not modeled by snapshot forecast',{lines:a.are.reduce((n,p)=>n+Math.max(0,p.amt||0),0)});
+  const existingAreLines=(a.are??[]).reduce((n,p)=>n+Math.max(0,p?.amt||0),0);
+  if(existingAreLines>0)
+    fail('PENDING_ARE_QUEUE_UNSUPPORTED','Positive existing ARE queue is not modeled by snapshot forecast',{lines:existingAreLines});
   const out=[];
-  for(const p of a.pending){
+  for(const p of a.pending??[]){
     if(p.amt<=0)continue;
     if(p.hardened)fail('PENDING_PACKET_HARDENED_UNSUPPORTED','Hardened pending packet is unsupported',{cid:p.cid});
     if(p.shielded)fail('PENDING_PACKET_SHIELDED_UNSUPPORTED','Shielded pending packet is unsupported',{cid:p.cid});
@@ -78,7 +91,7 @@ function incoming(state){
     }
     out.push({lines:p.amt,ready_in_frames:ready});
   }
-  return out;
+  return {packets:out,existingAreLines};
 }
 function rootState(pieceState){
   return {
@@ -89,6 +102,37 @@ function rootState(pieceState){
     force_lock:Boolean(pieceState.forceLock),safelock:pieceState.safelock??0,
     soft_dropped:Boolean(pieceState.softDropped),wall:Boolean(pieceState.wall),
   };
+}
+function modeContract(state){
+  const sourceMode=state.rules.mode;
+  if(sourceMode==='tl'){
+    const pending=incomingTL(state);
+    return {
+      analysisMode:'tl',sourceMode,
+      combo:state.attack.combo??0,backToBack:(state.attack.btb??0)>0,
+      b2bCount:Math.max(0,(state.attack.btb??0)-1),
+      incoming:pending.packets,existingAreLines:pending.existingAreLines,
+      piecesPlaced:state.stats.pieces,garbageSent:state.attack.cumulativeSent??0,
+      authorityFrame:state.frame,
+      garbageMultiplier:state.attack.multiplier??state.rules.garbagemultiplier,
+      garbageMarginFrames:state.rules.garbagemargin_frames,
+      garbageIncreasePerSecond:state.rules.garbageincrease_per_second,
+    };
+  }
+  if(sourceMode==='40l'){
+    if(state.attack!==null&&state.attack!==undefined)
+      fail('STACKING_ATTACK_STATE_UNEXPECTED','40L competitive-stacking snapshot must not carry TL attack state');
+    return {
+      analysisMode:'competitive_stacking',sourceMode,
+      combo:0,backToBack:false,b2bCount:0,incoming:[],existingAreLines:0,
+      // These are deliberately neutral competitive-evaluator roots, not claims
+      // about solo attack history or 40L attack semantics.
+      piecesPlaced:0,garbageSent:0,
+      authorityFrame:null,garbageMultiplier:null,garbageMarginFrames:null,
+      garbageIncreasePerSecond:null,
+    };
+  }
+  fail('ANALYSIS_MODE_UNSUPPORTED','Unsupported source mode',{mode:sourceMode});
 }
 export function captureSnapshot(state,{rootGeometry}={}){
   if(!state.playing||!state.piece||state.piece.sleeping)fail('SNAPSHOT_NOT_PLAYABLE','No active playable snapshot');
@@ -108,19 +152,25 @@ export function captureSnapshot(state,{rootGeometry}={}){
   const current=queue[0];
   if(rootGeometry.placements.some(p=>piece(p?.location?.type)!==current))
     fail('ROOT_GEOMETRY_PIECE_MISMATCH','Authority root geometry contains another piece type');
+  const mode=modeContract(state);
   return {
+    analysis_mode:mode.analysisMode,source_mode:mode.sourceMode,
     board,queue,hold:piece(state.hold.piece),hold_locked:Boolean(state.hold.locked),
-    combo:state.attack?.combo??0,back_to_back:(state.attack?.btb??0)>0,
-    b2b_count:Math.max(0,(state.attack?.btb??0)-1),
+    combo:mode.combo,back_to_back:mode.backToBack,b2b_count:mode.b2bCount,
     root_state:rootState(state.piece),
     root_legal_placements:structuredClone(rootGeometry.placements),
     root_geometry_states:rootGeometry.states_explored??null,
-    rules:publicRules(state.rules),incoming:incoming(state),
-    pieces_placed:state.stats.pieces,garbage_sent:state.attack?.cumulativeSent??0,
-    authority_frame:state.frame,authority_subframe:state.subframe,
-    garbage_multiplier:state.attack?.multiplier??state.rules.garbagemultiplier,
-    garbage_margin_frames:state.rules.garbagemargin_frames,
-    garbage_increase_per_second:state.rules.garbageincrease_per_second,
+    rules:publicRules(state.rules),
+    timing_rules:{
+      garbage_are_frames:integerTimingRule(state.rules,'garbageare'),
+      garbage_are_bump_frames:integerTimingRule(state.rules,'garbagearebump'),
+      garbage_locked_until_frame:Number.isInteger(state.garbageLockedUntil)?state.garbageLockedUntil:0,
+    },
+    incoming:mode.incoming,existing_are_lines:mode.existingAreLines,
+    pieces_placed:mode.piecesPlaced,garbage_sent:mode.garbageSent,
+    authority_frame:mode.authorityFrame,authority_subframe:state.subframe,
+    garbage_multiplier:mode.garbageMultiplier,garbage_margin_frames:mode.garbageMarginFrames,
+    garbage_increase_per_second:mode.garbageIncreasePerSecond,
   };
 }
 export function captureSnapshotFromEngine(engine,placementTools){
@@ -136,8 +186,11 @@ export function buildSnapshotRequest(v,{nodeBudget=200000,framesPerPiece=24}={})
     fail('PACE_ASSUMPTION_INVALID','Invalid hypothetical pace',{framesPerPiece});
   if(!Array.isArray(v.queue)||v.queue.length!==6)fail('VISIBLE_QUEUE_INVALID','Expected current plus exactly NEXT 5');
   if(!Array.isArray(v.root_legal_placements))fail('ROOT_GEOMETRY_REQUIRED','Missing authority root landing allowlist');
+  if(!v.timing_rules)fail('TIMING_RULES_MISSING','garbage ARE/bump rules must be preserved explicitly');
   return {
-    schema:'kiwi-snapshot/3',bag_knowledge:'unknown',unknown_tail:'finite_visible',
+    schema:'kiwi-snapshot/3',analysis_mode:v.analysis_mode,source_mode:v.source_mode,
+    bag_knowledge:'unknown',unknown_tail:'finite_visible',
+    timing_rules:{...v.timing_rules},existing_are_lines:v.existing_are_lines,
     start:{board:v.board.map(r=>[...r]),queue:v.queue.map(piece),hold:piece(v.hold),
       combo:v.combo,back_to_back:v.back_to_back,b2b_count:v.b2b_count},
     root_state:{...v.root_state},
@@ -159,10 +212,6 @@ function expectedSamePiece(state,mode){
   const replacement=mode==='empty'?piece(state.bag.queue[0]):piece(state.hold.piece);
   return replacement===current;
 }
-/**
- * Geometry validation only. It never advances the original authority and a Hold
- * check does not pull a hidden preview. Timing/reset exhaustion is separate.
- */
 export function validateSnapshotAction(engine,action,{Engine,placementTools}){
   const state=engine.state;
   if(action?.kind==='hold'){
@@ -183,11 +232,6 @@ export function validateSnapshotAction(engine,action,{Engine,placementTools}){
   if(path.useHold||path.moves.includes('hold'))fail('PLACE_IMPLICIT_HOLD','Place action cannot implicitly Hold');
   return {action:structuredClone(action),path,geometry_validated:true,timing_validated:false};
 }
-/**
- * Separate frame/timing check. This is NOT used to claim core search timing parity.
- * schedulePath replays against the complete authority clone and either proves one
- * lock at the chosen authority instant or throws.
- */
 export function validateSnapshotTimingAction(engine,action,{Engine,placementTools,framesPerPiece=24}){
   const checked=validateSnapshotAction(engine,action,{Engine,placementTools});
   if(action.kind==='hold')return {...checked,timing_reason:'hold_is_atomic_and_requires_post_hold_request'};
@@ -212,11 +256,6 @@ export function selectReachableSnapshotAction(engine,report,dependencies,{valida
   fail(validateTiming?'NO_TIMING_EXECUTABLE_ACTION':'NO_GEOMETRY_REACHABLE_ACTION',
     'No snapshot candidate passed authority validation',{failures});
 }
-/**
- * Phase-4A-safe Hold application. It mutates only an isolated authority clone,
- * returns no landing, and forces the caller to capture a fresh snapshot after
- * Tetrp has revealed any preview consumed by an empty Hold.
- */
 export function applyHoldForReanalysis(engine,action,{Engine}){
   const state=engine.state,expectedMode=state.hold.piece==null?'empty':'occupied';
   if(action?.kind!=='hold'||action.requires_reanalysis!==true||'placement'in action||'path'in action)
@@ -230,15 +269,27 @@ export function applyHoldForReanalysis(engine,action,{Engine}){
   if(!fork.hold())fail('HOLD_LOCKED','Authority rejected Hold');
   return fork;
 }
-
 export function snapshotRuleContract(){
   return {
+    source_modes:{
+      tl:{analysis_mode:'tl',attack_state:'required',root_counters:'snapshot'},
+      '40l':{analysis_mode:'competitive_stacking',attack_state:'absent',root_counters:'neutral combo/B2B'},
+    },
     exact:{...SNAPSHOT_EXACT_RULES},
     variable:{
+      garbageare:'integer 0..10000, preserved but not exactly simulated',
+      garbagearebump:'integer 0..10000, preserved but not exactly simulated',
       b2bcharging:'boolean',b2bcharge_at:'integer 0..10000',b2bcharge_base:'integer 0..10000',
       b2bchaining:'false only',openerphase_pieces:'integer 0..10000',allclears:'boolean',
       allclear_garbage:'integer 0..10000',allclear_b2b:'integer 0..10000',
       garbagespecialbonus:'boolean',clutch:'boolean',
+    },
+    approximations:{
+      exact_are_bump_timing:false,
+      garbageare_rule_preserved:true,
+      garbagearebump_rule_preserved:true,
+      competitive_stacking_is_tl_parity:false,
+      competitive_stacking_is_40l_score_optimizer:false,
     },
     rejections:{
       positive_are:'PENDING_ARE_QUEUE_UNSUPPORTED',
@@ -247,6 +298,7 @@ export function snapshotRuleContract(){
       shielded:'PENDING_PACKET_SHIELDED_UNSUPPORTED',
       unsupported_status:'PENDING_PACKET_STATUS_UNSUPPORTED',
       unsupported_rule:'RULE_VALUE_UNSUPPORTED',
+      unsupported_mode:'ANALYSIS_MODE_UNSUPPORTED',
     },
   };
 }
