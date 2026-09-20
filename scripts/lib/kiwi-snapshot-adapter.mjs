@@ -5,14 +5,15 @@ export const SNAPSHOT_RULE_FIELDS=Object.freeze([
   'allclears','allclear_garbage','allclear_b2b','garbagespecialbonus','clutch',
 ]);
 export const SNAPSHOT_EXACT_RULES=Object.freeze({
-  boardwidth:10,boardheight:20,buffer:20,bagtype:'7-bag',nextcount:5,kickset:'SRS+',
+  mode:'tl',boardwidth:10,boardheight:20,buffer:20,bagtype:'7-bag',nextcount:5,kickset:'SRS+',
   spinbonuses:'all-mini+',allow180:true,hold:true,infinite_hold:false,
   garbageblocking:'combo blocking',garbageentry:'instant',garbagecap:8,
   garbagecapmax:40,garbagecapincrease_per_second:0,garbageattackcap:0,
   garbagephase_frames:0,garbagequeue:false,garbagetargetbonus:'none',
   receivemultiplier:1,cancelmultiplier:1,garbageabsolutecap:0,
   combotable:'multiplier',roundmode:'down',passthrough:'zero',nolockout:true,
-  lockresets:15,gravitymay20g:true,messiness_change:1,messiness_inner:0,
+  lockresets:15,locktime_frames:30,gravitymay20g:true,messiness_change:1,messiness_inner:0,
+  are:0,lineclear_are:0,garbageare:0,garbagearebump:0,
 });
 const rangedInteger=new Set(['b2bcharge_at','b2bcharge_base','openerphase_pieces','allclear_garbage','allclear_b2b']);
 const booleanRule=new Set(['b2bcharging','allclears','garbagespecialbonus','clutch']);
@@ -59,7 +60,7 @@ export function assertSupportedSnapshotRules(rules){
 }
 function incoming(state){
   const a=state.attack;
-  if(!a)return [];
+  if(!a)fail('SNAPSHOT_ATTACK_STATE_MISSING','TL snapshot requires current attack state');
   if(a.are.some(p=>p.amt>0))
     fail('PENDING_ARE_QUEUE_UNSUPPORTED','Positive ARE queue is not modeled by snapshot forecast',{lines:a.are.reduce((n,p)=>n+Math.max(0,p.amt||0),0)});
   const out=[];
@@ -81,9 +82,12 @@ function incoming(state){
 }
 function rootState(pieceState){
   return {
-    x:pieceState.x,y:pieceState.y,rotation:pieceState.r,kick:pieceState.kick??0,
+    x:pieceState.x,y:pieceState.y,hy:pieceState.hy,rotation:pieceState.r,kick:pieceState.kick??0,
     rotated:Boolean(pieceState.rotated),spin:pieceState.spin??'none',
-    total_rotations:pieceState.totalRotations??0,
+    total_rotations:pieceState.totalRotations??0,resets:pieceState.resets??0,
+    rotation_resets:pieceState.rotationResets??0,locking:pieceState.locking??0,
+    force_lock:Boolean(pieceState.forceLock),safelock:pieceState.safelock??0,
+    soft_dropped:Boolean(pieceState.softDropped),wall:Boolean(pieceState.wall),
   };
 }
 export function captureSnapshot(state,{rootGeometry}={}){
@@ -150,7 +154,7 @@ export function buildSnapshotRequest(v,{nodeBudget=200000,framesPerPiece=24}={})
     garbage_increase_per_second:v.garbage_increase_per_second,node_budget:nodeBudget,
   };
 }
-function expectedSamePiece(root,mode){
+function expectedSamePiece(state,mode){
   const current=piece(state.piece.type);
   const replacement=mode==='empty'?piece(state.bag.queue[0]):piece(state.hold.piece);
   return replacement===current;
@@ -167,7 +171,7 @@ export function validateSnapshotAction(engine,action,{Engine,placementTools}){
     const expectedMode=state.hold.piece==null?'empty':'occupied';
     if(action.mode!==expectedMode)fail('HOLD_MODE_MISMATCH','Hold mode does not match authority state',{expected:expectedMode,actual:action.mode});
     if(state.hold.locked||!state.rules.hold)fail('HOLD_LOCKED','Hold is not available at this root');
-    const same=expectedSamePiece(root,expectedMode);
+    const same=expectedSamePiece(state,expectedMode);
     if(Boolean(action.same_piece)!==same)fail('HOLD_SAME_PIECE_FLAG_MISMATCH','same_piece flag does not match visible replacement',{expected:same});
     return {action:structuredClone(action),geometry_validated:true,timing_validated:false};
   }
@@ -208,6 +212,25 @@ export function selectReachableSnapshotAction(engine,report,dependencies,{valida
   fail(validateTiming?'NO_TIMING_EXECUTABLE_ACTION':'NO_GEOMETRY_REACHABLE_ACTION',
     'No snapshot candidate passed authority validation',{failures});
 }
+/**
+ * Phase-4A-safe Hold application. It mutates only an isolated authority clone,
+ * returns no landing, and forces the caller to capture a fresh snapshot after
+ * Tetrp has revealed any preview consumed by an empty Hold.
+ */
+export function applyHoldForReanalysis(engine,action,{Engine}){
+  const state=engine.state,expectedMode=state.hold.piece==null?'empty':'occupied';
+  if(action?.kind!=='hold'||action.requires_reanalysis!==true||'placement'in action||'path'in action)
+    fail('HOLD_ACTION_INVALID','Expected standalone Hold action without landing');
+  if(action.mode!==expectedMode)
+    fail('HOLD_MODE_MISMATCH','Hold mode does not match authority state',{expected:expectedMode,actual:action.mode});
+  const same=expectedSamePiece(state,expectedMode);
+  if(Boolean(action.same_piece)!==same)
+    fail('HOLD_SAME_PIECE_FLAG_MISMATCH','same_piece flag does not match visible replacement',{expected:same});
+  const fork=Engine.restore(engine.serialize());
+  if(!fork.hold())fail('HOLD_LOCKED','Authority rejected Hold');
+  return fork;
+}
+
 export function snapshotRuleContract(){
   return {
     exact:{...SNAPSHOT_EXACT_RULES},
