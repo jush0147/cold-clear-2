@@ -58,3 +58,21 @@ checkpoint must not change.
 
 This artifact does not alter the Tetrp pin automatically. Downstream adoption and
 Phase 4A integration tests remain a separate Tetrp repository change.
+
+
+## Revision 3.1 consumer notes
+
+Do not reject a TL snapshot merely because `garbageare` or
+`garbagearebump` is nonzero. Preserve both rule values in the request and
+continue displaying the approximation warning while
+`exact_are_bump_timing=false`. A positive current ARE queue is a separate
+unsupported condition and has its own structured rejection.
+
+For a 40L replay, request the explicitly labeled competitive-stacking snapshot.
+Do not manufacture TL pending/clock state. Neutral combo/B2B is part of that
+analysis mode, not a reconstruction claim about solo attack history.
+
+Before vendoring the new package, reproduce the release's post-upload E2E from the
+downloaded artifact. The placement helper must import successfully without any
+unshipped module and must build a real pinned-Tetrp snapshot that the packaged WASM
+can analyze. Do not treat manifest hashes alone as dependency-closure proof.

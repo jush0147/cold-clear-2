@@ -127,3 +127,32 @@ Tetrp's vendor pin is unchanged by this upstream task.
 Pre-repair H9/H2 results remain historical/base-0-context evidence. H2 run
 35491099927 remains `completed_diagnostic_base0_only`. No strategy experiment is
 opened by snapshot-v3 work and `review_h9_h12` stays frozen for this artifact.
+
+
+## Snapshot-v3.1 adoption blockers addressed
+
+The previous v3 artifact's placement helper depended on a relative module that was
+not shipped. Revision 3.1 removes that dependency and adds both static relative
+import-closure verification and a post-upload, re-downloaded package E2E using the
+packaged helper, pinned Tetrp snapshot construction, and packaged WASM search.
+Passing only the SHA-256 manifest is no longer sufficient release evidence.
+
+The product rule envelope now distinguishes public ARE configuration from current
+ARE state:
+
+- real `garbageare` / `garbagearebump` values are preserved and may be
+  nonzero, including the replay-observed 5 / 12 combination;
+- `exact_are_bump_timing=false` remains because the between-placement forecast
+  does not exactly emulate those delays;
+- a positive already-existing ARE queue is still rejected explicitly;
+- unknown activation time remains rejected and is never replaced with zero.
+
+40L source snapshots use the separate `competitive_stacking` analysis mode.
+They carry current board/current+NEXT5/Hold/root geometry but intentionally use
+neutral root combo/B2B, no pending garbage and no TL attack clock. This is not TL
+parity and not a 40L sprint-score optimizer. It exists so legacy 40L replay
+positions can receive the disclosed competitive stacking heuristic without being
+misrepresented as TL.
+
+Tetrp Phase 4B remains unauthorized. No strategy experiment or evaluator-weight
+change is part of this compatibility repair.

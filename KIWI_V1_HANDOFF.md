@@ -1,8 +1,10 @@
-# Kiwi v1 browser handoff: snapshot API revision 3
+# Kiwi v1 browser handoff: snapshot API revision 3.1
 
-This revision is the correctness/product follow-up to accepted artifact 10600729877,
-workflow 35500047026, source/build commit
-`15135ae8066c95308a3ae87ce149f5cdc7e13043`.
+This revision is the compatibility/packaging follow-up to snapshot-v3. The previous
+v3 archive exposed a placement helper whose relative import was not shipped, and
+its adapter over-pinned source rules to mode=tl, garbageare=0 and
+garbagearebump=0. Revision 3.1 fixes those adoption blockers without restoring
+history-derived bags or speculative tail search.
 
 Read Tetrp `docs/KIWI_SNAPSHOT_PRODUCT_HANDOFF.md` and `docs/PHASE_4_PLAN.md`.
 Tetrp remains at Phase 4A. This release does not change the Tetrp vendor pin, does
@@ -164,6 +166,43 @@ analysis or replay history.
 The original recorded checkpoint must remain unchanged. Any Hold/placement
 validation happens on isolated Tetrp clones. Discard branch/request/result state on
 exit. Static offline program caching is separate from analysis-history persistence.
+
+## Replay compatibility: TL ARE rules and 40L stacking
+
+`garbageare` and `garbagearebump` are no longer exact-zero gates. Their real
+nonnegative public values are preserved in `timing_rules`, returned in the
+analysis result, and covered by synthetic TL fixtures including
+`garbageare=5` / `garbagearebump=12`. They are NOT silently rewritten to
+zero.
+
+This does not mean ARE/bump simulation became exact. `exact_are_bump_timing=false`
+remains truthful. A positive ARE queue that already exists at the snapshot is a
+different state from merely having nonzero public ARE rules; that current positive
+ARE queue still rejects with `PENDING_ARE_QUEUE_UNSUPPORTED`. Unknown packet
+activation remains an explicit rejection rather than zero-filling or guessing.
+
+40L is accepted only through the separately labeled
+`analysis_mode=competitive_stacking` with `source_mode=40l`. It is a
+competitive board/placement heuristic using neutral root combo/B2B counters, no
+pending garbage, and no TL authority attack clock. It is NOT presented as TL and
+is NOT a 40L score/time optimizer. The evaluator may use its declared competitive
+analysis rule context internally, but no solo attack/B2B history is fabricated.
+
+## Package closure and post-upload E2E
+
+`tetrp-placement-path.mjs` is self-contained in revision 3.1; it no longer
+imports the obsolete history-oriented `tetrp-authority-adapter.mjs`.
+
+Hash identity alone is insufficient. The release workflow now also checks relative
+ESM import closure and, after GitHub uploads the artifact, downloads that artifact
+onto a fresh job and executes this chain from the downloaded files:
+
+`packaged placement helper -> pinned Tetrp Engine snapshot -> packaged snapshot adapter -> packaged web WASM -> analyze_snapshot_json`
+
+That post-upload test includes TL with ARE rules 5/12 and 40L competitive stacking.
+The same chain is also run before upload and its report is included as
+`kiwi-package-e2e.json`. A release is not accepted until both the file/hash
+gate and the downloaded-package E2E gate pass.
 
 ## Release verification
 
