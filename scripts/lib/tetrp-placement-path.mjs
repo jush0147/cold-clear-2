@@ -1,4 +1,4 @@
-import { upperPiece } from './tetrp-authority-adapter.mjs';
+const upperPiece=piece=>piece==null?null:String(piece).toUpperCase();
 
 export function createPlacementTools({Engine, boardModule:B, rotationModule:R}) {
   const baseCells = {
