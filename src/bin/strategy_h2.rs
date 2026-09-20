@@ -395,7 +395,7 @@ mod tests {
                 let mut f = Forecast::snapshot(&incoming, pieces, 2, 4).unwrap();
                 let mut board = Board::default();
                 f.resolve(&mut board, &[attack], 0);
-                let (cancelled, sent) = cancel_plan(attack, 11, pieces, 2);
+                let (cancelled, sent) = cancel_plan(attack, 11, pieces, 2, 14);
                 let remain = 11 - cancelled;
                 let rise = remain.min(8);
                 assert_eq!(f.remaining(), remain - rise);
