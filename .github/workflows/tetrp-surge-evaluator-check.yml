@@ -20,3 +20,5 @@ jobs:
         run: cargo test --release s2_evaluator_tracks_tetrp_surge_base_and_threshold
       - name: Run Rust library unit tests
         run: cargo test --release --lib
+      - name: Test executable Tetrp candidate fallback
+        run: node --test scripts/test-tetrp-executable-candidate.mjs
