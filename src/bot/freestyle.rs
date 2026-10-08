@@ -281,11 +281,12 @@ fn evaluate(
         reward += weights.attack_reward * attack.total as f32;
         reward += weights.legacy_shape_value * legacy_shape;
 
-        if state.back_to_back {
-            let progress = (state.b2b_count as u32 + 1).min(4);
-            eval += weights.b2b_charge_value * progress as f32;
-        }
-        eval += weights.surge_value * tetrio::surge_size(state.b2b_count as u32) as f32;
+        // The visible TL rules, not CC2's historical defaults, determine
+        // both charge progress and the banked Surge value.
+        let (charge_progress, surge_bank) =
+            s2_charge_potential(state.back_to_back, state.b2b_count, state.rules);
+        eval += weights.b2b_charge_value * charge_progress as f32;
+        eval += weights.surge_value * surge_bank as f32;
     } else {
         reward += legacy_shape;
     }
@@ -483,6 +484,20 @@ fn cavity_excavation_cost(board: &Board) -> u32 {
     total
 }
 
+/// Inventory for the legacy tetrio_s2 evaluator. CC2's B2B x-count is
+/// displayed one below Tetrp's raw counter. A disabled or broken B2B chain
+/// must not carry forward any apparent charging or Surge potential.
+fn s2_charge_potential(back_to_back: bool, b2b_count: u16, rules: TetrioRules) -> (u32, u32) {
+    if !back_to_back || !rules.b2b_charging {
+        return (0, 0);
+    }
+    let count = b2b_count as u32;
+    (
+        count.saturating_add(1).min(rules.b2b_charge_at),
+        tetrio::surge_size_with_rules(count, rules),
+    )
+}
+
 fn h3_inventory(back_to_back: bool, b2b_count: u16, rules: TetrioRules) -> (u32, u32) {
     if !back_to_back || !rules.b2b_charging {
         return (0, 0);
@@ -515,7 +530,24 @@ fn useful_attack_delta(
 
 #[cfg(test)]
 mod h2_tests {
-    use super::{cavity_excavation_cost, h3_inventory, useful_attack_delta};
+    use super::{cavity_excavation_cost, h3_inventory, s2_charge_potential, useful_attack_delta};
+
+    #[test]
+    fn s2_evaluator_tracks_tetrp_surge_base_and_threshold() {
+        use crate::data::TetrioRules;
+        let default_rules = TetrioRules::default();
+        let real_tl = TetrioRules { b2b_charge_base: 3, ..default_rules };
+        assert_eq!(s2_charge_potential(true, 3, default_rules), (4, 0));
+        assert_eq!(s2_charge_potential(true, 4, default_rules), (4, 1));
+        assert_eq!(s2_charge_potential(true, 4, real_tl), (4, 4));
+        assert_eq!(s2_charge_potential(true, 9, real_tl), (4, 9));
+        assert_eq!(s2_charge_potential(false, 9, real_tl), (0, 0));
+        let no_charge = TetrioRules { b2b_charging: false, ..real_tl };
+        assert_eq!(s2_charge_potential(true, 9, no_charge), (0, 0));
+        let custom = TetrioRules { b2b_charge_at: 6, b2b_charge_base: 2, ..default_rules };
+        assert_eq!(s2_charge_potential(true, 5, custom), (6, 0));
+        assert_eq!(s2_charge_potential(true, 6, custom), (6, 3));
+    }
 
     #[test]
     fn h9_side_open_cave_has_zero_excavation_cost() {
