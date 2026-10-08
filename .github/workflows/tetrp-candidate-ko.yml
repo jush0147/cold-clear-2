@@ -1,0 +1,86 @@
+name: Tetrp candidate KO and bot artifact
+on:
+  push:
+    branches: [fix/tetrp-surge-evaluation]
+    paths:
+      - 'src/**'
+      - 'scripts/**'
+      - '.github/workflows/tetrp-candidate-ko.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test-and-duel:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: jush0147/tetrp
+          ref: 0b48cb7e1a50e5f0bba6fcfee05ba8e291bebee2
+          path: tetrp-reference
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      - name: Check Rust rules and Tetrp adapter
+        run: |
+          cargo test --release --lib
+          node --test scripts/test-tetrp-executable-candidate.mjs
+          node scripts/test-tetrp-authority-adapter.mjs
+          node scripts/test-tetrp-placement-scheduler.mjs tetrp-reference
+      - name: Install wasm-pack
+        run: cargo install wasm-pack --version 0.13.1 --locked
+      - name: Build usable Tetrp bot engine
+        run: |
+          wasm-pack build --release --target nodejs --out-dir pkg-node
+          wasm-pack build --release --target web --out-dir pkg
+      - name: Run scored synchronous authority KO games
+        run: |
+          mkdir -p ko-results
+          : > ko-results/results.jsonl
+          for pair in 0 1 2 3; do
+            a=$((67000 + pair * 2))
+            b=$((a + 1))
+            SEED_A="$a" SEED_B="$b" CANDIDATE_PROFILE=tetrp_tspin_pressure_h12 INCUMBENT_PROFILE=review_h9_h12 NODE_BUDGET=200000 FRAMES_PER_PIECE=24 PROGRESS_EVERY_LOCKS=0 node scripts/run-tetrp-reset-screen-pair.mjs tetrp-reference | tee -a ko-results/results.jsonl
+          done
+      - name: Summarize KO results, never count failures as wins
+        if: always()
+        run: |
+          node --input-type=module -e '
+            import fs from "node:fs";
+            const p="ko-results/results.jsonl";
+            if (!fs.existsSync(p)) process.exit(0);
+            const lines=fs.readFileSync(p,"utf8").trim().split("\n").filter(Boolean);
+            const games=lines.map(s=>JSON.parse(s));
+            const scored=games.filter(g=>g.type==="tetrp_synchronous_match" && g.scored && g.winner_profile);
+            const outcome={expected_games:8,total:games.length,scored:scored.length,candidate_wins:scored.filter(g=>g.winner_profile==="tetrp_tspin_pressure_h12").length,baseline_wins:scored.filter(g=>g.winner_profile==="review_h9_h12").length,unscored:games.length-scored.length,profile:"tetrp_tspin_pressure_h12",baseline:"review_h9_h12",budget:200000,pps:2.5};
+            fs.writeFileSync("ko-results/summary.json",JSON.stringify(outcome,null,2)+"\n");console.log(JSON.stringify(outcome));
+          '
+      - name: Package standalone bot engine and match evidence
+        if: always()
+        run: |
+          mkdir -p deliverable
+          cp -r pkg pkg-node deliverable/ 2>/dev/null || true
+          cp -r ko-results deliverable/
+          cp README.md deliverable/
+          cat > deliverable/USAGE.md <<'EOF'
+          # Tetrp bot engine build
+          - `pkg-node/` is the Node.js WASM engine, `pkg/` is the browser WASM engine.
+          - `analyze_pending_profile_json(request_json, "tetrp_tspin_pressure_h12")` is the candidate search entry point.
+          - For a valid request use `scripts/lib/tetrp-authority-adapter.mjs` and the pinned Tetrp engine.
+          - KO results in `ko-results/` use synchronized Tetrp authority, 24 frames per piece and 200k nodes per player decision.
+          - This artifact is an engine package, not an automatically installed Tetrp viewer upgrade.
+          - The candidate has not been independently proven stronger until paired KO evidence confirms it.
+          EOF
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tetrp-kiwi-candidate-bot-and-ko
+          path: deliverable/
+          retention-days: 30
