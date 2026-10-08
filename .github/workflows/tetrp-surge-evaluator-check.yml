@@ -1,0 +1,26 @@
+name: Tetrp Surge evaluator check
+on:
+  push:
+    branches:
+      - fix/tetrp-surge-evaluation
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  rust-regression:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Test Tetrp-visible Surge evaluation regression
+        run: cargo test --release s2_evaluator_tracks_tetrp_surge_base_and_threshold
+      - name: Run Rust library unit tests
+        run: cargo test --release --lib
+      - name: Test Tetrp-first attacking profile
+        run: cargo test --release tetrp_tspin_profile_is_callable_and_uses_the_review_core
+      - name: Test executable Tetrp candidate fallback
+        run: node --test scripts/test-tetrp-executable-candidate.mjs

@@ -314,6 +314,19 @@ fn analyze_with_profile_inner(
     } else {
         match profile {
         "review_h9_h12" => (Arc::new(BotConfig::review_h9_h12()), "h9+h12-review"),
+        // A Tetrp-first attacking candidate, kept distinct from the proven
+        // review baseline until paired synchronous KO results justify promotion.
+        "tetrp_tspin_pressure_h12" => {
+            let mut c = BotConfig::review_h9_h12();
+            // Deliberately exchange some four-line-well bias for accessible
+            // T-spin setups and productive double/triple spin clears.
+            c.freestyle_weights.tetris_well_depth *= 0.5;
+            c.freestyle_weights.tslot[2] += 1.0;
+            c.freestyle_weights.tslot[3] += 1.5;
+            c.freestyle_weights.spin_clears[2] += 1.0;
+            c.freestyle_weights.spin_clears[3] += 1.0;
+            (Arc::new(c), "tetrp-tspin-pressure+h12")
+        }
         "review_minus_h1_h12" => {
             let mut c = BotConfig::review_h9_h12();
             c.freestyle_weights.pending_safety = 0.0;
@@ -714,6 +727,24 @@ mod tests {
         let mut request = empty_request();
         request.hold_locked = true;
         assert!(analyze_with_profile(request, "corrected_legacy_h12").is_err());
+    }
+
+    #[test]
+    fn tetrp_tspin_profile_is_callable_and_uses_the_review_core() {
+        let baseline = BotConfig::review_h9_h12();
+        let mut candidate = BotConfig::review_h9_h12();
+        candidate.freestyle_weights.tetris_well_depth *= 0.5;
+        candidate.freestyle_weights.tslot[2] += 1.0;
+        candidate.freestyle_weights.tslot[3] += 1.5;
+        candidate.freestyle_weights.spin_clears[2] += 1.0;
+        candidate.freestyle_weights.spin_clears[3] += 1.0;
+        assert!(candidate.freestyle_weights.tetris_well_depth < baseline.freestyle_weights.tetris_well_depth);
+        assert!(candidate.freestyle_weights.tslot[2] > baseline.freestyle_weights.tslot[2]);
+        assert!(candidate.freestyle_weights.spin_clears[2] > baseline.freestyle_weights.spin_clears[2]);
+        assert_eq!(candidate.dag_backprop_best_demotion, baseline.dag_backprop_best_demotion);
+        let report = analyze_with_profile(empty_request(), "tetrp_tspin_pressure_h12").unwrap();
+        assert_eq!(report.config_profile, "tetrp-tspin-pressure+h12");
+        assert!(!report.candidates.is_empty());
     }
 
     #[test]

@@ -7,6 +7,7 @@ import {
   visibleFingerprint,
 } from './tetrp-authority-adapter.mjs';
 import { createPlacementTools } from './tetrp-placement-path.mjs';
+import { chooseExecutableCandidate } from './tetrp-executable-candidate.mjs';
 
 export function runSynchronousMatch({
   Engine,
@@ -159,11 +160,15 @@ export function runSynchronousMatch({
       if(report.nodes>nodeBudget) throw new Error('hard node budget exceeded');
       if(!report.candidates.length) throw new Error('search produced no candidate');
       searchNodes[slot]+=report.nodes;
-      const placement=report.candidates[0].placement;
-      const path=findPath(engines[slot],placement);
-      const inputs=schedulePath(startFrame,lockFrame,path.moves,engines[slot]);
+      // CC2's ranking can include geometric proposals that Tetrp cannot
+      // actually execute at this frame budget. Try the next ranked proposal,
+      // rather than invalidating the KO match or silently teleporting a piece.
+      const executable=chooseExecutableCandidate(
+        report.candidates,engines[slot],startFrame,lockFrame,{findPath,schedulePath}
+      );
+      const {placement,path,inputs,rank}=executable;
       plans.push({
-        placement,path,inputs,report,
+        placement,path,inputs,report,selected_candidate_rank:rank,
         drawsAdvanced:drawsAdvancedByPlacement(visible[slot],placement),
       });
     }
